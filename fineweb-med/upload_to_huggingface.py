@@ -15,9 +15,12 @@ try:
     from huggingface_hub import HfApi, login, create_repo
     from datasets import Dataset, DatasetDict, load_dataset
     import pandas as pd
+    import boto3
+    from botocore import UNSIGNED
+    from botocore.client import Config
 except ImportError as e:
     print(f"Missing required packages. Please install: {e}")
-    print("Run: pip install huggingface_hub datasets pandas")
+    print("Run: pip install huggingface_hub datasets pandas boto3")
     exit(1)
 
 
@@ -26,7 +29,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Upload FineWeb-Med dataset to HuggingFace Hub')
 
     parser.add_argument('--input-dir', required=True,
-                       help='Directory containing the processed dataset files')
+                       help='Directory containing the processed dataset files (S3: s3://bucket/path or local: /path/to/dir)')
 
     parser.add_argument('--repo-name', required=True,
                        help='HuggingFace repository name (e.g., username/fineweb-med)')
@@ -45,10 +48,54 @@ def parse_args():
     return parser.parse_args()
 
 
+def is_s3_path(path: str) -> bool:
+    """Check if the path is an S3 path."""
+    return path.startswith('s3://')
+
+
+def parse_s3_path(s3_path: str) -> tuple[str, str]:
+    """Parse S3 path into bucket and key prefix."""
+    if not s3_path.startswith('s3://'):
+        raise ValueError("Not an S3 path")
+
+    path_without_scheme = s3_path[5:]  # Remove 's3://'
+    bucket, key = path_without_scheme.split('/', 1)
+    return bucket, key
+
+
+def get_s3_client():
+    """Get S3 client with anonymous access for public buckets."""
+    return boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+
+def list_s3_files(bucket: str, prefix: str) -> List[str]:
+    """List all .jsonl.gz files in S3 bucket with given prefix."""
+    s3_client = get_s3_client()
+    files = []
+
+    paginator = s3_client.get_paginator('list_objects_v2')
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        if 'Contents' in page:
+            for obj in page['Contents']:
+                key = obj['Key']
+                if key.endswith('.jsonl.gz'):
+                    files.append(key)
+
+    return files
+
+
+def download_s3_file(bucket: str, key: str, local_path: str):
+    """Download a file from S3 to local path."""
+    s3_client = get_s3_client()
+    s3_client.download_file(bucket, key, local_path)
+
+
 def analyze_dataset(input_dir: str) -> tuple[int, int, dict]:
     """Analyze dataset and return total documents, tokens, and statistics."""
     import gzip
     import json
+    import tempfile
+    import os
 
     total_docs = 0
     total_tokens = 0
@@ -56,38 +103,94 @@ def analyze_dataset(input_dir: str) -> tuple[int, int, dict]:
     url_domains = {}
     languages = {}
 
-    input_path = Path(input_dir)
+    if is_s3_path(input_dir):
+        # Handle S3 path
+        bucket, prefix = parse_s3_path(input_dir)
+        s3_files = list_s3_files(bucket, prefix)
 
-    for jsonl_file in input_path.glob("*.jsonl.gz"):
-        print(f"Analyzing {jsonl_file.name}...")
-        with gzip.open(jsonl_file, 'rt', encoding='utf-8') as f:
-            for line in f:
-                if line.strip():  # Skip empty lines
-                    try:
-                        doc = json.loads(line)
-                        total_docs += 1
+        if not s3_files:
+            print(f"No .jsonl.gz files found in s3://{bucket}/{prefix}")
+            return 0, 0, {}
 
-                        # Count tokens
-                        token_count = doc.get('metadata', {}).get('token_count', 0)
-                        total_tokens += token_count
-                        token_counts.append(token_count)
+        print(f"Found {len(s3_files)} files in S3, analyzing...")
 
-                        # Analyze URLs
-                        url = doc.get('metadata', {}).get('url', '')
-                        if url:
-                            try:
-                                from urllib.parse import urlparse
-                                domain = urlparse(url).netloc
-                                url_domains[domain] = url_domains.get(domain, 0) + 1
-                            except:
-                                pass
+        # Create temporary directory for downloads
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for s3_key in s3_files:
+                # Download file to temporary location
+                local_file = os.path.join(temp_dir, os.path.basename(s3_key))
+                try:
+                    download_s3_file(bucket, s3_key, local_file)
+                    print(f"Downloaded and analyzing {os.path.basename(s3_key)}...")
 
-                        # Language stats
-                        lang = doc.get('metadata', {}).get('language', 'unknown')
-                        languages[lang] = languages.get(lang, 0) + 1
+                    # Analyze the downloaded file
+                    with gzip.open(local_file, 'rt', encoding='utf-8') as f:
+                        for line in f:
+                            if line.strip():  # Skip empty lines
+                                try:
+                                    doc = json.loads(line)
+                                    total_docs += 1
 
-                    except json.JSONDecodeError:
-                        continue
+                                    # Count tokens
+                                    token_count = doc.get('metadata', {}).get('token_count', 0)
+                                    total_tokens += token_count
+                                    token_counts.append(token_count)
+
+                                    # Analyze URLs
+                                    url = doc.get('metadata', {}).get('url', '')
+                                    if url:
+                                        try:
+                                            from urllib.parse import urlparse
+                                            domain = urlparse(url).netloc
+                                            url_domains[domain] = url_domains.get(domain, 0) + 1
+                                        except:
+                                            pass
+
+                                    # Language stats
+                                    lang = doc.get('metadata', {}).get('language', 'unknown')
+                                    languages[lang] = languages.get(lang, 0) + 1
+
+                                except json.JSONDecodeError:
+                                    continue
+
+                except Exception as e:
+                    print(f"Error downloading/analyzing {s3_key}: {e}")
+                    continue
+
+    else:
+        # Handle local path
+        input_path = Path(input_dir)
+
+        for jsonl_file in input_path.glob("*.jsonl.gz"):
+            print(f"Analyzing {jsonl_file.name}...")
+            with gzip.open(jsonl_file, 'rt', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip():  # Skip empty lines
+                        try:
+                            doc = json.loads(line)
+                            total_docs += 1
+
+                            # Count tokens
+                            token_count = doc.get('metadata', {}).get('token_count', 0)
+                            total_tokens += token_count
+                            token_counts.append(token_count)
+
+                            # Analyze URLs
+                            url = doc.get('metadata', {}).get('url', '')
+                            if url:
+                                try:
+                                    from urllib.parse import urlparse
+                                    domain = urlparse(url).netloc
+                                    url_domains[domain] = url_domains.get(domain, 0) + 1
+                                except:
+                                    pass
+
+                            # Language stats
+                            lang = doc.get('metadata', {}).get('language', 'unknown')
+                            languages[lang] = languages.get(lang, 0) + 1
+
+                        except json.JSONDecodeError:
+                            continue
 
     # Calculate statistics
     stats = {
@@ -320,16 +423,50 @@ def get_size_category(num_docs: int) -> str:
 def merge_jsonl_files(input_dir: str, output_file: str):
     """Merge all JSONL files into a single file."""
     import gzip
+    import tempfile
+    import os
 
-    input_path = Path(input_dir)
+    if is_s3_path(input_dir):
+        # Handle S3 path
+        bucket, prefix = parse_s3_path(input_dir)
+        s3_files = list_s3_files(bucket, prefix)
 
-    with gzip.open(output_file, 'wt', encoding='utf-8') as outfile:
-        for jsonl_file in sorted(input_path.glob("*.jsonl.gz")):
-            print(f"Merging {jsonl_file.name}...")
-            with gzip.open(jsonl_file, 'rt', encoding='utf-8') as infile:
-                for line in infile:
-                    if line.strip():  # Skip empty lines
-                        outfile.write(line)
+        if not s3_files:
+            raise ValueError(f"No .jsonl.gz files found in s3://{bucket}/{prefix}")
+
+        print(f"Merging {len(s3_files)} files from S3...")
+
+        # Create temporary directory for downloads
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with gzip.open(output_file, 'wt', encoding='utf-8') as outfile:
+                for s3_key in sorted(s3_files):
+                    # Download file to temporary location
+                    local_file = os.path.join(temp_dir, os.path.basename(s3_key))
+                    try:
+                        download_s3_file(bucket, s3_key, local_file)
+                        print(f"Merging {os.path.basename(s3_key)}...")
+
+                        # Merge the downloaded file
+                        with gzip.open(local_file, 'rt', encoding='utf-8') as infile:
+                            for line in infile:
+                                if line.strip():  # Skip empty lines
+                                    outfile.write(line)
+
+                    except Exception as e:
+                        print(f"Error downloading/merging {s3_key}: {e}")
+                        continue
+
+    else:
+        # Handle local path
+        input_path = Path(input_dir)
+
+        with gzip.open(output_file, 'wt', encoding='utf-8') as outfile:
+            for jsonl_file in sorted(input_path.glob("*.jsonl.gz")):
+                print(f"Merging {jsonl_file.name}...")
+                with gzip.open(jsonl_file, 'rt', encoding='utf-8') as infile:
+                    for line in infile:
+                        if line.strip():  # Skip empty lines
+                            outfile.write(line)
 
 
 def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
@@ -425,16 +562,55 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
     else:
         # Upload individual files
         print("Uploading individual files...")
-        for file_path in Path(input_dir).glob("*.jsonl.gz"):
-            file_name = file_path.name
-            print(f"Uploading {file_name}...")
-            api.upload_file(
-                path_or_fileobj=str(file_path),
-                path_in_repo=f"data/{file_name}",
-                repo_id=repo_name,
-                repo_type="dataset",
-                token=token
-            )
+
+        if is_s3_path(input_dir):
+            # Handle S3 path
+            bucket, prefix = parse_s3_path(input_dir)
+            s3_files = list_s3_files(bucket, prefix)
+
+            if not s3_files:
+                print(f"No .jsonl.gz files found in s3://{bucket}/{prefix}")
+                return
+
+            print(f"Found {len(s3_files)} files in S3 to upload")
+
+            # Create temporary directory for downloads
+            import tempfile
+            with tempfile.TemporaryDirectory() as temp_dir:
+                for s3_key in s3_files:
+                    file_name = os.path.basename(s3_key)
+                    local_file = os.path.join(temp_dir, file_name)
+
+                    try:
+                        # Download from S3
+                        download_s3_file(bucket, s3_key, local_file)
+                        print(f"Downloaded and uploading {file_name}...")
+
+                        # Upload to HuggingFace
+                        api.upload_file(
+                            path_or_fileobj=local_file,
+                            path_in_repo=f"data/{file_name}",
+                            repo_id=repo_name,
+                            repo_type="dataset",
+                            token=token
+                        )
+
+                    except Exception as e:
+                        print(f"Error uploading {s3_key}: {e}")
+                        continue
+
+        else:
+            # Handle local path
+            for file_path in Path(input_dir).glob("*.jsonl.gz"):
+                file_name = file_path.name
+                print(f"Uploading {file_name}...")
+                api.upload_file(
+                    path_or_fileobj=str(file_path),
+                    path_in_repo=f"data/{file_name}",
+                    repo_id=repo_name,
+                    repo_type="dataset",
+                    token=token
+                )
 
     # Create and upload dataset card
     print("Creating dataset card...")
@@ -456,18 +632,31 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
 def main():
     args = parse_args()
 
-    # Validate input directory
-    if not os.path.exists(args.input_dir):
-        print(f"Error: Input directory {args.input_dir} does not exist")
-        exit(1)
+    # Validate input directory/path
+    if is_s3_path(args.input_dir):
+        # For S3 paths, check if we can list files
+        try:
+            bucket, prefix = parse_s3_path(args.input_dir)
+            jsonl_files = list_s3_files(bucket, prefix)
+            if not jsonl_files:
+                print(f"Error: No .jsonl.gz files found in {args.input_dir}")
+                exit(1)
+            print(f"Found {len(jsonl_files)} JSONL files in S3 to upload")
+        except Exception as e:
+            print(f"Error accessing S3 path {args.input_dir}: {e}")
+            exit(1)
+    else:
+        # For local paths, check directory exists and has files
+        if not os.path.exists(args.input_dir):
+            print(f"Error: Input directory {args.input_dir} does not exist")
+            exit(1)
 
-    # Check for JSONL files
-    jsonl_files = list(Path(args.input_dir).glob("*.jsonl.gz"))
-    if not jsonl_files:
-        print(f"Error: No .jsonl.gz files found in {args.input_dir}")
-        exit(1)
+        jsonl_files = list(Path(args.input_dir).glob("*.jsonl.gz"))
+        if not jsonl_files:
+            print(f"Error: No .jsonl.gz files found in {args.input_dir}")
+            exit(1)
+        print(f"Found {len(jsonl_files)} JSONL files to upload")
 
-    print(f"Found {len(jsonl_files)} JSONL files to upload")
     print(f"Target repository: {args.repo_name}")
     print(f"Merge files: {args.merge_files}")
 
