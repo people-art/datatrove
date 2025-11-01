@@ -207,18 +207,52 @@ s3://your-bucket/
 - **🏷️ 自动标签**: 支持多任务类别标注
 - **📝 专业文档**: 包含使用示例、引用信息和最佳实践
 
-### 快速上传
+### 第一步：设置环境变量
+
+1. **复制环境变量模板**：
+   ```bash
+   cp env.example .env
+   ```
+
+2. **编辑.env文件**：
+   ```bash
+   vim .env  # 或使用你喜欢的编辑器
+   ```
+
+3. **设置HuggingFace配置**：
+   ```bash
+   # 在.env文件中设置：
+   HF_USERNAME=your_actual_huggingface_username  # 从 https://huggingface.co/settings/profile 获取
+   HF_TOKEN=hf_your_token_here                   # 从 https://huggingface.co/settings/tokens 获取
+   ```
+
+### 第二步：验证账户配置
 
 ```bash
 cd fineweb-med
 
-# 安装依赖
-pip install huggingface_hub datasets pandas
+# 检查账户信息和权限（自动从.env读取）
+python check_hf_account.py
 
-# 设置token
-export HF_TOKEN="your_huggingface_token"
+# 或者手动指定token
+python check_hf_account.py --token your_token_here
+```
 
-# 运行上传
+这个脚本会：
+- ✅ 验证token是否有效
+- 👤 显示你的真实用户名
+- 🔧 测试仓库创建权限
+- 📝 提供正确的配置信息
+
+### 第三步：运行上传
+
+现在.env文件已经配置好，直接运行上传脚本：
+
+```bash
+# 运行上传脚本
+./example_upload.sh
+
+# 或者手动运行
 python upload_to_huggingface.py \
   --input-dir ../data/fineweb-med/base_processing/output/CC-MAIN-2023-50 \
   --repo-name your-username/fineweb-med \

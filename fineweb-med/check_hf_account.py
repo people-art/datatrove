@@ -6,6 +6,7 @@ This script helps you verify your HuggingFace account details and token permissi
 """
 
 import argparse
+import os
 import sys
 
 try:
@@ -80,22 +81,45 @@ def check_account(token=None):
     return True
 
 
+def load_env_file():
+    """Load environment variables from .env file if it exists."""
+    env_file = "../.env"
+    if os.path.exists(env_file):
+        try:
+            with open(env_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        key, value = line.split('=', 1)
+                        os.environ[key] = value
+        except Exception as e:
+            print(f"⚠️  Warning: Could not load .env file: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Check HuggingFace account information')
-    parser.add_argument('--token', help='HuggingFace API token to check')
+    parser.add_argument('--token', help='HuggingFace API token to check (overrides .env)')
 
     args = parser.parse_args()
 
-    if not args.token:
+    token = args.token
+
+    # If no token provided via command line, try to load from .env
+    if not token:
+        load_env_file()
+        token = os.environ.get('HF_TOKEN')
+
+    # If still no token, prompt user
+    if not token:
         print("🔑 HuggingFace Account Checker")
         print("=" * 40)
+        print()
+        print("💡 Tip: You can set HF_TOKEN in .env file to avoid entering it each time")
         print()
         token = input("Enter your HuggingFace token: ").strip()
         if not token:
             print("❌ No token provided.")
             return
-    else:
-        token = args.token
 
     check_account(token)
 
