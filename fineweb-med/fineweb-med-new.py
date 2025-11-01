@@ -26,7 +26,7 @@ from datatrove.pipeline.filters import (
     GopherRepetitionFilter,
     LanguageFilter,
     LambdaFilter,
-    PerplexityFilter,
+    UnigramLogProbFilter,
     URLFilter,
 )
 from datatrove.pipeline.formatters import PIIFormatter
@@ -213,9 +213,9 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
         FineWebQualityFilter(
             exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/8_fineweb_qual/{DUMP_TO_PROCESS}")
         ),
-        # Perplexity filter to ensure content quality (lower perplexity = better quality)
-        PerplexityFilter(
-            exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/9_perplexity/{DUMP_TO_PROCESS}")
+        # Unigram log probability filter to ensure content quality (higher probability = better quality)
+        UnigramLogProbFilter(
+            exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/9_unigram_prob/{DUMP_TO_PROCESS}")
         ),
         # PII removal is crucial for medical data - apply before final output
         PIIFormatter(),
