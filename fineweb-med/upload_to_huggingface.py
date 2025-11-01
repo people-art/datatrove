@@ -10,6 +10,7 @@ import json
 import argparse
 from pathlib import Path
 from typing import List, Dict, Any
+from dotenv import load_dotenv
 
 try:
     from huggingface_hub import HfApi, login, create_repo
@@ -20,8 +21,11 @@ try:
     from botocore.client import Config
 except ImportError as e:
     print(f"Missing required packages. Please install: {e}")
-    print("Run: pip install huggingface_hub datasets pandas boto3")
+    print("Run: pip install huggingface_hub datasets pandas boto3 python-dotenv")
     exit(1)
+
+# Load environment variables from .env file in project root
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 
 def parse_args():
@@ -64,8 +68,24 @@ def parse_s3_path(s3_path: str) -> tuple[str, str]:
 
 
 def get_s3_client():
-    """Get S3 client with anonymous access for public buckets."""
-    return boto3.client('s3', config=Config(signature_version=UNSIGNED))
+    """Get S3 client with credentials if available, otherwise anonymous access."""
+    # Try to get credentials from environment
+    aws_access_key = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+
+    if aws_access_key and aws_secret_key:
+        # Use credentials
+        return boto3.client(
+            's3',
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+            region_name=aws_region
+        )
+    else:
+        # Fall back to anonymous access
+        print("⚠️  No AWS credentials found, using anonymous access")
+        return boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
 
 def list_s3_files(bucket: str, prefix: str) -> List[str]:
