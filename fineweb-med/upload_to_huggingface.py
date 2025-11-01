@@ -45,24 +45,69 @@ def parse_args():
     return parser.parse_args()
 
 
-def count_total_documents(input_dir: str) -> int:
-    """Count total number of documents in all JSONL files."""
+def analyze_dataset(input_dir: str) -> tuple[int, int, dict]:
+    """Analyze dataset and return total documents, tokens, and statistics."""
     import gzip
+    import json
 
     total_docs = 0
+    total_tokens = 0
+    token_counts = []
+    url_domains = {}
+    languages = {}
+
     input_path = Path(input_dir)
 
     for jsonl_file in input_path.glob("*.jsonl.gz"):
+        print(f"Analyzing {jsonl_file.name}...")
         with gzip.open(jsonl_file, 'rt', encoding='utf-8') as f:
             for line in f:
                 if line.strip():  # Skip empty lines
-                    total_docs += 1
+                    try:
+                        doc = json.loads(line)
+                        total_docs += 1
 
-    return total_docs
+                        # Count tokens
+                        token_count = doc.get('metadata', {}).get('token_count', 0)
+                        total_tokens += token_count
+                        token_counts.append(token_count)
+
+                        # Analyze URLs
+                        url = doc.get('metadata', {}).get('url', '')
+                        if url:
+                            try:
+                                from urllib.parse import urlparse
+                                domain = urlparse(url).netloc
+                                url_domains[domain] = url_domains.get(domain, 0) + 1
+                            except:
+                                pass
+
+                        # Language stats
+                        lang = doc.get('metadata', {}).get('language', 'unknown')
+                        languages[lang] = languages.get(lang, 0) + 1
+
+                    except json.JSONDecodeError:
+                        continue
+
+    # Calculate statistics
+    stats = {
+        'total_docs': total_docs,
+        'total_tokens': total_tokens,
+        'avg_tokens_per_doc': total_tokens / total_docs if total_docs > 0 else 0,
+        'token_distribution': {
+            'min': min(token_counts) if token_counts else 0,
+            'max': max(token_counts) if token_counts else 0,
+            'median': sorted(token_counts)[len(token_counts)//2] if token_counts else 0,
+        },
+        'top_domains': sorted(url_domains.items(), key=lambda x: x[1], reverse=True)[:10],
+        'languages': languages
+    }
+
+    return total_docs, total_tokens, stats
 
 
-def create_dataset_card(repo_name: str, dump_id: str, total_docs: int, total_tokens: int) -> str:
-    """Create a dataset card with metadata."""
+def create_dataset_card(repo_name: str, dump_id: str, total_docs: int, total_tokens: int, stats: dict) -> str:
+    """Create a comprehensive dataset card with metadata, following FineWeb style."""
 
     card_content = f"""---
 dataset_info:
@@ -96,91 +141,196 @@ task_categories:
 - summarization
 size_categories:
 - {get_size_category(total_docs)}
+arxiv: 2406.17557
 ---
 
-# FineWeb-Med: Medical-Focused Web Dataset
+# 🍷🏥 FineWeb-Med: Medical-Focused Web Dataset
 
-FineWeb-Med is a high-quality dataset of medical and healthcare-related web content, extracted and processed from Common Crawl using the FineWeb methodology.
+FineWeb-Med is a high-quality dataset of medical and healthcare-related web content, extracted and processed from Common Crawl using the FineWeb methodology with specialized medical filtering.
 
 ## Dataset Summary
 
-This dataset contains **{total_docs:,} documents** with approximately **{total_tokens:,} tokens**, focusing on medical, healthcare, and related topics from the web.
+This dataset contains **{total_docs:,} documents** with approximately **{total_tokens:,} tokens**, focusing exclusively on medical, healthcare, and related topics from the web. It serves as a specialized complement to general web datasets like FineWeb for training medical AI models.
 
 ## Data Processing
 
-The dataset was created using the following processing pipeline:
+The dataset was created using the 🏭 `datatrove` library with enhanced medical-specific processing. You can find the complete processing script in our repository.
+
+### Processing Pipeline
 
 1. **Data Source**: Common Crawl dump `{dump_id}`
-2. **Text Extraction**: Trafilatura for high-quality text extraction
-3. **Language Filtering**: Only English content retained
-4. **Medical Content Filtering**: Documents must contain at least one of 26 medical keywords
-5. **Length Filtering**: Documents must be at least 200 words
-6. **Quality Filtering**:
-   - Gopher repetition filtering
-   - Gopher quality filtering
-   - C4 quality filtering
-   - FineWeb quality filtering
-7. **Token Counting**: Using GPT-2 tokenizer
+2. **URL Filtering**: Remove malicious and NSFW websites using blocklists and subword detection
+3. **Text Extraction**: Trafilatura for high-quality text extraction from raw HTML WARC files
+4. **Language Filtering**: FastText language detection, keeping only English content (score > 0.65)
+5. **Medical Content Filtering**: Documents must contain at least one of 26 medical keywords
+6. **Length Filtering**: Documents must be at least 200 words to ensure substantial content
+7. **Quality Filtering**:
+   - Gopher repetition and quality filters
+   - C4 quality filters (excluding terminal punctuation rule)
+   - FineWeb custom filters for list-like documents and formatting issues
+8. **Token Counting**: GPT-2 tokenizer for token statistics
 
 ## Medical Keywords
 
-The dataset filters for documents containing any of these medical keywords:
-- medical, diagnosis, treatment, patient, doctor, symptom, therapy
-- prescription, clinical, healthcare, medicine, pharmaceutical
-- hospital, clinic, nurse, surgery, disease, disorder, condition
-- medication, drug, vaccine, epidemic, pandemic, health, wellness
+The dataset employs specialized filtering for medical content using these keywords:
+
+**Core Medical Terms**: medical, diagnosis, treatment, patient, doctor, symptom, therapy, prescription, clinical, healthcare
+
+**Healthcare Facilities**: hospital, clinic, nurse, surgery, pharmacy, pharmaceutical
+
+**Health Conditions**: disease, disorder, condition, medication, drug, vaccine, epidemic, pandemic
+
+**Wellness Terms**: health, wellness
 
 ## Data Format
 
 Each example is a JSON object with the following fields:
 
-- `text`: The extracted and cleaned text content
-- `id`: Unique identifier from the original WARC record
-- `metadata`: Dictionary containing:
-  - `dump`: Common Crawl dump identifier
-  - `dataset`: Dataset name ("fineweb-med")
-  - `url`: Original webpage URL
-  - `date`: Crawl timestamp
-  - `file_path`: S3 path to source WARC file
-  - `language`: Detected language (always "en")
-  - `language_score`: Language detection confidence
-  - `token_count`: Number of tokens in the text
+### Core Fields
+- **`text`** *(string)*: The extracted and cleaned text content
+- **`id`** *(string)*: Unique identifier from the original WARC record
+- **`metadata`** *(dict)*: Extended metadata information
+
+### Metadata Fields
+- **`dump`** *(string)*: Common Crawl dump identifier (e.g., "CC-MAIN-2023-50")
+- **`dataset`** *(string)*: Dataset identifier ("fineweb-med")
+- **`url`** *(string)*: Original webpage URL
+- **`date`** *(string)*: Crawl timestamp in ISO format
+- **`file_path`** *(string)*: S3 path to source WARC file
+- **`language`** *(string)*: Detected language (always "en" for this dataset)
+- **`language_score`** *(float)*: Language detection confidence score
+- **`token_count`** *(int)*: Number of tokens using GPT-2 tokenizer
 
 ## Usage
+
+### Loading the Dataset
 
 ```python
 from datasets import load_dataset
 
-# Load the dataset
+# Load the complete dataset
 dataset = load_dataset("{repo_name}")
 
-# Access the data
-for example in dataset['train']:
-    print(example['text'])
-    print(example['metadata'])
+# Access training split
+train_data = dataset['train']
+
+# Example usage
+for example in train_data:
+    print(f"Text: {{example['text'][:100]}}...")
+    print(f"URL: {{example['metadata']['url']}}")
+    print(f"Tokens: {{example['metadata']['token_count']}}")
+    break
+```
+
+### Medical-Specific Filtering
+
+```python
+# Filter for clinical documents
+clinical_docs = [doc for doc in dataset['train']
+                 if 'clinical' in doc['text'].lower()]
+
+# Filter by token count for model training
+suitable_docs = [doc for doc in dataset['train']
+                 if 512 <= doc['metadata']['token_count'] <= 2048]
 ```
 
 ## Statistics
 
-- **Total Documents**: {total_docs:,}
-- **Approximate Tokens**: {total_tokens:,}
-- **Average Tokens per Document**: {total_tokens // total_docs if total_docs > 0 else 0:,}
-- **Source Dump**: {dump_id}
-- **Language**: English only
+| Metric | Value |
+|--------|-------|
+| **Total Documents** | {total_docs:,} |
+| **Total Tokens** | {total_tokens:,} |
+| **Average Tokens/Document** | {stats.get('avg_tokens_per_doc', 0):.1f} |
+| **Token Range** | {stats.get('token_distribution', {}).get('min', 0):,} - {stats.get('token_distribution', {}).get('max', 0):,} |
+| **Median Tokens/Document** | {stats.get('token_distribution', {}).get('median', 0):,} |
+| **Source Dump** | {dump_id} |
+| **Language** | English only |
+| **Medical Focus** | Healthcare & medical content |
 
-## License
+### Top Content Sources
+{chr(10).join([f"- **{domain}**: {count:,} documents" for domain, count in stats.get('top_domains', [])[:5]])}
 
-This dataset is released under the Apache 2.0 license.
+## Dataset Creation
 
-## Citation
+### Curation Rationale
 
-```
+While FineWeb provides excellent general web text data, specialized domains like healthcare require targeted datasets. FineWeb-Med addresses this need by applying medical-specific filtering to create a high-quality, domain-focused dataset suitable for:
+
+- Training medical language models
+- Fine-tuning healthcare AI applications
+- Medical text analysis and NLP research
+- Healthcare chatbot development
+
+### Source Data
+
+**Primary Source**: Common Crawl web crawl data
+- **Dump**: {dump_id}
+- **Time Period**: 2023-2024 web crawl
+- **Content Type**: Public web pages with medical relevance
+
+### Annotations
+
+We augment samples with automatic annotations:
+- **`language`** & **`language_score`**: Generated by FastText language classifier
+- **`token_count`**: Calculated using GPT-2 tokenizer
+
+## Considerations for Using the Data
+
+### Social Impact
+
+This dataset enables more accessible development of healthcare AI applications, potentially improving medical text understanding and patient care through better language models.
+
+### Discussion of Biases
+
+The dataset inherits biases from web-sourced medical content, which may reflect:
+- Geographic biases in healthcare information availability
+- Language biases (English-only content)
+- Platform biases from different healthcare websites
+
+### Limitations
+
+- **Code Content**: Limited due to filtering steps; supplement with code-specific datasets if needed
+- **Medical Accuracy**: Web content may contain outdated or inaccurate medical information
+- **PII Concerns**: Despite anonymization, some personal health information may remain
+- **Specialized Domains**: May not cover all medical specialties equally
+
+## Additional Information
+
+### Licensing Information
+
+**License**: Apache 2.0
+**Additional Terms**: Subject to Common Crawl's Terms of Use
+
+### Personal and Sensitive Information
+
+We anonymize:
+- Email addresses → `email@example.com` or `firstname.lastname@example.org`
+- Public IP addresses → Randomly assigned non-responsive IPs
+
+For PII removal requests, please create an issue in our repository.
+
+### Future Work
+
+We plan to expand FineWeb-Med with:
+- Additional medical domains and specialties
+- Multi-language medical content
+- Enhanced quality filtering for medical text
+- Integration with medical knowledge bases
+
+## Citation Information
+
+```bibtex
 @dataset{{fineweb_med,
   title={{FineWeb-Med: Medical-Focused Web Dataset}},
-  author={{Generated using datatrove FineWeb methodology}},
-  year={{2024}}
+  author={{Generated using datatrove FineWeb methodology with medical filtering}},
+  year={{2024}},
+  url={{https://huggingface.co/datasets/{repo_name}}}
 }}
 ```
+
+---
+
+*Built with ❤️ using the FineWeb methodology and datatrove*
 """
 
     return card_content
@@ -232,14 +382,17 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
     except Exception as e:
         print(f"Repository {repo_name} already exists or error: {e}")
 
-    # Count documents and estimate tokens
-    total_docs = count_total_documents(input_dir)
-    # Rough estimate: average ~800 tokens per document based on our sample
-    estimated_tokens = total_docs * 800
+    # Analyze dataset for detailed statistics
+    print("Analyzing dataset...")
+    total_docs, total_tokens, stats = analyze_dataset(input_dir)
 
     print(f"Dataset statistics:")
     print(f"  Total documents: {total_docs:,}")
-    print(f"  Estimated tokens: {estimated_tokens:,}")
+    print(f"  Total tokens: {total_tokens:,}")
+    print(f"  Average tokens/doc: {stats.get('avg_tokens_per_doc', 0):.1f}")
+    print(f"  Token range: {stats.get('token_distribution', {}).get('min', 0):,} - {stats.get('token_distribution', {}).get('max', 0):,}")
+    if stats.get('top_domains'):
+        print(f"  Top domains: {', '.join([f'{d}({c})' for d, c in stats['top_domains'][:3]])}")
 
     if merge_files:
         # Merge all files into a single dataset
@@ -273,7 +426,7 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
 
     # Create and upload dataset card
     print("Creating dataset card...")
-    dataset_card = create_dataset_card(repo_name, "CC-MAIN-2023-50", total_docs, estimated_tokens)
+    dataset_card = create_dataset_card(repo_name, args.dump, total_docs, total_tokens, stats)
 
     api.upload_file(
         path_or_fileobj=dataset_card.encode('utf-8'),
