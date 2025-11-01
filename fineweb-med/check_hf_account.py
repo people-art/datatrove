@@ -65,10 +65,10 @@ def check_account(token=None):
                 print(f"⚠️  Repository creation: UNKNOWN ERROR - {e}")
 
         # Show usage instructions
-        print("
-📝 For FineWeb-Med upload, use:"        print(f"   Username: {user_info['name']}")
+        print(f"\n📝 For FineWeb-Med upload, use:")
+        print(f"   Username: {user_info['name']}")
         print(f"   Repository: {user_info['name']}/fineweb-med")
-        print("   Token: [your token]"
+        print("   Token: [your token]")
 
     except Exception as e:
         print(f"❌ Authentication failed: {e}")
