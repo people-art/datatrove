@@ -375,12 +375,50 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
 
     api = HfApi()
 
+    # Validate repository name format
+    if '/' not in repo_name:
+        print("❌ Error: Repository name must be in format 'username/dataset-name'")
+        print(f"   Got: {repo_name}")
+        print("   Example: your-username/fineweb-med")
+        exit(1)
+
+    username = repo_name.split('/')[0]
+    print(f"📝 Target username: {username}")
+    print(f"📦 Repository: {repo_name}")
+
+    # Check if user can access/create repositories under this namespace
+    try:
+        # Try to get user info to validate token and username
+        user_info = api.whoami(token=token)
+        print(f"✅ Authenticated as: {user_info['name']}")
+
+        # Check if the username matches
+        if user_info['name'] != username:
+            print(f"⚠️  Warning: Authenticated username '{user_info['name']}' doesn't match target '{username}'")
+            print("   This may cause permission issues. Consider using your actual username.")
+
+    except Exception as e:
+        print(f"❌ Authentication failed: {e}")
+        print("   Please check your HuggingFace token.")
+        exit(1)
+
     # Create repository if it doesn't exist
     try:
         create_repo(repo_name, token=token, private=private, repo_type="dataset")
-        print(f"Created repository: {repo_name}")
+        print(f"✅ Created repository: {repo_name}")
     except Exception as e:
-        print(f"Repository {repo_name} already exists or error: {e}")
+        error_msg = str(e)
+        if "403" in error_msg or "Forbidden" in error_msg:
+            print(f"❌ Permission denied: Cannot create repository under '{username}' namespace")
+            print("   Possible solutions:")
+            print(f"   1. Change username to your actual HF username: {user_info.get('name', 'unknown')}")
+            print("   2. Check your token permissions at: https://huggingface.co/settings/tokens")
+            print("   3. Make sure you have 'Write' permissions for dataset creation")
+        elif "already exists" in error_msg.lower():
+            print(f"ℹ️  Repository {repo_name} already exists, will update it")
+        else:
+            print(f"⚠️  Repository creation issue: {e}")
+            print("   Will attempt to upload to existing repository...")
 
     # Analyze dataset for detailed statistics
     print("Analyzing dataset...")
