@@ -5,6 +5,8 @@ FineWeb-Med: Medical-focused dataset processing pipeline based on FineWeb method
 import os
 import argparse
 from dotenv import load_dotenv
+import requests
+from typing import List, Optional
 
 # Load environment variables from .env file
 load_dotenv()
@@ -95,6 +97,104 @@ MEDICAL_KEYWORDS = [
 ]
 
 
+def get_available_dumps(year: Optional[int] = None) -> List[str]:
+    """
+    Get available Common Crawl dumps for a specific year or all recent dumps.
+    This function attempts to fetch from Common Crawl website or uses fallback known dumps.
+    """
+    try:
+        # Try to fetch from Common Crawl website
+        response = requests.get('https://commoncrawl.org/the-data/get-started/', timeout=10)
+        if response.status_code == 200:
+            # Simple regex to extract CC-MAIN patterns
+            import re
+            cc_main_pattern = r'CC-MAIN-\d{4}-\d{2}'
+            dumps = re.findall(cc_main_pattern, response.text)
+            dumps = list(set(dumps))  # Remove duplicates
+            dumps.sort(reverse=True)  # Most recent first
+        else:
+            dumps = []
+    except Exception:
+        dumps = []
+
+    # Fallback: known recent dumps (update as needed)
+    fallback_dumps = [
+        'CC-MAIN-2024-51', 'CC-MAIN-2024-50', 'CC-MAIN-2024-49', 'CC-MAIN-2024-46',
+        'CC-MAIN-2024-42', 'CC-MAIN-2024-38', 'CC-MAIN-2024-33', 'CC-MAIN-2024-30',
+        'CC-MAIN-2024-26', 'CC-MAIN-2024-22', 'CC-MAIN-2024-18', 'CC-MAIN-2024-15',
+        'CC-MAIN-2024-10', 'CC-MAIN-2023-50', 'CC-MAIN-2023-40', 'CC-MAIN-2023-23',
+        'CC-MAIN-2023-06', 'CC-MAIN-2022-49', 'CC-MAIN-2022-40', 'CC-MAIN-2022-33'
+    ]
+
+    if not dumps:
+        dumps = fallback_dumps
+
+    # Filter by year if specified
+    if year:
+        year_str = str(year)
+        dumps = [d for d in dumps if d.split('-')[2] == year_str]
+
+    return dumps
+
+
+def select_dumps_interactive(available_dumps: List[str]) -> List[str]:
+    """
+    Interactive selection of dumps from available options.
+    """
+    print(f"\n📊 Found {len(available_dumps)} available Common Crawl dumps:")
+    for i, dump in enumerate(available_dumps, 1):
+        print(f"  {i:2d}. {dump}")
+
+    print("\n🔍 Selection options:")
+    print("  'all' - Select all dumps")
+    print("  '1,3,5' - Select specific dumps by number")
+    print("  '1-5' - Select range of dumps")
+    print("  'latest' - Select the most recent dump")
+
+    while True:
+        choice = input("\nEnter your selection: ").strip().lower()
+
+        if choice == 'all':
+            return available_dumps
+        elif choice == 'latest':
+            return [available_dumps[0]] if available_dumps else []
+        elif ',' in choice:
+            # Handle comma-separated list
+            try:
+                indices = []
+                for part in choice.split(','):
+                    if '-' in part:
+                        # Handle range
+                        start, end = map(int, part.split('-'))
+                        indices.extend(range(start-1, end))
+                    else:
+                        indices.append(int(part)-1)
+                return [available_dumps[i] for i in indices if 0 <= i < len(available_dumps)]
+            except (ValueError, IndexError):
+                print("❌ Invalid selection. Please try again.")
+                continue
+        elif '-' in choice and ',' not in choice:
+            # Handle range
+            try:
+                start, end = map(int, choice.split('-'))
+                indices = list(range(start-1, end))
+                return [available_dumps[i] for i in indices if 0 <= i < len(available_dumps)]
+            except (ValueError, IndexError):
+                print("❌ Invalid range. Please try again.")
+                continue
+        else:
+            try:
+                index = int(choice) - 1
+                if 0 <= index < len(available_dumps):
+                    return [available_dumps[index]]
+                else:
+                    print("❌ Invalid number. Please try again.")
+                    continue
+            except ValueError:
+                print("❌ Invalid input. Please try again.")
+                continue
+
+
 def is_medical_content(text: str, keywords: list, threshold: int = 2) -> bool:
     """
     Enhanced medical content detection with multiple criteria:
@@ -141,11 +241,11 @@ def parse_args():
                        default='fineweb-med-slurm-cluster',
                        help='Slurm cluster name (only used in slurm mode)')
 
-    parser.add_argument('--dumps', nargs='+', default=['CC-MAIN-2023-50'],
-                       help='Common Crawl dumps to process (default: CC-MAIN-2023-50)')
+    parser.add_argument('--year', type=int,
+                       help='Year to process (will show available dumps for that year)')
 
-    parser.add_argument('--dump', default='CC-MAIN-2023-50',
-                       help='Single Common Crawl dump to process (for backward compatibility)')
+    parser.add_argument('--dumps', nargs='+',
+                       help='Specific Common Crawl dumps to process (alternative to --year)')
 
     parser.add_argument('--output-bucket', default='fineweb-med',
                        help='S3 bucket name for output (default: fineweb-med)')
@@ -161,6 +261,9 @@ def parse_args():
 
     parser.add_argument('--skip-dedup', action='store_true',
                        help='Skip deduplication step (useful for testing)')
+
+    parser.add_argument('--non-interactive', action='store_true',
+                       help='Skip interactive dump selection (use latest dump)')
 
     return parser.parse_args()
 
@@ -268,34 +371,76 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
 """
 Command Line Usage:
 
-# Local testing (default)
+# Interactive mode - select from available dumps (default)
 python fineweb-med-new.py
 
-# Local testing with single dump
-python fineweb-med-new.py --dump CC-MAIN-2023-40
+# Process dumps from a specific year (interactive selection)
+python fineweb-med-new.py --year 2024
 
-# Local testing with multiple dumps
+# Process specific dumps directly
 python fineweb-med-new.py --dumps CC-MAIN-2023-40 CC-MAIN-2023-50
 
-# Slurm cluster production run (single dump)
-python fineweb-med-new.py --mode slurm --cluster-name my-cluster --dump CC-MAIN-2023-50
+# Non-interactive mode (use latest available dump)
+python fineweb-med-new.py --year 2024 --non-interactive
 
-# Slurm cluster production run (multiple dumps)
-python fineweb-med-new.py --mode slurm --dumps CC-MAIN-2023-40 CC-MAIN-2023-50 CC-MAIN-2024-05
+# Slurm cluster production run
+python fineweb-med-new.py --mode slurm --year 2024
 
 # Full command with all options
-python fineweb-med-new.py --mode slurm --cluster-name fineweb-med-slurm-cluster --dumps CC-MAIN-2023-50 --output-bucket fineweb-med --min-words 200 --medical-threshold 2 --compression gzip
+python fineweb-med-new.py --mode slurm --year 2024 --output-bucket fineweb-med --min-words 200 --medical-threshold 2 --compression gzip --non-interactive
+
+Selection Options:
+  'all' - Select all available dumps
+  '1,3,5' - Select specific dumps by number
+  '1-5' - Select range of dumps
+  'latest' - Select the most recent dump
+  Single number - Select one dump
 """
 if __name__ == '__main__':
     # Parse command line arguments
     args = parse_args()
 
-    # Handle backward compatibility: use --dump if --dumps not specified
-    dumps_to_process = args.dumps if hasattr(args, 'dumps') and args.dumps != ['CC-MAIN-2023-50'] else [args.dump]
+    # Determine which dumps to process
+    if args.dumps:
+        # User specified specific dumps
+        dumps_to_process = args.dumps
+        print(f"📋 Using specified dumps: {dumps_to_process}")
+    elif args.year:
+        # User specified a year - find available dumps for that year
+        print(f"📅 Finding available Common Crawl dumps for year {args.year}...")
+        available_dumps = get_available_dumps(args.year)
 
-    print(f"📊 Processing {len(dumps_to_process)} Common Crawl dumps: {dumps_to_process}")
+        if not available_dumps:
+            print(f"❌ No dumps found for year {args.year}")
+            exit(1)
 
-    # For now, process dumps sequentially (can be parallelized later)
+        if args.non_interactive:
+            # Non-interactive mode: use latest dump
+            dumps_to_process = [available_dumps[0]]
+            print(f"🤖 Non-interactive mode: Using latest dump {dumps_to_process[0]}")
+        else:
+            # Interactive mode: let user choose
+            dumps_to_process = select_dumps_interactive(available_dumps)
+            if not dumps_to_process:
+                print("❌ No dumps selected")
+                exit(1)
+    else:
+        # No year or dumps specified - show recent dumps and let user choose
+        print("📊 Finding recent Common Crawl dumps...")
+        available_dumps = get_available_dumps()
+
+        if args.non_interactive:
+            dumps_to_process = [available_dumps[0]]
+            print(f"🤖 Non-interactive mode: Using latest dump {dumps_to_process[0]}")
+        else:
+            dumps_to_process = select_dumps_interactive(available_dumps)
+            if not dumps_to_process:
+                print("❌ No dumps selected")
+                exit(1)
+
+    print(f"🚀 Processing {len(dumps_to_process)} Common Crawl dumps: {dumps_to_process}")
+
+    # Process dumps sequentially (can be parallelized later)
     for dump_id in dumps_to_process:
         print(f"\n🔄 Processing dump: {dump_id}")
 
@@ -312,10 +457,18 @@ if __name__ == '__main__':
         )
 
         # Launch the base processing pipeline for this dump
-        main_processing_executor.run()
+        try:
+            main_processing_executor.run()
+            print(f"✅ Successfully processed dump: {dump_id}")
+        except Exception as e:
+            print(f"❌ Failed to process dump {dump_id}: {e}")
+            if len(dumps_to_process) == 1:
+                exit(1)  # Exit if only one dump and it fails
+            else:
+                print("Continuing with remaining dumps...")
 
     # Only run deduplication in slurm mode (production)
-    if args.mode == 'slurm':
+    if args.mode == 'slurm' and not args.skip_dedup:
         print("\n🔄 Starting deduplication pipeline...")
 
         # For deduplication, we need to process all dumps together
@@ -324,5 +477,7 @@ if __name__ == '__main__':
 
         print("✅ Production processing completed!")
     else:
+        if args.skip_dedup:
+            print("⏭️  Skipping deduplication as requested")
         print("✅ Local processing completed. Use --mode slurm for full production processing.")
 
