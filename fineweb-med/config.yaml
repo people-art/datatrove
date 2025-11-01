@@ -1,0 +1,30 @@
+Region: us-east-1
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t3.medium
+  Networking:
+    SubnetId: subnet-081031c727748fcc3
+  Ssh:
+    KeyName: AWS-Keys
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: compute-queue
+      ComputeResources:
+        - Name: compute
+          InstanceType: t3.medium
+          MinCount: 0
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - subnet-081031c727748fcc3
+SharedStorage:
+  - MountDir: /shared
+    Name: efs-storage
+    StorageType: Efs
+Tags:
+  - Key: Project
+    Value: fineweb-med
+  - Key: Environment
+    Value: development
