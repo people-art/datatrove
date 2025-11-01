@@ -196,6 +196,46 @@ s3://your-bucket/
     └── minhash/                   # 去重日志
 ```
 
+## 📤 HuggingFace上传
+
+### 上传功能特性
+
+- **🏥 专业数据集卡片**: 参考FineWeb样式，包含完整的元数据和使用说明
+- **📊 详细统计分析**: 自动分析文档数量、token分布、内容来源等
+- **🌐 域名分析**: 识别主要内容来源网站
+- **📈 Token统计**: 完整的token分布分析（最小值、最大值、中位数等）
+- **🏷️ 自动标签**: 支持多任务类别标注
+- **📝 专业文档**: 包含使用示例、引用信息和最佳实践
+
+### 快速上传
+
+```bash
+cd fineweb-med
+
+# 安装依赖
+pip install huggingface_hub datasets pandas
+
+# 设置token
+export HF_TOKEN="your_huggingface_token"
+
+# 运行上传
+python upload_to_huggingface.py \
+  --input-dir ../data/fineweb-med/base_processing/output/CC-MAIN-2023-50 \
+  --repo-name your-username/fineweb-med \
+  --token $HF_TOKEN
+```
+
+### 生成的数据集卡片包含
+
+1. **数据集概述** - 规模、内容类型、创建方法
+2. **详细统计** - 文档数、token数、分布分析、主要来源
+3. **处理流程** - 完整的8步处理pipeline说明
+4. **数据格式** - 字段定义和类型说明
+5. **使用示例** - 加载和过滤代码示例
+6. **创建信息** - 基本原理、来源数据、标注方法
+7. **使用考虑** - 社会影响、偏见讨论、局限性
+8. **引用信息** - BibTeX格式引用
+
 ## 参数优化
 
 针对医疗数据集的特点，脚本进行了以下优化：
