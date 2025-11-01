@@ -161,3 +161,8 @@ cython_debug/
 .vscode/
 
 playground/
+# FineWeb-Med data and logs
+data/
+logs/
+fineweb-med/logs/
+fineweb-med/data/
