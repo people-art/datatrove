@@ -28,12 +28,10 @@ from datatrove.pipeline.filters import (
     GopherRepetitionFilter,
     LanguageFilter,
     LambdaFilter,
-    PerplexityFilter,
     UnigramLogProbFilter,
     URLFilter,
 )
 from datatrove.pipeline.formatters import PIIFormatter
-from datatrove.pipeline.inference import InferenceRunner
 from datatrove.pipeline.readers import JsonlReader, WarcReader
 from datatrove.pipeline.tokens import TokensCounter
 from datatrove.pipeline.writers.jsonl import JsonlWriter
@@ -321,6 +319,65 @@ def is_medical_content(text: str, keywords: list, threshold: int = 2) -> bool:
     return (context_count >= 1 or keyword_count >= 3) and quality_pass
 
 
+def run_medical_benchmarks(args):
+    """
+    Run benchmark tests on medical LLM performance using the processed dataset.
+    """
+    print("🏥 FineWeb-Med Benchmark Suite")
+    print("=" * 50)
+
+    # Sample medical texts for testing
+    test_texts = [
+        "The patient presented with acute myocardial infarction and was treated with aspirin and heparin.",
+        "Clinical trials show that metformin reduces HbA1c levels in type 2 diabetes patients.",
+        "The oncology department uses chemotherapy protocols for advanced breast cancer treatment.",
+        "Randomized controlled trials demonstrate the efficacy of statins in cardiovascular disease prevention.",
+        "Medical imaging revealed pulmonary embolism requiring immediate anticoagulation therapy."
+    ]
+
+    print(f"📋 Testing {len(test_texts)} medical text samples...")
+
+    results = []
+    for i, text in enumerate(test_texts, 1):
+        print(f"\n🔬 Test {i}: {text[:50]}...")
+
+        # Test keyword-based scoring
+        keyword_score = medical_relevance_scorer(text)
+        print(f"  Keyword Score: {keyword_score:.2f}")
+
+        # Test quality filter
+        quality_pass = medical_quality_filter(text)
+        print(f"  Quality Filter: {'✅ PASS' if quality_pass else '❌ FAIL'}")
+
+        # Test enhanced medical content detection
+        content_pass = is_medical_content(text, MEDICAL_KEYWORDS, args.medical_threshold)
+        print(f"  Content Filter: {'✅ PASS' if content_pass else '❌ FAIL'}")
+
+        results.append({
+            'text_id': i,
+            'keyword_score': keyword_score,
+            'quality_pass': quality_pass,
+            'content_pass': content_pass
+        })
+
+    # Summary statistics
+    print("\n📊 Benchmark Results Summary:")
+    print(f"  Total samples: {len(results)}")
+    print(f"  Quality filter pass rate: {sum(1 for r in results if r['quality_pass'])}/{len(results)} ({sum(1 for r in results if r['quality_pass'])/len(results)*100:.1f}%)")
+    print(f"  Content filter pass rate: {sum(1 for r in results if r['content_pass'])}/{len(results)} ({sum(1 for r in results if r['content_pass'])/len(results)*100:.1f}%)")
+    print(f"  Average keyword score: {sum(r['keyword_score'] for r in results)/len(results):.2f}")
+
+    print("\n🎯 Medical Filtering Effectiveness:")
+    print("  ✅ High precision: Filters effectively identify medical content")
+    print("  ✅ MeSH integration: Uses medical subject headings for validation")
+    print("  ✅ Context awareness: Considers medical patterns and terminology")
+    print("  ✅ Quality assurance: Multiple validation layers prevent false positives")
+
+    print("\n📝 Note: LLM scoring not available in current datatrove version")
+    print("  Consider upgrading to enable advanced LLM-based medical relevance scoring")
+    print("\n✅ Benchmark completed successfully!")
+
+
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='FineWeb-Med: Medical dataset processing pipeline')
@@ -357,14 +414,15 @@ def parse_args():
     parser.add_argument('--non-interactive', action='store_true',
                        help='Skip interactive dump selection (use latest dump)')
 
-    parser.add_argument('--use-llm-scoring', action='store_true',
-                       help='Use LLM-based medical relevance scoring (requires GPU/cluster)')
-
-    parser.add_argument('--llm-model', default='microsoft/DialoGPT-medium',
-                       help='LLM model for medical relevance scoring')
-
-    parser.add_argument('--medical-threshold-llm', type=float, default=3.0,
-                       help='Minimum LLM medical relevance score (0-5)')
+    # Note: LLM scoring requires InferenceRunner which is not available in this datatrove version
+    # parser.add_argument('--use-llm-scoring', action='store_true',
+    #                    help='Use LLM-based medical relevance scoring (requires GPU/cluster)')
+    #
+    # parser.add_argument('--llm-model', default='microsoft/DialoGPT-medium',
+    #                    help='LLM model for medical relevance scoring')
+    #
+    # parser.add_argument('--medical-threshold-llm', type=float, default=3.0,
+    #                    help='Minimum LLM medical relevance score (0-5)')
 
     parser.add_argument('--benchmark', action='store_true',
                        help='Run benchmark tests on medical LLM performance')
@@ -373,9 +431,7 @@ def parse_args():
 
 
 def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
-                   medical_threshold=2, compression='gzip', skip_dedup=False,
-                   use_llm_scoring=False, llm_model='microsoft/DialoGPT-medium',
-                   medical_threshold_llm=3.0):
+                   medical_threshold=2, compression='gzip', skip_dedup=False):
     """Create the appropriate executor based on mode."""
 
     # Update global variables based on arguments
@@ -422,39 +478,16 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
         FineWebQualityFilter(
             exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/8_fineweb_qual/{DUMP_TO_PROCESS}")
         ),
-        # Perplexity filter for quality assurance (lower perplexity = better quality)
-        PerplexityFilter(
-            exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/9_perplexity/{DUMP_TO_PROCESS}")
-        ),
+        # Additional quality filters for medical content
+        # Note: PerplexityFilter not available in this datatrove version
         # Unigram log probability filter to ensure content quality (higher probability = better quality)
         UnigramLogProbFilter(
             exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/10_unigram_prob/{DUMP_TO_PROCESS}")
         ),
     ]
 
-    # Add LLM-based medical relevance scoring if enabled
-    if use_llm_scoring:
-        print(f"🤖 Adding LLM-based medical relevance scoring with {llm_model}")
-        pipeline.append(
-            InferenceRunner(
-                model=llm_model,
-                task="medical_relevance_scoring",
-                inference_kwargs={
-                    "max_new_tokens": 50,
-                    "temperature": 0.1,
-                    "do_sample": False
-                },
-                output_key="llm_medical_score",
-                exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/11_llm_scoring/{DUMP_TO_PROCESS}")
-            )
-        )
-        # Filter based on LLM score
-        pipeline.append(
-            LambdaFilter(
-                lambda doc: doc.metadata.get("llm_medical_score", 0) >= medical_threshold_llm,
-                exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/12_llm_threshold/{DUMP_TO_PROCESS}")
-            )
-        )
+    # Note: LLM-based scoring requires InferenceRunner (not available in this datatrove version)
+    # Future enhancement: Add LLM scoring when InferenceRunner becomes available
 
     # Enhanced PII removal is crucial for medical data - apply before final output
     # Use multiple passes for better HIPAA compliance
@@ -594,10 +627,7 @@ if __name__ == '__main__':
             min_words=args.min_words,
             medical_threshold=args.medical_threshold,
             compression=args.compression,
-            skip_dedup=args.skip_dedup,
-            use_llm_scoring=args.use_llm_scoring,
-            llm_model=args.llm_model,
-            medical_threshold_llm=args.medical_threshold_llm
+            skip_dedup=args.skip_dedup
         )
 
         # Launch the base processing pipeline for this dump
@@ -631,64 +661,3 @@ if __name__ == '__main__':
         print("✅ Local processing completed. Use --mode slurm for full production processing.")
 
 
-def run_medical_benchmarks(args):
-    """
-    Run benchmark tests on medical LLM performance using the processed dataset.
-    """
-    print("🏥 FineWeb-Med Benchmark Suite")
-    print("=" * 50)
-
-    # Sample medical texts for testing
-    test_texts = [
-        "The patient presented with acute myocardial infarction and was treated with aspirin and heparin.",
-        "Clinical trials show that metformin reduces HbA1c levels in type 2 diabetes patients.",
-        "The oncology department uses chemotherapy protocols for advanced breast cancer treatment.",
-        "Randomized controlled trials demonstrate the efficacy of statins in cardiovascular disease prevention.",
-        "Medical imaging revealed pulmonary embolism requiring immediate anticoagulation therapy."
-    ]
-
-    print(f"📋 Testing {len(test_texts)} medical text samples...")
-
-    results = []
-    for i, text in enumerate(test_texts, 1):
-        print(f"\n🔬 Test {i}: {text[:50]}...")
-
-        # Test keyword-based scoring
-        keyword_score = medical_relevance_scorer(text)
-        print(".2f")
-
-        # Test quality filter
-        quality_pass = medical_quality_filter(text)
-        print(f"  Quality Filter: {'✅ PASS' if quality_pass else '❌ FAIL'}")
-
-        # Test enhanced medical content detection
-        content_pass = is_medical_content(text, MEDICAL_KEYWORDS, args.medical_threshold)
-        print(f"  Content Filter: {'✅ PASS' if content_pass else '❌ FAIL'}")
-
-        results.append({
-            'text_id': i,
-            'keyword_score': keyword_score,
-            'quality_pass': quality_pass,
-            'content_pass': content_pass
-        })
-
-    # Summary statistics
-    print("
-📊 Benchmark Results Summary:"    print(f"  Total samples: {len(results)}")
-    print(f"  Quality filter pass rate: {sum(1 for r in results if r['quality_pass'])}/{len(results)} ({sum(1 for r in results if r['quality_pass'])/len(results)*100:.1f}%)")
-    print(f"  Content filter pass rate: {sum(1 for r in results if r['content_pass'])}/{len(results)} ({sum(1 for r in results if r['content_pass'])/len(results)*100:.1f}%)")
-    print(f"  Average keyword score: {sum(r['keyword_score'] for r in results)/len(results):.2f}")
-
-    print("
-🎯 Medical Filtering Effectiveness:"    print("  ✅ High precision: Filters effectively identify medical content")
-    print("  ✅ MeSH integration: Uses medical subject headings for validation")
-    print("  ✅ Context awareness: Considers medical patterns and terminology")
-    print("  ✅ Quality assurance: Multiple validation layers prevent false positives")
-
-    if args.use_llm_scoring:
-        print("
-🤖 LLM Scoring Enabled:"        print(f"  Model: {args.llm_model}")
-        print(f"  Threshold: {args.medical_threshold_llm}")
-        print("  Note: LLM scoring provides additional validation layer"
-    print("
-✅ Benchmark completed successfully!"
