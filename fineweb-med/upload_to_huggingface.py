@@ -109,40 +109,7 @@ def analyze_dataset(input_dir: str) -> tuple[int, int, dict]:
 def create_dataset_card(repo_name: str, dump_id: str, total_docs: int, total_tokens: int, stats: dict) -> str:
     """Create a comprehensive dataset card with metadata, following FineWeb style."""
 
-    card_content = f"""---
-dataset_info:
-  features:
-  - name: text
-    dtype: string
-  - name: id
-    dtype: string
-  - name: metadata
-    dtype:
-      dump: string
-      dataset: string
-      url: string
-      date: string
-      file_path: string
-      language: string
-      language_score: float64
-      token_count: int64
-  configs:
-  - config_name: default
-    data_files:
-    - split: train
-      path: data/train-*
-language: en
-license: apache-2.0
-task_categories:
-- text-generation
-- fill-mask
-- text-classification
-- question-answering
-- summarization
-size_categories:
-- {get_size_category(total_docs)}
-arxiv: 2406.17557
----
+    card_content = f"""
 
 # 🍷🏥 FineWeb-Med: Medical-Focused Web Dataset
 
@@ -366,7 +333,7 @@ def merge_jsonl_files(input_dir: str, output_file: str):
 
 
 def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
-                         private: bool = False, merge_files: bool = True):
+                         private: bool = False, merge_files: bool = True, dump_id: str = "CC-MAIN-2023-50"):
     """Upload the dataset to HuggingFace Hub."""
 
     # Set up authentication
@@ -442,6 +409,13 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
         print("Creating HuggingFace dataset...")
         dataset = load_dataset("json", data_files=merged_file, split="train")
 
+        # Delete existing README.md if it exists (to avoid malformed YAML)
+        try:
+            api.delete_file("README.md", repo_id=repo_name, repo_type="dataset", token=token)
+            print("Removed existing README.md")
+        except Exception:
+            pass  # README.md doesn't exist, which is fine
+
         # Upload to HuggingFace
         print(f"Uploading to {repo_name}...")
         dataset.push_to_hub(repo_name, token=token, private=private)
@@ -464,7 +438,7 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
 
     # Create and upload dataset card
     print("Creating dataset card...")
-    dataset_card = create_dataset_card(repo_name, args.dump, total_docs, total_tokens, stats)
+    dataset_card = create_dataset_card(repo_name, dump_id, total_docs, total_tokens, stats)
 
     api.upload_file(
         path_or_fileobj=dataset_card.encode('utf-8'),
@@ -503,7 +477,8 @@ def main():
         repo_name=args.repo_name,
         token=args.token,
         private=args.private,
-        merge_files=args.merge_files
+        merge_files=args.merge_files,
+        dump_id=args.dump_id
     )
 
 
