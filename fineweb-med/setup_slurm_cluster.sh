@@ -24,7 +24,7 @@ SSH_KEY_NAME="AWS-Keys"        # Your EC2 SSH key pair name
 CLUSTER_NAME="fineweb-med-slurm-cluster"   # Cluster name
 HEAD_INSTANCE_TYPE="t3.medium"    # Head node instance type
 COMPUTE_INSTANCE_TYPE="t3.medium" # Compute node instance type
-MAX_COMPUTE_NODES=5              # Max compute nodes
+MAX_COMPUTE_NODES=1              # Max compute nodes
 CONFIG_FILE="config.yaml"         # Cluster config file name
 
 # Parse command line arguments
@@ -259,10 +259,10 @@ Scheduling:
       Networking:
         SubnetIds:
           - ${SUBNET_ID}
-SharedStorage:
-  - MountDir: /shared
-    Name: efs-storage
-    StorageType: Efs
+# SharedStorage:
+#   - MountDir: /shared
+#     Name: efs-storage
+#     StorageType: Efs
 Tags:
   - Key: Project
     Value: fineweb-med

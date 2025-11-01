@@ -15,14 +15,14 @@ Scheduling:
         - Name: compute
           InstanceType: t3.medium
           MinCount: 0
-          MaxCount: 2
+          MaxCount: 1
       Networking:
         SubnetIds:
           - subnet-081031c727748fcc3
-SharedStorage:
-  - MountDir: /shared
-    Name: efs-storage
-    StorageType: Efs
+# SharedStorage:
+#   - MountDir: /shared
+#     Name: efs-storage
+#     StorageType: Efs
 Tags:
   - Key: Project
     Value: fineweb-med
