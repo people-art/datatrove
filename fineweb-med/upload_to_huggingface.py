@@ -441,10 +441,18 @@ def get_size_category(num_docs: int) -> str:
 
 
 def merge_jsonl_files(input_dir: str, output_file: str):
-    """Merge all JSONL files into a single file."""
+    """Merge all JSONL files into a single file. Always outputs to a local file."""
     import gzip
     import tempfile
     import os
+
+    # Always create a local output file, regardless of input source
+    local_output_file = output_file
+    if is_s3_path(output_file):
+        # If output_file is S3 path, create a local temporary file instead
+        import tempfile
+        temp_fd, local_output_file = tempfile.mkstemp(suffix='.jsonl.gz')
+        os.close(temp_fd)  # Close the file descriptor, we'll open it with gzip
 
     if is_s3_path(input_dir):
         # Handle S3 path
@@ -458,7 +466,7 @@ def merge_jsonl_files(input_dir: str, output_file: str):
 
         # Create temporary directory for downloads
         with tempfile.TemporaryDirectory() as temp_dir:
-            with gzip.open(output_file, 'wt', encoding='utf-8') as outfile:
+            with gzip.open(local_output_file, 'wt', encoding='utf-8') as outfile:
                 for s3_key in sorted(s3_files):
                     # Download file to temporary location
                     local_file = os.path.join(temp_dir, os.path.basename(s3_key))
@@ -480,13 +488,16 @@ def merge_jsonl_files(input_dir: str, output_file: str):
         # Handle local path
         input_path = Path(input_dir)
 
-        with gzip.open(output_file, 'wt', encoding='utf-8') as outfile:
+        with gzip.open(local_output_file, 'wt', encoding='utf-8') as outfile:
             for jsonl_file in sorted(input_path.glob("*.jsonl.gz")):
                 print(f"Merging {jsonl_file.name}...")
                 with gzip.open(jsonl_file, 'rt', encoding='utf-8') as infile:
                     for line in infile:
                         if line.strip():  # Skip empty lines
                             outfile.write(line)
+
+    # Return the actual local file path used
+    return local_output_file
 
 
 def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
@@ -560,11 +571,11 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
         # Merge all files into a single dataset
         print("Merging JSONL files...")
         merged_file = f"{input_dir}/merged_dataset.jsonl.gz"
-        merge_jsonl_files(input_dir, merged_file)
+        actual_merged_file = merge_jsonl_files(input_dir, merged_file)
 
         # Create dataset from merged file
         print("Creating HuggingFace dataset...")
-        dataset = load_dataset("json", data_files=merged_file, split="train")
+        dataset = load_dataset("json", data_files=actual_merged_file, split="train")
 
         # Delete existing README.md if it exists (to avoid malformed YAML)
         try:
@@ -578,7 +589,7 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
         dataset.push_to_hub(repo_name, token=token, private=private)
 
         # Clean up merged file
-        os.remove(merged_file)
+        os.remove(actual_merged_file)
     else:
         # Upload individual files
         print("Uploading individual files...")
