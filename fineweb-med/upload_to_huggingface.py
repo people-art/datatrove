@@ -504,9 +504,26 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
                          private: bool = False, merge_files: bool = True, dump_id: str = "CC-MAIN-2023-50"):
     """Upload the dataset to HuggingFace Hub."""
 
-    # Set up authentication
+    # Set up authentication with retry
     if token:
-        login(token=token)
+        import time
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                login(token=token)
+                break
+            except Exception as e:
+                if "429" in str(e) or "Too Many Requests" in str(e):
+                    if attempt < max_retries - 1:
+                        wait_time = 30 * (attempt + 1)  # Progressive backoff
+                        print(f"⚠️  Rate limited, waiting {wait_time} seconds before retry...")
+                        time.sleep(wait_time)
+                    else:
+                        print(f"❌ Authentication failed after {max_retries} attempts: {e}")
+                        raise e
+                else:
+                    print(f"❌ Authentication failed: {e}")
+                    raise e
 
     api = HfApi()
 
@@ -522,38 +539,72 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
     print(f"📦 Repository: {repo_name}")
 
     # Check if user can access/create repositories under this namespace
-    try:
-        # Try to get user info to validate token and username
-        user_info = api.whoami(token=token)
-        print(f"✅ Authenticated as: {user_info['name']}")
+    max_retries = 3
+    user_info = None
+    for attempt in range(max_retries):
+        try:
+            # Try to get user info to validate token and username
+            user_info = api.whoami(token=token)
+            print(f"✅ Authenticated as: {user_info['name']}")
+            break
+        except Exception as e:
+            if "429" in str(e) or "Too Many Requests" in str(e):
+                if attempt < max_retries - 1:
+                    wait_time = 30 * (attempt + 1)
+                    print(f"⚠️  Rate limited during whoami, waiting {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"❌ Failed to get user info after {max_retries} attempts: {e}")
+                    exit(1)
+            else:
+                print(f"❌ Authentication failed: {e}")
+                print("   Please check your HuggingFace token.")
+                exit(1)
 
-        # Check if the username matches
-        if user_info['name'] != username:
-            print(f"⚠️  Warning: Authenticated username '{user_info['name']}' doesn't match target '{username}'")
-            print("   This may cause permission issues. Consider using your actual username.")
-
-    except Exception as e:
-        print(f"❌ Authentication failed: {e}")
-        print("   Please check your HuggingFace token.")
-        exit(1)
+    # Check if the username matches
+    if user_info and user_info['name'] != username:
+        print(f"⚠️  Warning: Authenticated username '{user_info['name']}' doesn't match target '{username}'")
+        print("   This may cause permission issues. Consider using your actual username.")
 
     # Create repository if it doesn't exist
-    try:
-        create_repo(repo_name, token=token, private=private, repo_type="dataset")
-        print(f"✅ Created repository: {repo_name}")
-    except Exception as e:
-        error_msg = str(e)
-        if "403" in error_msg or "Forbidden" in error_msg:
-            print(f"❌ Permission denied: Cannot create repository under '{username}' namespace")
-            print("   Possible solutions:")
-            print(f"   1. Change username to your actual HF username: {user_info.get('name', 'unknown')}")
-            print("   2. Check your token permissions at: https://huggingface.co/settings/tokens")
-            print("   3. Make sure you have 'Write' permissions for dataset creation")
-        elif "already exists" in error_msg.lower():
-            print(f"ℹ️  Repository {repo_name} already exists, will update it")
-        else:
-            print(f"⚠️  Repository creation issue: {e}")
-            print("   Will attempt to upload to existing repository...")
+    repo_created = False
+    for attempt in range(max_retries):
+        try:
+            create_repo(repo_name, token=token, private=private, repo_type="dataset")
+            print(f"✅ Created repository: {repo_name}")
+            repo_created = True
+            break
+        except Exception as e:
+            error_msg = str(e)
+            if "429" in error_msg or "Too Many Requests" in error_msg:
+                if attempt < max_retries - 1:
+                    wait_time = 30 * (attempt + 1)
+                    print(f"⚠️  Rate limited during repo creation, waiting {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"⚠️  Repository creation failed after {max_retries} attempts: {e}")
+                    print("   Will attempt to upload to existing repository...")
+            elif "403" in error_msg or "Forbidden" in error_msg:
+                print(f"❌ Permission denied: Cannot create repository under '{username}' namespace")
+                print("   Possible solutions:")
+                print(f"   1. Change username to your actual HF username: {user_info.get('name', 'unknown') if user_info else 'unknown'}")
+                print("   2. Check your token permissions at: https://huggingface.co/settings/tokens")
+                print("   3. Make sure you have 'Write' permissions for dataset creation")
+                exit(1)
+            elif "already exists" in error_msg.lower():
+                print(f"ℹ️  Repository {repo_name} already exists, will update it")
+                repo_created = True
+                break
+            else:
+                if attempt < max_retries - 1:
+                    wait_time = 30 * (attempt + 1)
+                    print(f"⚠️  Repository creation issue: {e}")
+                    print(f"   Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"⚠️  Repository creation failed after {max_retries} attempts: {e}")
+                    print("   Will attempt to upload to existing repository...")
+                    break
 
     # Analyze dataset for detailed statistics
     print("Analyzing dataset...")

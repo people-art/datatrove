@@ -246,15 +246,18 @@ echo "📊 Found $(echo "$available_dumps" | wc -l) available dumps"
 selected_dumps=$(select_dump "$available_dumps")
 
 # Process selected dumps
+dump_count=$(echo "$selected_dumps" | wc -l)
+current_dump=1
+
 for dump_id in $selected_dumps; do
     echo ""
-    echo "🚀 Processing dump: $dump_id"
+    echo "🚀 Processing dump $current_dump/$dump_count: $dump_id"
 
     INPUT_DIR="$BASE_DIR/$dump_id"
     REPO_SUFFIX=$(echo "$dump_id" | tr '[:upper:]' '[:lower:]' | sed 's/cc-main-/cc/')
 
     # Create repository name with dump suffix
-    if [ "$selected_dumps" != "$available_dumps" ] && [ "$(echo "$selected_dumps" | wc -l)" -gt 1 ]; then
+    if [ "$selected_dumps" != "$available_dumps" ] && [ "$dump_count" -gt 1 ]; then
         # Multiple dumps selected, use suffix
         CURRENT_REPO_NAME="${HF_USERNAME}/fineweb-med-${REPO_SUFFIX}"
     else
@@ -273,7 +276,15 @@ for dump_id in $selected_dumps; do
         --dump-id "$dump_id"
 
     echo "✅ Completed upload for dump: $dump_id"
+
+    # Add delay between uploads to avoid rate limiting
+    if [ "$current_dump" -lt "$dump_count" ]; then
+        echo "⏳ Waiting 30 seconds before next upload to avoid rate limiting..."
+        sleep 30
+    fi
+
     echo ""
+    current_dump=$((current_dump + 1))
 done
 
 echo ""
