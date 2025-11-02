@@ -140,6 +140,58 @@ MESH_TERMS = [
 ]
 
 
+def parse_llm_score(llm_output: str) -> float:
+    """
+    Robustly parse LLM score from output string.
+    Handles various formats and edge cases.
+
+    Args:
+        llm_output (str): Raw LLM output containing the score
+
+    Returns:
+        float: Parsed score (0-5), or 0.0 if parsing fails
+    """
+    if not llm_output:
+        return 0.0
+
+    # Clean the output
+    cleaned = llm_output.strip()
+
+    # Try to extract numeric score using regex
+    import re
+    # Look for patterns like "3.5", "4", "score: 2.0", etc.
+    score_patterns = [
+        r'(?:score[:\s]*|rating[:\s]*|)(\d+(?:\.\d+)?)',  # "score: 3.5" or just "3.5"
+        r'^(\d+(?:\.\d+)?)$',  # Just the number
+        r'(\d+(?:\.\d+)?).*?(?:/|out of).*?5',  # "3/5" format
+    ]
+
+    for pattern in score_patterns:
+        match = re.search(pattern, cleaned, re.IGNORECASE)
+        if match:
+            try:
+                score = float(match.group(1))
+                # Clamp to 0-5 range
+                return max(0.0, min(5.0, score))
+            except ValueError:
+                continue
+
+    # If no numeric score found, try to map text responses
+    text_scores = {
+        'zero': 0.0, 'one': 1.0, 'two': 2.0, 'three': 3.0, 'four': 4.0, 'five': 5.0,
+        'very low': 1.0, 'low': 2.0, 'medium': 3.0, 'high': 4.0, 'very high': 5.0,
+        'excellent': 5.0, 'good': 4.0, 'poor': 2.0, 'minimal': 1.0
+    }
+
+    for text, score in text_scores.items():
+        if text in cleaned.lower():
+            return score
+
+    # Default to 0 if parsing completely fails
+    print(f"⚠️  Could not parse LLM score from output: '{cleaned}'")
+    return 0.0
+
+
 def redact_medical_pii(doc) -> bool:
     """
     Redact medical-specific PII patterns for HIPAA compliance.
@@ -269,12 +321,11 @@ def get_available_dumps(year: Optional[int] = None) -> List[str]:
     except Exception as e:
         print(f"⚠️  Failed to fetch from Common Crawl index API: {e}")
 
-    # Fallback: comprehensive list including latest 2025 dumps
+    # Fallback: comprehensive list including latest 2025 dumps (updated as of November 2025)
     if not dumps:
         fallback_dumps = [
             # 2025 dumps (latest available as of November 2025)
-            'CC-MAIN-2025-51', 'CC-MAIN-2025-50', 'CC-MAIN-2025-49', 'CC-MAIN-2025-46',
-            'CC-MAIN-2025-44', 'CC-MAIN-2025-42', 'CC-MAIN-2025-40', 'CC-MAIN-2025-38',
+            'CC-MAIN-2025-43', 'CC-MAIN-2025-42', 'CC-MAIN-2025-40', 'CC-MAIN-2025-38',
             'CC-MAIN-2025-36', 'CC-MAIN-2025-33', 'CC-MAIN-2025-30', 'CC-MAIN-2025-26',
             'CC-MAIN-2025-22', 'CC-MAIN-2025-18', 'CC-MAIN-2025-15', 'CC-MAIN-2025-11',
             'CC-MAIN-2025-08', 'CC-MAIN-2025-05', 'CC-MAIN-2025-01',
@@ -399,47 +450,86 @@ def is_medical_content(text: str, keywords: list, threshold: int = 2) -> bool:
 
 def run_medical_benchmarks(args):
     """
-    Run benchmark tests on medical LLM performance using dynamic samples.
+    Run benchmark tests on medical LLM performance using diverse medical samples.
     """
     print("🏥 FineWeb-Med Benchmark Suite")
     print("=" * 50)
 
-    # Dynamic sample selection from diverse medical domains
-    test_texts = [
-        # Cardiology
-        "The patient presented with acute myocardial infarction and was treated with aspirin and heparin.",
-        "Echocardiogram revealed severe aortic stenosis with a mean gradient of 45 mmHg.",
+    # Try to load real medical samples from Hugging Face datasets
+    try:
+        from datasets import load_dataset
+        print("📚 Loading real medical samples from Hugging Face datasets...")
 
-        # Endocrinology
-        "Clinical trials show that metformin reduces HbA1c levels in type 2 diabetes patients.",
-        "Thyroid function tests showed TSH 0.01 mIU/L and free T4 2.8 ng/dL consistent with hyperthyroidism.",
+        # Load medical datasets for more realistic testing
+        medical_samples = []
 
-        # Oncology
-        "The oncology department uses chemotherapy protocols for advanced breast cancer treatment.",
-        "Histopathology confirmed infiltrating ductal carcinoma, estrogen receptor positive, HER2 negative.",
+        # Try to load medical abstracts or PubMed samples
+        try:
+            # Load PubMed abstracts (if available)
+            pubmed_dataset = load_dataset("pubmed_qa", "pqa_labeled", split="train", streaming=True)
+            for sample in pubmed_dataset.take(3):
+                if 'abstract' in sample and sample['abstract']:
+                    medical_samples.append(sample['abstract'][:500])  # Limit length
+        except:
+            pass
 
-        # Pharmacology
-        "Randomized controlled trials demonstrate the efficacy of statins in cardiovascular disease prevention.",
-        "The patient was prescribed warfarin 5mg daily with INR monitoring to maintain therapeutic range of 2.0-3.0.",
+        # Try medical questions dataset
+        try:
+            medqa_dataset = load_dataset("medqa", split="train", streaming=True)
+            for sample in medqa_dataset.take(2):
+                if 'question' in sample:
+                    medical_samples.append(sample['question'])
+        except:
+            pass
 
-        # Radiology
-        "Medical imaging revealed pulmonary embolism requiring immediate anticoagulation therapy.",
-        "CT angiogram showed 90% stenosis of the left anterior descending coronary artery.",
+        # Fallback to curated medical samples if HF datasets not available
+        if not medical_samples:
+            raise ImportError("HF datasets not available")
 
-        # Research
-        "Meta-analysis of 15 randomized trials showed significant reduction in mortality with beta-blocker therapy.",
-        "Cohort study demonstrated increased risk of fracture with long-term corticosteroid use.",
+    except ImportError:
+        print("📝 Using curated medical samples (install datasets for real samples)...")
+        medical_samples = [
+            # Cardiology
+            "The patient presented with acute myocardial infarction and was treated with aspirin and heparin.",
+            "Echocardiogram revealed severe aortic stenosis with a mean gradient of 45 mmHg.",
 
-        # Public Health
-        "Vaccination campaigns reduced measles incidence by 85% in the target population.",
-        "Epidemiological data suggests increasing prevalence of antibiotic-resistant infections.",
+            # Endocrinology
+            "Clinical trials show that metformin reduces HbA1c levels in type 2 diabetes patients.",
+            "Thyroid function tests showed TSH 0.01 mIU/L and free T4 2.8 ng/dL consistent with hyperthyroidism.",
 
-        # Mixed content (should be filtered out)
+            # Oncology
+            "The oncology department uses chemotherapy protocols for advanced breast cancer treatment.",
+            "Histopathology confirmed infiltrating ductal carcinoma, estrogen receptor positive, HER2 negative.",
+
+            # Pharmacology
+            "Randomized controlled trials demonstrate the efficacy of statins in cardiovascular disease prevention.",
+            "The patient was prescribed warfarin 5mg daily with INR monitoring to maintain therapeutic range of 2.0-3.0.",
+
+            # Radiology
+            "Medical imaging revealed pulmonary embolism requiring immediate anticoagulation therapy.",
+            "CT angiogram showed 90% stenosis of the left anterior descending coronary artery.",
+
+            # Research
+            "Meta-analysis of 15 randomized trials showed significant reduction in mortality with beta-blocker therapy.",
+            "Cohort study demonstrated increased risk of fracture with long-term corticosteroid use.",
+
+            # Public Health
+            "Vaccination campaigns reduced measles incidence by 85% in the target population.",
+            "Epidemiological data suggests increasing prevalence of antibiotic-resistant infections.",
+        ]
+
+    # Non-medical samples for false positive testing
+    non_medical_samples = [
         "The weather today is sunny and warm, perfect for outdoor activities.",
-        "Stock market analysis shows bullish trends in technology sector investments."
+        "Stock market analysis shows bullish trends in technology sector investments.",
+        "Cooking recipes for chocolate chip cookies require flour, sugar, and butter.",
+        "Sports teams compete in various leagues and championships worldwide.",
+        "Travel destinations include tropical beaches and mountain resorts."
     ]
 
-    print(f"📋 Testing {len(test_texts)} text samples (8 medical + 2 non-medical)...")
+    test_texts = medical_samples + non_medical_samples
+
+    print(f"📋 Testing {len(test_texts)} text samples ({len(medical_samples)} medical + {len(non_medical_samples)} non-medical)...")
 
     results = []
     for i, text in enumerate(test_texts, 1):
@@ -463,7 +553,7 @@ def run_medical_benchmarks(args):
             'keyword_score': keyword_score,
             'quality_pass': quality_pass,
             'content_pass': content_pass,
-            'is_medical': i <= 8  # First 8 are medical, last 2 are not
+            'is_medical': i <= len(medical_samples)  # First N are medical, rest are not
         })
 
     # Summary statistics
@@ -658,7 +748,7 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
         # Filter based on LLM score
         pipeline.append(
             LambdaFilter(
-                lambda doc: float(doc.metadata.get("llm_medical_score", "0").strip()) >= medical_threshold_llm,
+                lambda doc: parse_llm_score(doc.metadata.get("llm_medical_score", "")) >= medical_threshold_llm,
                 exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/10_llm_low_score/{DUMP_TO_PROCESS}")
             )
         )
@@ -892,7 +982,9 @@ if __name__ == '__main__':
             output_path = f"{FILTERING_OUTPUT_PATH}/output/{dump_id}"
             input_paths.append(f"{output_path}/*.jsonl.gz")
 
-        if input_paths:
+        if not input_paths:
+            print("⚠️  No processed dumps found for deduplication - skipping")
+        elif input_paths:
             # Create deduplication pipeline
             dedup_config = MinhashConfig(
                 hash_config=HashConfig(
