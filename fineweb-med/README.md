@@ -112,21 +112,38 @@ cd fineweb-med
 
 #### 2. 配置和运行生产脚本
 
-脚本支持命令行参数配置运行模式：
+**推荐方法：使用自动化脚本**
+
+```bash
+cd fineweb-med
+
+# 一键运行完整的Slurm作业（推荐）
+./run_on_slurm.sh
+
+# 这会自动：
+# 1. 检查集群状态
+# 2. 复制文件到集群
+# 3. 提交Slurm作业
+# 4. 开始监控
+```
+
+**手动运行方法：**
 
 ```bash
 # 本地测试模式（默认）
 conda activate datatrove
 python fineweb-med-new.py
 
-# 指定不同的dump进行本地测试
-python fineweb-med-new.py --dump CC-MAIN-2023-40
+# 指定年份进行本地测试
+python fineweb-med-new.py --year 2024 --non-interactive
 
-# Slurm集群生产模式
-python fineweb-med-new.py --mode slurm --cluster-name fineweb-med-slurm-cluster --output-bucket fineweb-med
+# 直接在集群head节点上运行
+ssh -i ~/.ssh/AWS-Keys ec2-user@<HEAD_NODE_IP>
+cd /shared/fineweb-med
+python fineweb-med-new.py --mode slurm --year 2024 --output-bucket fineweb-med --non-interactive
 
-# 完整参数示例
-python fineweb-med-new.py --mode slurm --cluster-name my-cluster --dump CC-MAIN-2023-50 --output-bucket my-bucket
+# 使用sbatch提交作业
+sbatch slurm_job.sh
 ```
 
 #### 3. 监控作业进度
