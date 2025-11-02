@@ -263,12 +263,13 @@ for dump_id in $selected_dumps; do
     INPUT_DIR="$BASE_DIR/$dump_id"
     REPO_SUFFIX=$(echo "$dump_id" | tr '[:upper:]' '[:lower:]' | sed 's/cc-main-/cc/')
 
-    # Create repository name with dump suffix
-    if [ "$selected_dumps" != "$available_dumps" ] && [ "$dump_count" -gt 1 ]; then
-        # Multiple dumps selected, use suffix
+    # For multiple dumps, we merge them into a single repository
+    # Only use suffix for single dump selection from multiple available dumps
+    if [ "$dump_count" -eq 1 ] && [ "$selected_dumps" != "$available_dumps" ]; then
+        # Single specific dump selected, use suffix to distinguish
         CURRENT_REPO_NAME="${HF_USERNAME}/${REPO_BASE_NAME}-${REPO_SUFFIX}"
     else
-        # Single dump or 'latest', use base name
+        # Multiple dumps (merge into one) or 'latest' or 'all', use base name
         CURRENT_REPO_NAME="$REPO_NAME"
     fi
 
@@ -303,7 +304,7 @@ if [ "$dump_count" -gt 1 ]; then
     echo "🌐 Uploaded datasets:"
     for dump_id in $selected_dumps; do
         REPO_SUFFIX=$(echo "$dump_id" | tr '[:upper:]' '[:lower:]' | sed 's/cc-main-/cc/')
-        CURRENT_REPO_NAME="${HF_USERNAME}/fineweb-med-${REPO_SUFFIX}"
+        CURRENT_REPO_NAME="${HF_USERNAME}/${REPO_BASE_NAME}-${REPO_SUFFIX}"
         echo "   📦 $dump_id → https://huggingface.co/datasets/$CURRENT_REPO_NAME"
     done
 else

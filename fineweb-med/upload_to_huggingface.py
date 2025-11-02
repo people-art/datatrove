@@ -591,7 +591,7 @@ def upload_to_huggingface(input_dir: str, repo_name: str, token: str = None,
                 print("   2. Check your token permissions at: https://huggingface.co/settings/tokens")
                 print("   3. Make sure you have 'Write' permissions for dataset creation")
                 exit(1)
-            elif "already exists" in error_msg.lower():
+            elif "already exists" in error_msg.lower() or "409" in error_msg or "Conflict" in error_msg:
                 print(f"ℹ️  Repository {repo_name} already exists, will update it")
                 repo_created = True
                 break
