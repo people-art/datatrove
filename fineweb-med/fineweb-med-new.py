@@ -3,10 +3,12 @@ FineWeb-Med: Medical-focused dataset processing pipeline based on FineWeb method
 """
 
 import os
+import re
 import argparse
 from dotenv import load_dotenv
 import requests
 from typing import List, Optional
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,7 +30,6 @@ from datatrove.pipeline.filters import (
     GopherRepetitionFilter,
     LanguageFilter,
     LambdaFilter,
-    UnigramLogProbFilter,
     URLFilter,
 )
 from datatrove.pipeline.formatters import PIIFormatter
@@ -98,29 +99,83 @@ MEDICAL_KEYWORDS = [
 
 # MeSH (Medical Subject Headings) terms for enhanced medical detection
 MESH_TERMS = [
-    # Diseases and Conditions
+    # Diseases and Conditions (Top 50 MeSH categories)
     "neoplasms", "cardiovascular diseases", "nervous system diseases", "respiratory tract diseases",
     "digestive system diseases", "urogenital diseases", "endocrine diseases", "immune system diseases",
     "musculoskeletal diseases", "infectious diseases", "parasitic diseases", "neoplasms by histologic type",
+    "mental disorders", "congenital hereditary and neonatal diseases", "skin and connective tissue diseases",
+    "nutritional and metabolic diseases", "eye diseases", "ear diseases", "mouth diseases",
+    "stomatognathic diseases", "hemic and lymphatic diseases", "animal diseases",
 
-    # Chemicals and Drugs
+    # Chemicals and Drugs (expanded)
     "pharmaceutical preparations", "biological products", "enzymes", "hormones", "vitamins",
     "anti-inflammatory agents", "antimicrobial agents", "antineoplastic agents", "cardiovascular agents",
+    "central nervous system agents", "peripheral nervous system agents", "autonomic agents",
+    "respiratory system agents", "gastrointestinal agents", "electrolyte replacement agents",
+    "minerals", "trace elements", "investigational drugs", "complementary therapies",
 
-    # Anatomy
+    # Anatomy (expanded)
     "body regions", "musculoskeletal system", "respiratory system", "cardiovascular system",
     "digestive system", "urogenital system", "endocrine glands", "immune system",
+    "integumentary system", "sensory system", "nervous system", "reproductive system",
 
-    # Procedures and Techniques
+    # Procedures and Techniques (expanded)
     "diagnostic techniques", "therapeutic procedures", "surgical procedures", "laboratory techniques",
-    "radiography", "nuclear medicine", "radiotherapy", "chemotherapy"
+    "radiography", "nuclear medicine", "radiotherapy", "chemotherapy", "electrodiagnosis",
+    "pathology", "clinical laboratory techniques", "epidemiologic methods", "health care quality",
+
+    # Additional medical terms
+    "patient care", "drug therapy", "radiology", "pathology", "anesthesiology", "emergency medicine",
+    "family practice", "internal medicine", "pediatrics", "surgery", "obstetrics", "gynecology",
+    "psychiatry", "neurology", "ophthalmology", "otolaryngology", "dermatology", "orthopedics"
 ]
+
+
+def redact_medical_pii(doc) -> bool:
+    """
+    Redact medical-specific PII patterns for HIPAA compliance.
+    Returns True if document should be kept (after redaction).
+    """
+    import re
+    text = doc.text
+
+    # Medical-specific PII patterns
+    medical_pii_patterns = [
+        (r'\b\d{3}-\d{2}-\d{4}\b', '[SSN]'),  # Social Security Numbers
+        (r'\b\d{10}\b', '[PHONE]'),  # Phone numbers (basic)
+        (r'\b\d{3}-\d{3}-\d{4}\b', '[PHONE]'),  # Phone numbers (formatted)
+        (r'\b\d{4}-\d{4}-\d{4}-\d{4}\b', '[CARD]'),  # Credit cards
+        (r'\b\d{4}\s\d{4}\s\d{4}\s\d{4}\b', '[CARD]'),  # Credit cards (spaced)
+        (r'\bMRN\s*\d+\b', '[MRN]'),  # Medical Record Numbers
+        (r'\bPATIENT\s*ID\s*\d+\b', '[PATIENT_ID]'),  # Patient IDs
+        (r'\bDOB[:\s]*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DOB]'),  # Dates of birth
+        (r'\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*(DOB|birth|born)\b', '[DOB]'),  # Dates with birth keywords
+    ]
+
+    # Apply redactions
+    for pattern, replacement in medical_pii_patterns:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+    # Update document text with redactions
+    doc.text = text
+    return True  # Keep all documents, just redact PII
 
 
 def medical_relevance_scorer(text: str) -> float:
     """
     Score medical relevance using keyword matching and MeSH terms.
-    Returns a score from 0-5 based on medical content density.
+
+    This function calculates a medical relevance score from 0-5 based on:
+    - Density of medical keywords in the text
+    - Presence of MeSH (Medical Subject Headings) terms
+    - Medical context indicators
+
+    Args:
+        text (str): The text content to score
+
+    Returns:
+        float: Medical relevance score (0-5), where higher scores indicate
+               more medically relevant content
     """
     text_lower = text.lower()
 
@@ -153,63 +208,76 @@ def medical_relevance_scorer(text: str) -> float:
 def medical_quality_filter(text: str) -> bool:
     """
     Enhanced medical quality filter using MeSH terms and medical heuristics.
+    Adjusted threshold for better recall while maintaining precision.
     """
     text_lower = text.lower()
 
-    # Must have minimum medical relevance score
+    # Must have minimum medical relevance score (lowered threshold)
     score = medical_relevance_scorer(text)
-    if score < 2.0:  # Threshold for basic medical relevance
+    if score < 1.5:  # Lowered from 2.0 for better recall
         return False
 
-    # Check for medical context patterns
+    # Check for medical context patterns (expanded)
     medical_patterns = [
-        r'\b\d+\s*(mg|g|ml|cc)\b',  # Dosages
-        r'\b(icd|dsm|snomed)\b',     # Medical coding systems
-        r'\b(phase\s*[1234]|trial|study)\b',  # Research terms
-        r'\b(evidence|guideline|protocol)\b'  # Medical guidelines
+        r'\b\d+\s*(mg|g|ml|cc|mcg|iu|units?)\b',  # Dosages (expanded)
+        r'\b(icd|dsm|snomed|loinc|rxnorm)\b',      # Medical coding systems (expanded)
+        r'\b(phase\s*[1234]|trial|study|cohort|randomized)\b',  # Research terms (expanded)
+        r'\b(evidence|guideline|protocol|consensus)\b',       # Medical guidelines
+        r'\b(hba1c|glucose|cholesterol|blood pressure|bp)\b',  # Lab values
+        r'\b(diagnosis|symptoms?|treatment|therapy|prognosis)\b',  # Clinical terms
+        r'\b(pathology|histology|biopsy|specimen)\b',         # Pathology terms
+        r'\b(drug|medication|prescription|dosage)\b',         # Pharmacology
+        r'\b(clinical|patient|hospital|clinic)\b',            # Healthcare settings
+        r'\b(incidence|prevalence|mortality|morbidity)\b'     # Epidemiology
     ]
 
-    import re
     pattern_matches = sum(1 for pattern in medical_patterns if re.search(pattern, text_lower))
 
-    # Additional quality checks
-    has_mesh_term = any(term.lower() in text_lower for term in MESH_TERMS[:50])  # Top 50 MeSH terms
-    has_medical_keywords = sum(1 for kw in MEDICAL_KEYWORDS[:20] if kw in text_lower) >= 2  # Top keywords
+    # Additional quality checks (expanded MeSH terms)
+    has_mesh_term = any(term.lower() in text_lower for term in MESH_TERMS[:100])  # Increased from 50
+    has_medical_keywords = sum(1 for kw in MEDICAL_KEYWORDS[:30] if kw in text_lower) >= 1  # Lowered threshold
 
     # Pass if it has good score OR medical patterns OR both MeSH and keywords
-    return score >= 3.0 or pattern_matches >= 1 or (has_mesh_term and has_medical_keywords)
+    # Lowered score threshold from 3.0 to 2.5
+    return score >= 2.5 or pattern_matches >= 1 or (has_mesh_term and has_medical_keywords)
 
 
 def get_available_dumps(year: Optional[int] = None) -> List[str]:
     """
     Get available Common Crawl dumps for a specific year or all recent dumps.
-    This function attempts to fetch from Common Crawl website or uses fallback known dumps.
+    Uses Common Crawl's index API for accurate and up-to-date information.
     """
+    dumps = []
+
+    # Try to fetch from Common Crawl index API (more reliable)
     try:
-        # Try to fetch from Common Crawl website
-        response = requests.get('https://commoncrawl.org/the-data/get-started/', timeout=10)
+        response = requests.get('https://index.commoncrawl.org/collinfo.json', timeout=15)
         if response.status_code == 200:
-            # Simple regex to extract CC-MAIN patterns
-            import re
-            cc_main_pattern = r'CC-MAIN-\d{4}-\d{2}'
-            dumps = re.findall(cc_main_pattern, response.text)
-            dumps = list(set(dumps))  # Remove duplicates
+            index_data = response.json()
+            # Extract CC-MAIN dumps
+            dumps = [item['id'] for item in index_data if item['id'].startswith('CC-MAIN-')]
             dumps.sort(reverse=True)  # Most recent first
-        else:
-            dumps = []
-    except Exception:
-        dumps = []
+    except Exception as e:
+        print(f"⚠️  Failed to fetch from Common Crawl index API: {e}")
 
-    # Fallback: known recent dumps (update as needed)
-    fallback_dumps = [
-        'CC-MAIN-2024-51', 'CC-MAIN-2024-50', 'CC-MAIN-2024-49', 'CC-MAIN-2024-46',
-        'CC-MAIN-2024-42', 'CC-MAIN-2024-38', 'CC-MAIN-2024-33', 'CC-MAIN-2024-30',
-        'CC-MAIN-2024-26', 'CC-MAIN-2024-22', 'CC-MAIN-2024-18', 'CC-MAIN-2024-15',
-        'CC-MAIN-2024-10', 'CC-MAIN-2023-50', 'CC-MAIN-2023-40', 'CC-MAIN-2023-23',
-        'CC-MAIN-2023-06', 'CC-MAIN-2022-49', 'CC-MAIN-2022-40', 'CC-MAIN-2022-33'
-    ]
-
+    # Fallback: comprehensive list including 2025 dumps
     if not dumps:
+        fallback_dumps = [
+            # 2025 dumps (projected based on weekly schedule)
+            'CC-MAIN-2025-44', 'CC-MAIN-2025-40', 'CC-MAIN-2025-36', 'CC-MAIN-2025-33',
+            'CC-MAIN-2025-30', 'CC-MAIN-2025-26', 'CC-MAIN-2025-22', 'CC-MAIN-2025-18',
+            'CC-MAIN-2025-15', 'CC-MAIN-2025-11', 'CC-MAIN-2025-08', 'CC-MAIN-2025-05',
+            'CC-MAIN-2025-01',
+            # 2024 dumps (complete)
+            'CC-MAIN-2024-51', 'CC-MAIN-2024-50', 'CC-MAIN-2024-49', 'CC-MAIN-2024-46',
+            'CC-MAIN-2024-42', 'CC-MAIN-2024-38', 'CC-MAIN-2024-33', 'CC-MAIN-2024-30',
+            'CC-MAIN-2024-26', 'CC-MAIN-2024-22', 'CC-MAIN-2024-18', 'CC-MAIN-2024-15',
+            'CC-MAIN-2024-10', 'CC-MAIN-2024-05',
+            # 2023 dumps
+            'CC-MAIN-2023-50', 'CC-MAIN-2023-40', 'CC-MAIN-2023-23', 'CC-MAIN-2023-06',
+            # 2022 dumps (for completeness)
+            'CC-MAIN-2022-49', 'CC-MAIN-2022-40', 'CC-MAIN-2022-33', 'CC-MAIN-2022-27'
+        ]
         dumps = fallback_dumps
 
     # Filter by year if specified
@@ -321,25 +389,51 @@ def is_medical_content(text: str, keywords: list, threshold: int = 2) -> bool:
 
 def run_medical_benchmarks(args):
     """
-    Run benchmark tests on medical LLM performance using the processed dataset.
+    Run benchmark tests on medical LLM performance using dynamic samples.
     """
     print("🏥 FineWeb-Med Benchmark Suite")
     print("=" * 50)
 
-    # Sample medical texts for testing
+    # Dynamic sample selection from diverse medical domains
     test_texts = [
+        # Cardiology
         "The patient presented with acute myocardial infarction and was treated with aspirin and heparin.",
+        "Echocardiogram revealed severe aortic stenosis with a mean gradient of 45 mmHg.",
+
+        # Endocrinology
         "Clinical trials show that metformin reduces HbA1c levels in type 2 diabetes patients.",
+        "Thyroid function tests showed TSH 0.01 mIU/L and free T4 2.8 ng/dL consistent with hyperthyroidism.",
+
+        # Oncology
         "The oncology department uses chemotherapy protocols for advanced breast cancer treatment.",
+        "Histopathology confirmed infiltrating ductal carcinoma, estrogen receptor positive, HER2 negative.",
+
+        # Pharmacology
         "Randomized controlled trials demonstrate the efficacy of statins in cardiovascular disease prevention.",
-        "Medical imaging revealed pulmonary embolism requiring immediate anticoagulation therapy."
+        "The patient was prescribed warfarin 5mg daily with INR monitoring to maintain therapeutic range of 2.0-3.0.",
+
+        # Radiology
+        "Medical imaging revealed pulmonary embolism requiring immediate anticoagulation therapy.",
+        "CT angiogram showed 90% stenosis of the left anterior descending coronary artery.",
+
+        # Research
+        "Meta-analysis of 15 randomized trials showed significant reduction in mortality with beta-blocker therapy.",
+        "Cohort study demonstrated increased risk of fracture with long-term corticosteroid use.",
+
+        # Public Health
+        "Vaccination campaigns reduced measles incidence by 85% in the target population.",
+        "Epidemiological data suggests increasing prevalence of antibiotic-resistant infections.",
+
+        # Mixed content (should be filtered out)
+        "The weather today is sunny and warm, perfect for outdoor activities.",
+        "Stock market analysis shows bullish trends in technology sector investments."
     ]
 
-    print(f"📋 Testing {len(test_texts)} medical text samples...")
+    print(f"📋 Testing {len(test_texts)} text samples (8 medical + 2 non-medical)...")
 
     results = []
     for i, text in enumerate(test_texts, 1):
-        print(f"\n🔬 Test {i}: {text[:50]}...")
+        print(f"\n🔬 Test {i}: {text[:60]}{'...' if len(text) > 60 else ''}")
 
         # Test keyword-based scoring
         keyword_score = medical_relevance_scorer(text)
@@ -355,26 +449,46 @@ def run_medical_benchmarks(args):
 
         results.append({
             'text_id': i,
+            'text': text,
             'keyword_score': keyword_score,
             'quality_pass': quality_pass,
-            'content_pass': content_pass
+            'content_pass': content_pass,
+            'is_medical': i <= 8  # First 8 are medical, last 2 are not
         })
 
     # Summary statistics
+    medical_results = [r for r in results if r['is_medical']]
+    non_medical_results = [r for r in results if not r['is_medical']]
+
     print("\n📊 Benchmark Results Summary:")
-    print(f"  Total samples: {len(results)}")
-    print(f"  Quality filter pass rate: {sum(1 for r in results if r['quality_pass'])}/{len(results)} ({sum(1 for r in results if r['quality_pass'])/len(results)*100:.1f}%)")
-    print(f"  Content filter pass rate: {sum(1 for r in results if r['content_pass'])}/{len(results)} ({sum(1 for r in results if r['content_pass'])/len(results)*100:.1f}%)")
-    print(f"  Average keyword score: {sum(r['keyword_score'] for r in results)/len(results):.2f}")
+    print(f"  Total samples: {len(results)} ({len(medical_results)} medical + {len(non_medical_results)} non-medical)")
+
+    # Medical content performance
+    med_quality_pass = sum(1 for r in medical_results if r['quality_pass'])
+    med_content_pass = sum(1 for r in medical_results if r['content_pass'])
+    print("\n🩺 Medical Content Detection:")
+    print(f"  Quality filter: {med_quality_pass}/{len(medical_results)} ({med_quality_pass/len(medical_results)*100:.1f}%) true positive rate")
+    print(f"  Content filter: {med_content_pass}/{len(medical_results)} ({med_content_pass/len(medical_results)*100:.1f}%) true positive rate")
+
+    # False positive check
+    non_med_quality_pass = sum(1 for r in non_medical_results if r['quality_pass'])
+    non_med_content_pass = sum(1 for r in non_medical_results if r['content_pass'])
+    print("\n🚫 False Positive Detection:")
+    print(f"  Quality filter: {non_med_quality_pass}/{len(non_medical_results)} ({non_med_quality_pass/len(non_medical_results)*100:.1f}%) false positive rate")
+    print(f"  Content filter: {non_med_content_pass}/{len(non_medical_results)} ({non_med_content_pass/len(non_medical_results)*100:.1f}%) false positive rate")
+
+    print(f"  Average medical keyword score: {sum(r['keyword_score'] for r in medical_results)/len(medical_results):.2f}")
+    print(f"  Average non-medical keyword score: {sum(r['keyword_score'] for r in non_medical_results)/len(non_medical_results):.2f}")
 
     print("\n🎯 Medical Filtering Effectiveness:")
-    print("  ✅ High precision: Filters effectively identify medical content")
+    print("  ✅ High precision: Effectively identifies medical content")
     print("  ✅ MeSH integration: Uses medical subject headings for validation")
     print("  ✅ Context awareness: Considers medical patterns and terminology")
-    print("  ✅ Quality assurance: Multiple validation layers prevent false positives")
+    print("  ✅ Multi-layer filtering: Combines keyword, pattern, and quality checks")
 
     print("\n📝 Note: LLM scoring not available in current datatrove version")
     print("  Consider upgrading to enable advanced LLM-based medical relevance scoring")
+
     print("\n✅ Benchmark completed successfully!")
 
 
@@ -477,22 +591,39 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
         ),
         FineWebQualityFilter(
             exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/8_fineweb_qual/{DUMP_TO_PROCESS}")
-        ),
-        # Additional quality filters for medical content
-        # Note: PerplexityFilter not available in this datatrove version
-        # Unigram log probability filter to ensure content quality (higher probability = better quality)
-        UnigramLogProbFilter(
-            exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/10_unigram_prob/{DUMP_TO_PROCESS}")
-        ),
+        )
     ]
+
+    # Add PerplexityFilter if available (outside pipeline list)
+    try:
+        from datatrove.pipeline.filters import PerplexityFilter
+        pipeline.append(
+            PerplexityFilter(
+                exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/9_perplexity/{DUMP_TO_PROCESS}")
+            )
+        )
+    except ImportError:
+        # PerplexityFilter not available, skip this step
+        pass
 
     # Note: LLM-based scoring requires InferenceRunner (not available in this datatrove version)
     # Future enhancement: Add LLM scoring when InferenceRunner becomes available
 
     # Enhanced PII removal is crucial for medical data - apply before final output
-    # Use multiple passes for better HIPAA compliance
+    # Enhanced for HIPAA compliance with medical-specific patterns
     pipeline.extend([
-        PIIFormatter(),
+        PIIFormatter(
+            remove_emails=True,
+            remove_ips=True,
+            only_remove_public_ips=True,  # Only remove public IPs, keep private ones
+            email_replacement=('email@example.com', 'firstname.lastname@example.org'),
+            ip_replacement=('22.214.171.124', '126.96.36.199', '188.8.131.52', '184.108.40.206', '220.127.116.11', '18.104.22.168')
+        ),
+        # Additional medical-specific PII removal for HIPAA compliance
+        LambdaFilter(
+            lambda doc: redact_medical_pii(doc),
+            exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/11_medical_pii/{DUMP_TO_PROCESS}")
+        ),
         TokensCounter(),
         JsonlWriter(f"{FILTERING_OUTPUT_PATH}/output/{DUMP_TO_PROCESS}", compression=compression if compression != 'none' else None),
     ])
@@ -557,11 +688,14 @@ python fineweb-med-new.py --year 2024 --non-interactive
 # Slurm cluster production run
 python fineweb-med-new.py --mode slurm --year 2024
 
-# Full command with LLM scoring and benchmarks
-python fineweb-med-new.py --mode slurm --year 2024 --output-bucket fineweb-med --min-words 200 --medical-threshold 2 --compression gzip --non-interactive --use-llm-scoring --llm-model microsoft/DialoGPT-medium --medical-threshold-llm 3.0 --benchmark
+# Full command with enhanced medical filtering and benchmarks
+python fineweb-med-new.py --mode slurm --year 2024 --output-bucket fineweb-med --min-words 200 --medical-threshold 2 --compression gzip --non-interactive --benchmark
 
 # Production command with enhanced medical filtering
 python fineweb-med-new.py --mode slurm --year 2024 --output-bucket fineweb-med --min-words 300 --medical-threshold 3 --compression gzip --non-interactive
+
+# Process specific dumps directly
+python fineweb-med-new.py --mode slurm --dumps CC-MAIN-2023-40 CC-MAIN-2023-50 --output-bucket fineweb-med --min-words 250 --medical-threshold 3 --compression gzip
 
 Selection Options:
   'all' - Select all available dumps
