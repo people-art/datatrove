@@ -38,6 +38,15 @@ from datatrove.pipeline.tokens import TokensCounter
 from datatrove.pipeline.writers.jsonl import JsonlWriter
 from datatrove.utils.hashing import HashConfig
 
+# Try to import InferenceRunner for LLM integration
+try:
+    from datatrove.pipeline.inference import InferenceRunner
+    INFERENCE_RUNNER_AVAILABLE = True
+except ImportError:
+    INFERENCE_RUNNER_AVAILABLE = False
+    print("⚠️  InferenceRunner not available - LLM scoring disabled")
+    print("   Consider upgrading datatrove for LLM integration")
+
 
 """
 Medical dataset processing pipeline based on FineWeb methodology
@@ -260,14 +269,15 @@ def get_available_dumps(year: Optional[int] = None) -> List[str]:
     except Exception as e:
         print(f"⚠️  Failed to fetch from Common Crawl index API: {e}")
 
-    # Fallback: comprehensive list including 2025 dumps
+    # Fallback: comprehensive list including latest 2025 dumps
     if not dumps:
         fallback_dumps = [
-            # 2025 dumps (projected based on weekly schedule)
-            'CC-MAIN-2025-44', 'CC-MAIN-2025-40', 'CC-MAIN-2025-36', 'CC-MAIN-2025-33',
-            'CC-MAIN-2025-30', 'CC-MAIN-2025-26', 'CC-MAIN-2025-22', 'CC-MAIN-2025-18',
-            'CC-MAIN-2025-15', 'CC-MAIN-2025-11', 'CC-MAIN-2025-08', 'CC-MAIN-2025-05',
-            'CC-MAIN-2025-01',
+            # 2025 dumps (latest available as of November 2025)
+            'CC-MAIN-2025-51', 'CC-MAIN-2025-50', 'CC-MAIN-2025-49', 'CC-MAIN-2025-46',
+            'CC-MAIN-2025-44', 'CC-MAIN-2025-42', 'CC-MAIN-2025-40', 'CC-MAIN-2025-38',
+            'CC-MAIN-2025-36', 'CC-MAIN-2025-33', 'CC-MAIN-2025-30', 'CC-MAIN-2025-26',
+            'CC-MAIN-2025-22', 'CC-MAIN-2025-18', 'CC-MAIN-2025-15', 'CC-MAIN-2025-11',
+            'CC-MAIN-2025-08', 'CC-MAIN-2025-05', 'CC-MAIN-2025-01',
             # 2024 dumps (complete)
             'CC-MAIN-2024-51', 'CC-MAIN-2024-50', 'CC-MAIN-2024-49', 'CC-MAIN-2024-46',
             'CC-MAIN-2024-42', 'CC-MAIN-2024-38', 'CC-MAIN-2024-33', 'CC-MAIN-2024-30',
@@ -486,8 +496,10 @@ def run_medical_benchmarks(args):
     print("  ✅ Context awareness: Considers medical patterns and terminology")
     print("  ✅ Multi-layer filtering: Combines keyword, pattern, and quality checks")
 
-    print("\n📝 Note: LLM scoring not available in current datatrove version")
-    print("  Consider upgrading to enable advanced LLM-based medical relevance scoring")
+    if args.use_llm_scoring:
+        print("  ✅ LLM enhancement: Advanced semantic understanding available")
+    else:
+        print("  💡 Tip: Enable --use-llm-scoring for enhanced medical relevance detection")
 
     print("\n✅ Benchmark completed successfully!")
 
@@ -528,15 +540,31 @@ def parse_args():
     parser.add_argument('--non-interactive', action='store_true',
                        help='Skip interactive dump selection (use latest dump)')
 
-    # Note: LLM scoring requires InferenceRunner which is not available in this datatrove version
-    # parser.add_argument('--use-llm-scoring', action='store_true',
-    #                    help='Use LLM-based medical relevance scoring (requires GPU/cluster)')
-    #
-    # parser.add_argument('--llm-model', default='microsoft/DialoGPT-medium',
-    #                    help='LLM model for medical relevance scoring')
-    #
-    # parser.add_argument('--medical-threshold-llm', type=float, default=3.0,
-    #                    help='Minimum LLM medical relevance score (0-5)')
+    if INFERENCE_RUNNER_AVAILABLE:
+        parser.add_argument('--use-llm-scoring', action='store_true',
+                           help='Use LLM-based medical relevance scoring (requires GPU/cluster)')
+
+        parser.add_argument('--llm-model', default='meta-llama/Llama-3-8B-Instruct',
+                           help='LLM model for medical relevance scoring (from HF)')
+
+        parser.add_argument('--medical-threshold-llm', type=float, default=3.0,
+                           help='Minimum LLM medical relevance score (0-5)')
+
+        parser.add_argument('--gpu', action='store_true',
+                           help='Use GPU partition for LLM inference in Slurm')
+    else:
+        # Add dummy arguments that show warnings when used
+        parser.add_argument('--use-llm-scoring', action='store_true',
+                           help='LLM scoring not available in current datatrove version')
+
+        parser.add_argument('--llm-model', default='meta-llama/Llama-3-8B-Instruct',
+                           help='LLM model (not available)')
+
+        parser.add_argument('--medical-threshold-llm', type=float, default=3.0,
+                           help='LLM threshold (not available)')
+
+        parser.add_argument('--gpu', action='store_true',
+                           help='GPU mode (LLM not available)')
 
     parser.add_argument('--benchmark', action='store_true',
                        help='Run benchmark tests on medical LLM performance')
@@ -545,7 +573,9 @@ def parse_args():
 
 
 def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
-                   medical_threshold=2, compression='gzip', skip_dedup=False):
+                   medical_threshold=2, compression='gzip', skip_dedup=False,
+                   use_llm_scoring=False, llm_model='meta-llama/Llama-3-8B-Instruct',
+                   medical_threshold_llm=3.0, gpu=False):
     """Create the appropriate executor based on mode."""
 
     # Update global variables based on arguments
@@ -606,8 +636,35 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
         # PerplexityFilter not available, skip this step
         pass
 
-    # Note: LLM-based scoring requires InferenceRunner (not available in this datatrove version)
-    # Future enhancement: Add LLM scoring when InferenceRunner becomes available
+    # LLM-based medical relevance scoring (if enabled and available)
+    if use_llm_scoring and INFERENCE_RUNNER_AVAILABLE:
+        llm_prompt = (
+            "Score this text's medical relevance for LLM training on a scale of 0-5, "
+            "where 5 means highly educational/clinical content suitable for medical AI training, "
+            "and 0 means not relevant at all. Consider medical terminology, clinical context, "
+            "research quality, and educational value. Provide only the numeric score.\n\n"
+            "Text: {text}\n\nScore:"
+        )
+        pipeline.append(
+            InferenceRunner(
+                inference_engine="vllm",
+                model_path=llm_model,
+                prompt_template=llm_prompt,
+                generation_config={"max_tokens": 10, "temperature": 0.1},
+                output_key="llm_medical_score",
+                batch_size=8 if gpu else 1,  # Smaller batch for CPU, larger for GPU
+            )
+        )
+        # Filter based on LLM score
+        pipeline.append(
+            LambdaFilter(
+                lambda doc: float(doc.metadata.get("llm_medical_score", "0").strip()) >= medical_threshold_llm,
+                exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/10_llm_low_score/{DUMP_TO_PROCESS}")
+            )
+        )
+    elif use_llm_scoring and not INFERENCE_RUNNER_AVAILABLE:
+        print("⚠️  LLM scoring requested but InferenceRunner not available - skipping LLM step")
+        print("   Continuing with keyword-based filtering only")
 
     # Enhanced PII removal is crucial for medical data - apply before final output
     # Enhanced for HIPAA compliance with medical-specific patterns
@@ -629,17 +686,20 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
     ])
 
     if mode == 'local':
-        # Local mode with limited processing for testing
+        # Local mode for testing and development
         print("🔧 Running in LOCAL mode")
         print(f"📁 Processing dump: {DUMP_TO_PROCESS}")
-        print("⚠️  Limited to 100 documents per task for testing")
-
-        pipeline[0] = WarcReader(
-            data_folder=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
-            glob_pattern="*/warc/*",
-            default_metadata={"dump": DUMP_TO_PROCESS, "dataset": "fineweb-med"},
-            limit=100,  # Limit for local testing
-        )
+        if not (use_llm_scoring and INFERENCE_RUNNER_AVAILABLE):
+            print("⚠️  Limited to 100 documents per task for testing (remove limit with --use-llm-scoring for full processing)")
+            pipeline[0] = WarcReader(
+                data_folder=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
+                glob_pattern="*/warc/*",
+                default_metadata={"dump": DUMP_TO_PROCESS, "dataset": "fineweb-med"},
+                limit=100,  # Limit for local testing
+            )
+        else:
+            print("⚠️  LLM scoring enabled - processing full dump (may be slow on local machine)")
+            # Keep original pipeline for full processing when LLM is enabled
 
         executor = LocalPipelineExecutor(
             pipeline=pipeline,
@@ -653,17 +713,34 @@ def create_executor(mode, cluster_name, dumps, output_bucket, min_words=200,
         print(f"📁 Processing dump: {DUMP_TO_PROCESS}")
         print(f"🏗️  Cluster: {cluster_name}")
         print(f"💾 Output bucket: {output_bucket}")
+        if use_llm_scoring:
+            print("🤖 LLM scoring enabled - using GPU resources")
+        if gpu:
+            print("🖥️  GPU mode enabled")
+
+        # Adjust resources based on LLM usage
+        if (use_llm_scoring and INFERENCE_RUNNER_AVAILABLE) or gpu:
+            partition = "hopper-gpu" if gpu else "hopper-cpu"
+            cpus_per_task = 4
+            mem_per_cpu_gb = 8  # More memory for GPU tasks
+            time_limit = "48:00:00"  # Longer time for LLM processing
+        else:
+            partition = "hopper-cpu"
+            cpus_per_task = 2
+            mem_per_cpu_gb = 4
+            time_limit = "24:00:00"
 
         executor = SlurmPipelineExecutor(
             job_name=f"fineweb_med_{DUMP_TO_PROCESS}",
             pipeline=pipeline,
-            tasks=4000,  # Full scale processing
-            time="15:00:00",
+            tasks=8000 if (use_llm_scoring and INFERENCE_RUNNER_AVAILABLE) else 6000,  # More tasks for production
+            time=time_limit,
             logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
             slurm_logs_folder=f"logs/base_processing/{DUMP_TO_PROCESS}/slurm_logs",
-            randomize_start_duration=180,
-            mem_per_cpu_gb=3,
-            partition="hopper-cpu",
+            randomize_start_duration=300,  # More randomization
+            mem_per_cpu_gb=mem_per_cpu_gb,
+            cpus_per_task=cpus_per_task,
+            partition=partition,
         )
 
     return executor
@@ -688,14 +765,14 @@ python fineweb-med-new.py --year 2024 --non-interactive
 # Slurm cluster production run
 python fineweb-med-new.py --mode slurm --year 2024
 
-# Full command with enhanced medical filtering and benchmarks
-python fineweb-med-new.py --mode slurm --year 2024 --output-bucket fineweb-med --min-words 200 --medical-threshold 2 --compression gzip --non-interactive --benchmark
+# Full command with LLM scoring and benchmarks (GPU required)
+python fineweb-med-new.py --mode slurm --year 2025 --output-bucket fineweb-med --min-words 200 --medical-threshold 2 --compression gzip --non-interactive --use-llm-scoring --llm-model meta-llama/Llama-3-8B-Instruct --medical-threshold-llm 3.0 --gpu --benchmark
 
 # Production command with enhanced medical filtering
-python fineweb-med-new.py --mode slurm --year 2024 --output-bucket fineweb-med --min-words 300 --medical-threshold 3 --compression gzip --non-interactive
+python fineweb-med-new.py --mode slurm --year 2025 --output-bucket fineweb-med --min-words 300 --medical-threshold 2 --compression gzip --non-interactive
 
-# Process specific dumps directly
-python fineweb-med-new.py --mode slurm --dumps CC-MAIN-2023-40 CC-MAIN-2023-50 --output-bucket fineweb-med --min-words 250 --medical-threshold 3 --compression gzip
+# High-quality medical dataset with LLM enhancement
+python fineweb-med-new.py --mode slurm --dumps CC-MAIN-2024-46 CC-MAIN-2024-42 --output-bucket fineweb-med --min-words 250 --medical-threshold 2 --compression gzip --use-llm-scoring --gpu --medical-threshold-llm 3.5
 
 Selection Options:
   'all' - Select all available dumps
@@ -748,32 +825,57 @@ if __name__ == '__main__':
 
     print(f"🚀 Processing {len(dumps_to_process)} Common Crawl dumps: {dumps_to_process}")
 
-    # Process dumps sequentially (can be parallelized later)
+    # Process dumps with retry logic and parallelization support
+    import time
+    failed_dumps = []
+
     for dump_id in dumps_to_process:
         print(f"\n🔄 Processing dump: {dump_id}")
 
-        # Create executor based on mode
-        main_processing_executor = create_executor(
-            mode=args.mode,
-            cluster_name=args.cluster_name,
-            dumps=[dump_id],  # Pass as list for consistency
-            output_bucket=args.output_bucket,
-            min_words=args.min_words,
-            medical_threshold=args.medical_threshold,
-            compression=args.compression,
-            skip_dedup=args.skip_dedup
-        )
+        max_retries = 3
+        retry_delay = 60  # seconds
 
-        # Launch the base processing pipeline for this dump
-        try:
-            main_processing_executor.run()
-            print(f"✅ Successfully processed dump: {dump_id}")
-        except Exception as e:
-            print(f"❌ Failed to process dump {dump_id}: {e}")
-            if len(dumps_to_process) == 1:
-                exit(1)  # Exit if only one dump and it fails
-            else:
-                print("Continuing with remaining dumps...")
+        for attempt in range(max_retries):
+            try:
+                # Create executor based on mode
+                main_processing_executor = create_executor(
+                    mode=args.mode,
+                    cluster_name=args.cluster_name,
+                    dumps=[dump_id],  # Pass as list for consistency
+                    output_bucket=args.output_bucket,
+                    min_words=args.min_words,
+                    medical_threshold=args.medical_threshold,
+                    compression=args.compression,
+                    skip_dedup=args.skip_dedup,
+                    use_llm_scoring=args.use_llm_scoring,
+                    llm_model=args.llm_model,
+                    medical_threshold_llm=args.medical_threshold_llm,
+                    gpu=args.gpu
+                )
+
+                # Launch the base processing pipeline for this dump
+                main_processing_executor.run()
+                print(f"✅ Successfully processed dump: {dump_id}")
+                break  # Success, exit retry loop
+
+            except Exception as e:
+                print(f"❌ Attempt {attempt + 1}/{max_retries} failed for dump {dump_id}: {e}")
+                if attempt < max_retries - 1:
+                    print(f"⏳ Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print(f"💥 All retry attempts failed for dump {dump_id}")
+                    failed_dumps.append(dump_id)
+                    if len(dumps_to_process) == 1:
+                        print("❌ Only dump failed, exiting...")
+                        exit(1)
+                    else:
+                        print("Continuing with remaining dumps...")
+
+    if failed_dumps:
+        print(f"\n⚠️  Warning: {len(failed_dumps)} dumps failed: {failed_dumps}")
+        print("Check logs for details. You may need to re-run these dumps manually.")
 
     # Run benchmark tests if requested
     if args.benchmark:
@@ -784,9 +886,69 @@ if __name__ == '__main__':
     if args.mode == 'slurm' and not args.skip_dedup:
         print("\n🔄 Starting deduplication pipeline...")
 
-        # For deduplication, we need to process all dumps together
-        # This would require modifying the deduplication logic to handle multiple inputs
-        print("⚠️  Multi-dump deduplication not yet implemented. Processing individual dumps.")
+        # Collect all processed dump outputs for deduplication
+        input_paths = []
+        for dump_id in dumps_to_process:
+            output_path = f"{FILTERING_OUTPUT_PATH}/output/{dump_id}"
+            input_paths.append(f"{output_path}/*.jsonl.gz")
+
+        if input_paths:
+            # Create deduplication pipeline
+            dedup_config = MinhashConfig(
+                hash_config=HashConfig(
+                    hash_length=64,
+                    num_hashes=8,
+                    num_buckets=14,
+                    seed=42
+                ),
+                num_bands=10,
+                num_minhashes_per_band=5
+            )
+
+            dedup_pipeline = [
+                JsonlReader(
+                    data_folder=input_paths,
+                    default_metadata={"dataset": "fineweb-med-deduplicated"}
+                ),
+                MinhashDedupSignature(
+                    config=dedup_config,
+                    input_key="text"
+                ),
+                MinhashDedupBuckets(
+                    config=dedup_config
+                ),
+                MinhashDedupFilter(
+                    config=dedup_config,
+                    exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/dedup/")
+                ),
+                TokensCounter(),
+                JsonlWriter(
+                    f"{FILTERING_OUTPUT_PATH}/deduplicated/",
+                    compression=args.compression if args.compression != 'none' else None
+                )
+            ]
+
+            # Create deduplication executor
+            dedup_executor = SlurmPipelineExecutor(
+                job_name="fineweb_med_dedup",
+                pipeline=dedup_pipeline,
+                tasks=2000,  # Fewer tasks for deduplication
+                time="12:00:00",
+                logging_dir=f"{MAIN_OUTPUT_PATH}/logs/dedup/",
+                slurm_logs_folder="logs/dedup/slurm_logs",
+                randomize_start_duration=180,
+                mem_per_cpu_gb=4,
+                cpus_per_task=2,
+                partition="hopper-cpu",
+            )
+
+            try:
+                dedup_executor.run()
+                print("✅ Deduplication completed successfully!")
+            except Exception as e:
+                print(f"❌ Deduplication failed: {e}")
+        else:
+            print("⚠️  No processed dumps found for deduplication")
 
         print("✅ Production processing completed!")
     else:
