@@ -8,12 +8,14 @@
 #   ./publish_to_hf.sh --latest          # Upload latest dump non-interactively
 #   ./publish_to_hf.sh --dump CC-MAIN-2024-18  # Upload specific dump
 #   ./publish_to_hf.sh --all             # Upload all available dumps
+#   ./publish_to_hf.sh --name my-dataset # Upload to custom dataset name
 
 set -e  # Exit on error
 
 # Parse command line arguments
 NON_INTERACTIVE=false
 SELECT_MODE="interactive"
+REPO_BASE_NAME="fineweb-med"  # Default repository base name
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -25,6 +27,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --latest                 # Upload latest dump non-interactively"
             echo "  $0 --dump CC-MAIN-2024-18   # Upload specific dump"
             echo "  $0 --all                    # Upload all available dumps"
+            echo "  $0 --name my-dataset        # Set custom dataset name (default: fineweb-med)"
             echo "  $0 --help                   # Show this help"
             echo ""
             echo "The script automatically scans s3://fineweb-med/base_processing/output/"
@@ -51,9 +54,13 @@ while [[ $# -gt 0 ]]; do
             SPECIFIC_DUMP="$2"
             shift 2
             ;;
+        --name)
+            REPO_BASE_NAME="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--latest|--all|--dump DUMP_ID|--help]"
+            echo "Usage: $0 [--latest|--all|--dump DUMP_ID|--name NAME|--help]"
             exit 1
             ;;
     esac
@@ -225,7 +232,7 @@ if [[ "$HF_USERNAME" == *"your"* ]] || [[ "$HF_USERNAME" == *"here"* ]]; then
     exit 1
 fi
 
-REPO_NAME="${HF_USERNAME}/fineweb-med"
+REPO_NAME="${HF_USERNAME}/${REPO_BASE_NAME}"
 
 echo "👤 Username: $HF_USERNAME"
 echo "📁 Repository: $REPO_NAME"
@@ -259,7 +266,7 @@ for dump_id in $selected_dumps; do
     # Create repository name with dump suffix
     if [ "$selected_dumps" != "$available_dumps" ] && [ "$dump_count" -gt 1 ]; then
         # Multiple dumps selected, use suffix
-        CURRENT_REPO_NAME="${HF_USERNAME}/fineweb-med-${REPO_SUFFIX}"
+        CURRENT_REPO_NAME="${HF_USERNAME}/${REPO_BASE_NAME}-${REPO_SUFFIX}"
     else
         # Single dump or 'latest', use base name
         CURRENT_REPO_NAME="$REPO_NAME"
