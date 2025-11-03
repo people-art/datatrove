@@ -1,4 +1,23 @@
-# DataTrove
+# DataTrove + FineWeb-Data
+
+## 🚀 Enhanced DataTrove with FineWeb-Data
+
+This is a **fork of [HuggingFace DataTrove](https://github.com/huggingface/datatrove)** with significant enhancements focused on **FineWeb-Data** - a universal domain-specific dataset processing pipeline.
+
+### 🎯 Key Enhancement: FineWeb-Data
+
+**FineWeb-Data** is a revolutionary approach to creating high-quality, domain-specific datasets from web crawl data. Unlike traditional keyword-based filtering, FineWeb-Data uses **LLM-powered ontology generation** to dynamically create comprehensive knowledge systems for any domain.
+
+#### Core Features:
+- **🤖 Dynamic Ontology Generation**: Uses GPT-4 to automatically build structured knowledge systems for any domain (education, healthcare, AI, finance, environment, etc.)
+- **🎯 Domain-Specific Processing**: Intelligent content filtering based on multi-layered ontological keywords
+- **⚡ Production-Ready Pipelines**: Seamlessly integrates with existing DataTrove infrastructure
+- **📊 Benchmarking Suite**: Built-in quality assessment and domain detection validation
+- **🌐 Universal Coverage**: Works with any domain - just specify the topic and let the LLM do the rest
+
+---
+
+## 📖 What is DataTrove?
 
 DataTrove is a library to process, filter and deduplicate text data at a very large scale. It provides a set of prebuilt commonly used processing blocks with a framework to easily add custom functionality.
 
@@ -39,6 +58,72 @@ Local, remote and other file systems are supported through [fsspec](https://file
 - [Citation](#citation)
 
 <!-- tocstop -->
+
+## 🎯 FineWeb-Data: Domain-Specific Dataset Processing
+
+### Quick Start with FineWeb-Data
+
+```bash
+# Install with FineWeb-Data dependencies
+pip install -e ".[all]"  # includes OpenAI for LLM features
+
+# Create an education dataset
+cd finewebdata
+python finewebdata.py --domain education --mode local
+
+# Create any domain dataset with LLM enhancement
+python finewebdata.py --domain "artificial intelligence" --use-llm-scoring --gpu
+```
+
+### Supported Domains
+FineWeb-Data can create datasets for any domain. Popular examples:
+- **Education**: Teaching methodologies, curriculum design, learning theories
+- **Healthcare**: Medical research, clinical practices, patient care
+- **AI/ML**: Algorithms, neural networks, training techniques
+- **Environment**: Climate science, sustainability, conservation
+- **Finance**: Investment strategies, market analysis, risk management
+- **Quantum Computing**: Quantum algorithms, superposition, entanglement
+
+### Key Advantages Over Traditional Methods
+
+| Feature | Traditional Filtering | FineWeb-Data |
+|---------|----------------------|---------------|
+| **Ontology** | Static keyword lists | LLM-generated knowledge systems |
+| **Coverage** | Limited manual curation | Comprehensive domain mapping |
+| **Adaptability** | Fixed for one domain | Universal across all domains |
+| **Quality** | Basic keyword matching | Multi-layered semantic filtering |
+| **Maintenance** | Manual updates required | Self-evolving with LLM |
+
+### Production Usage
+
+```bash
+# Large-scale processing with Slurm
+python finewebdata.py \
+    --domain environment \
+    --year 2024 \
+    --mode slurm \
+    --use-llm-scoring \
+    --gpu \
+    --output-bucket fineweb-environment
+
+# Benchmark domain detection quality
+python finewebdata.py --domain education --benchmark
+
+# Publish to HuggingFace
+cd finewebdata
+./publish_to_hf.sh --domain education --latest
+```
+
+### Architecture Overview
+
+FineWeb-Data extends DataTrove with:
+1. **Ontology Generation**: GPT-4 creates structured domain knowledge
+2. **Multi-Layer Filtering**: Core concepts → technical terms → context indicators
+3. **Quality Assessment**: Built-in benchmarking and validation
+4. **Production Integration**: Seamless Slurm cluster support
+5. **Dataset Publishing**: Automated HuggingFace Hub uploads
+
+---
 
 ## Installation
 
