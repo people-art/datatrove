@@ -25,7 +25,8 @@ SSH_KEY_NAME="AWS-Keys"        # Your EC2 SSH key pair name
 CLUSTER_NAME="finewebdata-slurm-cluster"   # Cluster name for FineWeb-Data
 HEAD_INSTANCE_TYPE="t3.medium"    # Head node instance type
 COMPUTE_INSTANCE_TYPE="t3.medium" # Compute node instance type
-MAX_COMPUTE_NODES=1              # Max compute nodes
+MIN_COMPUTE_NODES=1              # Min compute nodes (static)
+MAX_COMPUTE_NODES=2              # Max compute nodes (static + dynamic)
 CONFIG_FILE="config.yaml"         # Cluster config file name
 
 # Parse command line arguments
@@ -255,7 +256,7 @@ Scheduling:
       ComputeResources:
         - Name: compute
           InstanceType: ${COMPUTE_INSTANCE_TYPE}
-          MinCount: 0
+          MinCount: ${MIN_COMPUTE_NODES}
           MaxCount: ${MAX_COMPUTE_NODES}
       Networking:
         SubnetIds:
