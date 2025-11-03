@@ -62,10 +62,28 @@ python finewebdata.py --domain "quantum computing" --year 2024
 python finewebdata.py --domain education --benchmark
 ```
 
-### 高级用法
+### Slurm 集群模式使用
+
+FineWeb-Data 支持在 Slurm 集群上进行大规模分布式处理，能够处理完整的 Common Crawl dumps (数亿网页)。
+
+#### 基本 Slurm 用法
 
 ```bash
-# 生产级环境科学数据集
+# 基本 Slurm 处理
+python finewebdata.py --domain "data law" --mode slurm --year 2025
+
+# 指定集群名称
+python finewebdata.py \
+    --domain education \
+    --mode slurm \
+    --cluster-name my-slurm-cluster \
+    --year 2024
+```
+
+#### 高级 Slurm 配置
+
+```bash
+# 生产级环境科学数据集 (推荐配置)
 python finewebdata.py \
     --domain environment \
     --mode slurm \
@@ -78,6 +96,47 @@ python finewebdata.py \
     --use-llm-scoring \
     --gpu \
     --domain-threshold-llm 3.5
+```
+
+#### Slurm 模式特性
+
+- **自动资源分配**: 根据数据大小自动分配 CPU/内存/GPU
+- **分布式处理**: 多节点并行处理数亿网页
+- **容错机制**: 单任务失败不影响整体作业
+- **监控日志**: 详细的处理统计和进度跟踪
+- **GPU 支持**: 可选 GPU 加速 LLM 评分
+
+#### Slurm 参数说明
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `--mode slurm` | 使用 Slurm 集群模式 | `--mode slurm` |
+| `--cluster-name` | Slurm 集群名称 | `--cluster-name production-cluster` |
+| `--gpu` | 使用 GPU 分区 | `--gpu` (需要 LLM 支持) |
+| `--non-interactive` | 自动选择最新 dump | `--non-interactive` |
+| `--output-bucket` | S3 输出桶 | `--output-bucket my-bucket` |
+
+#### Slurm vs 本地模式对比
+
+| 特性 | 本地模式 | Slurm 模式 |
+|------|---------|------------|
+| **数据规模** | 40K 文档采样 | 全量处理 (数亿网页) |
+| **处理速度** | 分钟级 | 小时到天级 |
+| **资源需求** | 基本 CPU/内存 | 集群资源 |
+| **适用场景** | 测试/开发 | 生产数据集生成 |
+| **输出质量** | 采样评估 | 完整高质量数据集 |
+
+#### Slurm 作业监控
+
+```bash
+# 查看作业状态
+squeue -u $USER
+
+# 查看作业详情
+sacct -j <job_id>
+
+# 查看日志
+tail -f logs/base_processing/*/slurm_logs/slurm-<job_id>.out
 ```
 
 ### 命令行参数
