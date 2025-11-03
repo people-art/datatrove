@@ -847,8 +847,8 @@ def parse_args():
     parser.add_argument('--min-words', type=int, default=200,
                        help='Minimum word count for documents (default: 200)')
 
-    parser.add_argument('--domain-threshold', type=int, default=2,
-                       help='Minimum number of domain keywords required (default: 2)')
+    parser.add_argument('--domain-threshold', type=int, default=1,
+                       help='Minimum number of domain keywords required (default: 1)')
 
     parser.add_argument('--compression', choices=['gzip', 'none'], default='gzip',
                        help='Output compression format (default: gzip)')
@@ -892,7 +892,7 @@ def parse_args():
 
 
 def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=200,
-                   domain_threshold=2, compression='gzip', skip_dedup=False,
+                   domain_threshold=1, compression='gzip', skip_dedup=False,
                    use_llm_scoring=False, llm_model='meta-llama/Llama-3-8B-Instruct',
                    domain_threshold_llm=3.0, gpu=False):
     """Create the appropriate executor based on mode."""
