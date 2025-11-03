@@ -15,13 +15,22 @@ from typing import List, Optional, Dict, Any
 import json
 import time
 from dataclasses import dataclass
+from contextlib import contextmanager
 
 # Load environment variables from .env file
-load_dotenv()
+# Try multiple possible locations for .env file
+env_loaded = False
+for env_path in ['.env', '../.env', './.env']:
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+        env_loaded = True
+        print(f"✅ Loaded environment variables from {env_path}")
+        break
 
-# Configure anonymous access for Common Crawl (public bucket)
-os.environ['AWS_ACCESS_KEY_ID'] = ''  # Clear credentials for anonymous access
-os.environ['AWS_SECRET_ACCESS_KEY'] = ''  # Clear credentials for anonymous access
+if not env_loaded:
+    print("⚠️  No .env file found in current directory or parent directory")
+
+# AWS region configuration (credentials handled per operation)
 os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 from datatrove.executor.local import LocalPipelineExecutor
@@ -57,9 +66,42 @@ except ImportError:
 try:
     from openai import OpenAI
     OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
-    print("⚠️  OpenAI not available - ontology generation will use fallback methods")
+    print("✅ OpenAI package is available")
+
+    # Check if API key is available
+    api_key = os.getenv('OPENAI_API_KEY')
+    if api_key and len(api_key.strip()) > 10:
+        print(f"✅ OPENAI_API_KEY is set (length: {len(api_key)})")
+    else:
+        print("⚠️  OPENAI_API_KEY is not set or too short")
+        OPENAI_AVAILABLE = False
+
+except ImportError as e:
+    print(f"⚠️  OpenAI package not available: {e}")
+    print("   Attempting to install openai...")
+
+    try:
+        import subprocess
+        import sys
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'openai'])
+
+        # Try importing again
+        from openai import OpenAI
+        OPENAI_AVAILABLE = True
+        print("✅ OpenAI package installed and available")
+
+        # Check if API key is available
+        api_key = os.getenv('OPENAI_API_KEY')
+        if api_key and len(api_key.strip()) > 10:
+            print(f"✅ OPENAI_API_KEY is set (length: {len(api_key)})")
+        else:
+            print("⚠️  OPENAI_API_KEY is not set or too short")
+            OPENAI_AVAILABLE = False
+
+    except Exception as install_error:
+        OPENAI_AVAILABLE = False
+        print(f"❌ Failed to install OpenAI package: {install_error}")
+        print("   Ontology generation will use fallback methods")
 
 
 @dataclass
@@ -74,6 +116,21 @@ class DomainOntology:
     quality_patterns: List[str]
 
 
+@contextmanager
+def cc_anonymous_read():
+    """Context manager for anonymous Common Crawl S3 access"""
+    backup = {k: os.environ.get(k) for k in ("AWS_ACCESS_KEY_ID","AWS_SECRET_ACCESS_KEY","AWS_SESSION_TOKEN")}
+    os.environ["AWS_ACCESS_KEY_ID"] = ""
+    os.environ["AWS_SECRET_ACCESS_KEY"] = ""
+    os.environ.pop("AWS_SESSION_TOKEN", None)
+    try:
+        yield
+    finally:
+        for k,v in backup.items():
+            if v is None: os.environ.pop(k, None)
+            else: os.environ[k] = v
+
+
 DUMP_TO_PROCESS = "CC-MAIN-2023-50"  # example dump
 
 MAIN_OUTPUT_PATH = "s3://fineweb-data"  # S3 bucket for production
@@ -82,6 +139,11 @@ FILTERING_OUTPUT_PATH = f"{MAIN_OUTPUT_PATH}/base_processing"
 # Domain-specific ontologies will be generated dynamically
 DOMAIN_ONTOLOGIES: Dict[str, DomainOntology] = {}
 
+
+def slugify(s: str) -> str:
+    """Convert string to URL-safe slug"""
+    import re
+    return re.sub(r'[^a-z0-9\-]+','-', s.lower().replace(' ', '-')).strip('-')
 
 def generate_domain_ontology_llm(domain: str, llm_model: str = "gpt-4o-mini") -> DomainOntology:
     """
@@ -102,56 +164,213 @@ def generate_domain_ontology_llm(domain: str, llm_model: str = "gpt-4o-mini") ->
     try:
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-        prompt = f"""
-        Analyze the domain "{domain}" and create a comprehensive ontology for content filtering and dataset creation.
+        prompt = f"""You are an expert ontologist specializing in domain knowledge representation. Your task is to create a comprehensive ontology for the domain "{domain}" that will be used for content filtering and dataset creation.
 
-        Provide a detailed JSON structure containing:
+CRITICAL REQUIREMENTS:
+1. You must respond with VALID JSON only - no explanations, no markdown, no additional text
+2. The JSON must be parseable by Python's json.loads() function
+3. Do not include any text before or after the JSON
+4. Do not wrap the JSON in markdown code blocks
+5. All arrays must contain only strings, no nested objects
 
-        1. core_concepts: 5-10 fundamental concepts central to this domain
-        2. subdomains: 5-8 specific sub-areas within this domain
-        3. keywords: 50-100 specific keywords and phrases commonly used in this domain
-        4. technical_terms: 20-40 specialized technical terms, jargon, and acronyms
-        5. context_indicators: 10-15 phrases that indicate the content is discussing this domain seriously
-        6. quality_patterns: 8-12 regex patterns that identify high-quality, domain-specific content
+ANALYZE THE DOMAIN "{domain.upper()}":
+- Study the domain from academic, professional, and practical perspectives
+- Identify fundamental concepts, terminology, and quality indicators
+- Consider how experts discuss and identify high-quality content in this domain
 
-        Consider the domain from multiple perspectives:
-        - Academic/research aspects
-        - Professional/practical applications
-        - Industry/business contexts
-        - Educational/training contexts
-        - Technical/engineering aspects (if applicable)
+GENERATE THE FOLLOWING JSON STRUCTURE:
 
-        Ensure the keywords cover both general and specialized terminology.
+{{
+  "core_concepts": [
+    "fundamental_concept_1",
+    "fundamental_concept_2",
+    "fundamental_concept_3",
+    "fundamental_concept_4",
+    "fundamental_concept_5",
+    "fundamental_concept_6",
+    "fundamental_concept_7",
+    "fundamental_concept_8"
+  ],
+  "subdomains": [
+    "specific_subarea_1",
+    "specific_subarea_2",
+    "specific_subarea_3",
+    "specific_subarea_4",
+    "specific_subarea_5",
+    "specific_subarea_6"
+  ],
+  "keywords": [
+    "common_keyword_1",
+    "common_keyword_2",
+    "common_keyword_3",
+    "common_keyword_4",
+    "common_keyword_5",
+    "technical_keyword_1",
+    "technical_keyword_2",
+    "technical_keyword_3",
+    "specialized_term_1",
+    "specialized_term_2",
+    "domain_specific_phrase_1",
+    "domain_specific_phrase_2",
+    "expert_jargon_1",
+    "expert_jargon_2",
+    "professional_term_1",
+    "professional_term_2",
+    "industry_term_1",
+    "industry_term_2",
+    "academic_term_1",
+    "academic_term_2",
+    "research_term_1",
+    "research_term_2",
+    "practical_term_1",
+    "practical_term_2",
+    "methodological_term_1",
+    "methodological_term_2",
+    "conceptual_term_1",
+    "conceptual_term_2",
+    "application_term_1",
+    "application_term_2",
+    "tool_term_1",
+    "tool_term_2",
+    "process_term_1",
+    "process_term_2",
+    "outcome_term_1",
+    "outcome_term_2",
+    "evaluation_term_1",
+    "evaluation_term_2",
+    "quality_term_1",
+    "quality_term_2",
+    "standard_term_1",
+    "standard_term_2",
+    "best_practice_term_1",
+    "best_practice_term_2",
+    "emerging_term_1",
+    "emerging_term_2"
+  ],
+  "technical_terms": [
+    "specialized_jargon_1",
+    "specialized_jargon_2",
+    "specialized_jargon_3",
+    "specialized_jargon_4",
+    "specialized_jargon_5",
+    "specialized_jargon_6",
+    "specialized_jargon_7",
+    "specialized_jargon_8",
+    "specialized_jargon_9",
+    "specialized_jargon_10",
+    "technical_acronym_1",
+    "technical_acronym_2",
+    "technical_acronym_3",
+    "technical_acronym_4",
+    "technical_acronym_5",
+    "methodology_term_1",
+    "methodology_term_2",
+    "methodology_term_3",
+    "methodology_term_4",
+    "methodology_term_5"
+  ],
+  "context_indicators": [
+    "academic_discussion_1",
+    "academic_discussion_2",
+    "professional_context_1",
+    "professional_context_2",
+    "research_context_1",
+    "research_context_2",
+    "practical_application_1",
+    "practical_application_2",
+    "expert_discussion_1",
+    "expert_discussion_2",
+    "quality_indicator_1",
+    "quality_indicator_2",
+    "serious_treatment_1",
+    "serious_treatment_2"
+  ],
+  "quality_patterns": [
+    "\\\\bpattern_indicating_quality_content_1\\\\b",
+    "\\\\bpattern_indicating_quality_content_2\\\\b",
+    "\\\\bpattern_indicating_quality_content_3\\\\b",
+    "\\\\bpattern_indicating_quality_content_4\\\\b",
+    "\\\\bpattern_indicating_quality_content_5\\\\b",
+    "\\\\bpattern_indicating_quality_content_6\\\\b",
+    "\\\\bpattern_indicating_quality_content_7\\\\b",
+    "\\\\bpattern_indicating_quality_content_8\\\\b",
+    "\\\\bpattern_indicating_quality_content_9\\\\b",
+    "\\\\bpattern_indicating_quality_content_10\\\\b"
+  ]
+}}
 
-        Respond ONLY with valid JSON in this format:
-        {{
-            "core_concepts": ["concept1", "concept2", ...],
-            "subdomains": ["subdomain1", "subdomain2", ...],
-            "keywords": ["keyword1", "keyword2", ...],
-            "technical_terms": ["term1", "term2", ...],
-            "context_indicators": ["indicator1", "indicator2", ...],
-            "quality_patterns": ["pattern1", "pattern2", ...]
-        }}
-        """
+INSTRUCTIONS FOR CONTENT:
+- core_concepts: 8 fundamental concepts that define the domain
+- subdomains: 6 major sub-areas or specializations within the domain
+- keywords: 40+ terms including general keywords, technical terms, phrases, and domain-specific language
+- technical_terms: 20 specialized terms, jargon, acronyms specific to experts in the field
+- context_indicators: 14 phrases that signal serious, professional discussion of the domain
+- quality_patterns: 10 regex patterns (escaped with double backslashes) that identify high-quality content
+
+REMEMBER: Respond ONLY with the JSON object. No additional text, no explanations, no formatting."""
 
         response = client.chat.completions.create(
             model=llm_model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=2000
+            temperature=0.1,  # Lower temperature for more consistent JSON output
+            max_tokens=2500  # Increased for larger response
         )
 
-        result = json.loads(response.choices[0].message.content.strip())
+        raw_content = response.choices[0].message.content.strip()
+        print(f"🔍 LLM response received (length: {len(raw_content)} chars)")
 
-        return DomainOntology(
-            domain=domain,
-            core_concepts=result.get("core_concepts", []),
-            subdomains=result.get("subdomains", []),
-            keywords=result.get("keywords", []),
-            technical_terms=result.get("technical_terms", []),
-            context_indicators=result.get("context_indicators", []),
-            quality_patterns=result.get("quality_patterns", [])
-        )
+        # Debug: Show first 200 chars of response
+        print(f"🔍 Response preview: {raw_content[:200]}{'...' if len(raw_content) > 200 else ''}")
+
+        # Try to clean the response if it contains extra text
+        cleaned_content = raw_content
+
+        # Remove any markdown code blocks if present
+        if cleaned_content.startswith('```json'):
+            cleaned_content = cleaned_content[7:]
+        if cleaned_content.startswith('```'):
+            cleaned_content = cleaned_content[3:]
+        if cleaned_content.endswith('```'):
+            cleaned_content = cleaned_content[:-3]
+
+        # Strip whitespace again
+        cleaned_content = cleaned_content.strip()
+
+        # If the content doesn't start with '{', try to find JSON within it
+        if not cleaned_content.startswith('{'):
+            print("⚠️  Response doesn't start with '{', attempting to extract JSON...")
+            json_start = cleaned_content.find('{')
+            json_end = cleaned_content.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                cleaned_content = cleaned_content[json_start:json_end]
+
+        print(f"🔍 Attempting to parse cleaned content (length: {len(cleaned_content)})")
+
+        try:
+            result = json.loads(cleaned_content)
+            print("✅ JSON parsing successful")
+
+            # Validate required fields
+            required_fields = ["core_concepts", "subdomains", "keywords", "technical_terms", "context_indicators", "quality_patterns"]
+            missing_fields = [field for field in required_fields if field not in result]
+            if missing_fields:
+                print(f"⚠️  Missing fields in JSON: {missing_fields}")
+
+            return DomainOntology(
+                domain=domain,
+                core_concepts=result.get("core_concepts", []),
+                subdomains=result.get("subdomains", []),
+                keywords=result.get("keywords", []),
+                technical_terms=result.get("technical_terms", []),
+                context_indicators=result.get("context_indicators", []),
+                quality_patterns=result.get("quality_patterns", [])
+            )
+
+        except json.JSONDecodeError as json_error:
+            print(f"❌ JSON parsing failed: {json_error}")
+            print(f"❌ Raw content: {raw_content[:500]}{'...' if len(raw_content) > 500 else ''}")
+            print("Falling back to rule-based ontology generation")
+            return generate_fallback_ontology(domain)
 
     except Exception as e:
         print(f"❌ LLM ontology generation failed: {e}")
@@ -243,11 +462,16 @@ def domain_relevance_scorer(text: str, domain: str) -> float:
 
     text_lower = text.lower()
 
-    # Count different types of keywords with different weights
-    core_concept_count = sum(1 for concept in ontology.core_concepts if concept.lower() in text_lower)
-    keyword_count = sum(1 for keyword in ontology.keywords if keyword.lower() in text_lower)
-    technical_count = sum(1 for term in ontology.technical_terms if term.lower() in text_lower)
-    context_count = sum(1 for indicator in ontology.context_indicators if indicator in text_lower)
+    # Count different types of keywords with different weights (using word boundaries)
+    def contains_term(text: str, term: str) -> bool:
+        """Check if term appears in text with word boundaries"""
+        term = re.escape(term.lower())
+        return re.search(rf'\b{term}\b', text) is not None
+
+    core_concept_count = sum(1 for concept in ontology.core_concepts if contains_term(text_lower, concept))
+    keyword_count = sum(1 for keyword in ontology.keywords if contains_term(text_lower, keyword))
+    technical_count = sum(1 for term in ontology.technical_terms if contains_term(text_lower, term))
+    context_count = sum(1 for indicator in ontology.context_indicators if contains_term(text_lower, indicator))
 
     # Calculate density score with weighted components
     word_count = len(text.split())
@@ -323,9 +547,14 @@ def is_domain_content(text: str, domain: str, threshold: int = 2) -> bool:
     else:
         ontology = DOMAIN_ONTOLOGIES[domain]
 
-    # Count domain-specific keywords
-    keyword_count = sum(1 for keyword in ontology.keywords if keyword.lower() in text_lower)
-    technical_count = sum(1 for term in ontology.technical_terms if term.lower() in text_lower)
+    # Count domain-specific keywords with word boundaries
+    def contains_term(text: str, term: str) -> bool:
+        """Check if term appears in text with word boundaries"""
+        term = re.escape(term.lower())
+        return re.search(rf'\b{term}\b', text) is not None
+
+    keyword_count = sum(1 for keyword in ontology.keywords if contains_term(text_lower, keyword))
+    technical_count = sum(1 for term in ontology.technical_terms if contains_term(text_lower, term))
 
     # Basic threshold: at least threshold domain keywords OR technical terms
     if keyword_count + technical_count < threshold:
@@ -655,8 +884,9 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
     global DUMP_TO_PROCESS, MAIN_OUTPUT_PATH, FILTERING_OUTPUT_PATH
     # Use the first dump as primary for backward compatibility, but support multiple
     DUMP_TO_PROCESS = dumps[0] if isinstance(dumps, list) else dumps
+    domain_slug = slugify(domain)
     MAIN_OUTPUT_PATH = f"s3://{output_bucket}"
-    FILTERING_OUTPUT_PATH = f"{MAIN_OUTPUT_PATH}/base_processing"
+    FILTERING_OUTPUT_PATH = f"{MAIN_OUTPUT_PATH}/base_processing/{domain_slug}"
 
     # Generate domain ontology if not already cached
     if domain not in DOMAIN_ONTOLOGIES:
@@ -667,12 +897,15 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
     ontology = DOMAIN_ONTOLOGIES[domain]
     print(f"📚 Using domain ontology with {len(ontology.keywords)} keywords, {len(ontology.technical_terms)} technical terms")
 
-    pipeline = [
-        WarcReader(
+    # Create WarcReader with anonymous Common Crawl access
+    with cc_anonymous_read():
+        warc_reader = WarcReader(
             data_folder=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
             glob_pattern="*/warc/*",  # we want the warc files
-            default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain.replace(' ', '-')}"},
-        ),
+            default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain_slug}"},
+        )
+
+    pipeline = [warc_reader,
         URLFilter(exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/1_url/{DUMP_TO_PROCESS}")),
         Trafilatura(favour_precision=True, timeout=2),  # Slightly longer timeout for domain content
         LanguageFilter(
@@ -768,12 +1001,12 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
         print(f"📁 Processing dump: {DUMP_TO_PROCESS}")
         print(f"🎯 Target domain: {domain}")
         if not (use_llm_scoring and INFERENCE_RUNNER_AVAILABLE):
-            print("⚠️  Limited to 100 documents per task for testing (remove limit with --use-llm-scoring for full processing)")
+            print("⚠️  Limited to 10000 documents per task for testing (remove limit with --use-llm-scoring for full processing)")
             pipeline[0] = WarcReader(
                 data_folder=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
                 glob_pattern="*/warc/*",
                 default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain.replace(' ', '-')}"},
-                limit=100,  # Limit for local testing
+                limit=10000,  # Limit for local testing
             )
         else:
             print("⚠️  LLM scoring enabled - processing full dump (may be slow on local machine)")
@@ -781,7 +1014,7 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
 
         executor = LocalPipelineExecutor(
             pipeline=pipeline,
-            logging_dir=f"logs/base_processing/{DUMP_TO_PROCESS}",
+            logging_dir=f"logs/base_processing/{domain_slug}/{DUMP_TO_PROCESS}",
             tasks=4,  # Fewer tasks for local testing
             workers=2,  # Local workers
         )
@@ -810,12 +1043,12 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
             time_limit = "24:00:00"
 
         executor = SlurmPipelineExecutor(
-            job_name=f"fineweb_{domain.replace(' ', '_')}_{DUMP_TO_PROCESS}",
+            job_name=f"fineweb_{domain_slug}_{DUMP_TO_PROCESS}",
             pipeline=pipeline,
             tasks=8000 if (use_llm_scoring and INFERENCE_RUNNER_AVAILABLE) else 6000,  # More tasks for production
             time=time_limit,
-            logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
-            slurm_logs_folder=f"logs/base_processing/{DUMP_TO_PROCESS}/slurm_logs",
+            logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{domain_slug}/{DUMP_TO_PROCESS}",
+            slurm_logs_folder=f"logs/base_processing/{domain_slug}/{DUMP_TO_PROCESS}/slurm_logs",
             randomize_start_duration=300,  # More randomization
             mem_per_cpu_gb=mem_per_cpu_gb,
             cpus_per_task=cpus_per_task,
@@ -1012,12 +1245,12 @@ if __name__ == '__main__':
 
             # Create deduplication executor
             dedup_executor = SlurmPipelineExecutor(
-                job_name=f"fineweb_{args.domain.replace(' ', '_')}_dedup",
+                job_name=f"fineweb_{domain_slug}_dedup",
                 pipeline=dedup_pipeline,
                 tasks=2000,  # Fewer tasks for deduplication
                 time="12:00:00",
-                logging_dir=f"{MAIN_OUTPUT_PATH}/logs/dedup/",
-                slurm_logs_folder="logs/dedup/slurm_logs",
+                logging_dir=f"{MAIN_OUTPUT_PATH}/logs/dedup/{domain_slug}/",
+                slurm_logs_folder=f"logs/dedup/{domain_slug}/slurm_logs",
                 randomize_start_duration=180,
                 mem_per_cpu_gb=4,
                 cpus_per_task=2,
