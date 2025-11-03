@@ -145,7 +145,7 @@ def slugify(s: str) -> str:
     import re
     return re.sub(r'[^a-z0-9\-]+','-', s.lower().replace(' ', '-')).strip('-')
 
-def generate_domain_ontology_llm(domain: str, llm_model: str = "gpt-4o-mini") -> DomainOntology:
+def generate_domain_ontology_llm(domain: str, llm_model: str = "gpt-5") -> DomainOntology:
     """
     Use LLM to generate a comprehensive ontology for a given domain.
     This creates a structured knowledge representation for content filtering.
@@ -309,12 +309,21 @@ INSTRUCTIONS FOR CONTENT:
 
 REMEMBER: Respond ONLY with the JSON object. No additional text, no explanations, no formatting."""
 
-        response = client.chat.completions.create(
-            model=llm_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,  # Lower temperature for more consistent JSON output
-            max_tokens=2500  # Increased for larger response
-        )
+        # Adapt parameters based on model capabilities
+        completion_params = {
+            "model": llm_model,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+
+        # GPT-5 specific parameter handling
+        if "gpt-5" in llm_model.lower():
+            completion_params["max_completion_tokens"] = 2500
+            # GPT-5 only supports default temperature (1.0), no custom temperature
+        else:
+            completion_params["temperature"] = 0.1  # Lower temperature for more consistent JSON output
+            completion_params["max_tokens"] = 2500
+
+        response = client.chat.completions.create(**completion_params)
 
         raw_content = response.choices[0].message.content.strip()
         print(f"🔍 LLM response received (length: {len(raw_content)} chars)")
@@ -407,6 +416,14 @@ def generate_fallback_ontology(domain: str) -> DomainOntology:
             "technical_terms": ["hadamard gate", "cnot gate", "shor's algorithm", "grover's algorithm", "quantum supremacy"],
             "context_indicators": ["quantum advantage", "quantum speedup", "quantum error correction", "quantum volume"],
             "quality_patterns": [r'\b(quantum (computing|algorithm|circuit))\b', r'\b(qubit|superposition|entanglement)\b']
+        },
+        "data law": {
+            "core_concepts": ["data protection", "privacy law", "intellectual property", "data ownership", "data breach", "compliance", "data governance", "regulatory frameworks"],
+            "subdomains": ["GDPR compliance", "cybersecurity law", "intellectual property rights", "data ethics", "digital rights management", "data sharing agreements"],
+            "keywords": ["data privacy", "personal data", "data subject", "data controller", "data processor", "consent", "anonymization", "pseudonymization", "data minimization", "data retention", "GDPR", "CCPA", "HIPAA", "privacy policy", "data processing", "data subject rights", "privacy by design", "data protection officer", "breach notification", "data mapping", "vendor management", "compliance audit", "data localization", "cross-border transfer", "standard contractual clauses", "binding corporate rules", "data protection impact assessment", "lawful basis", "legitimate interest", "data portability", "right to erasure", "right to rectification", "automated decision making", "profiling", "data security", "encryption", "access controls", "privacy threshold analysis"],
+            "technical_terms": ["DPO", "PII", "GDPR", "CCPA", "HIPAA", "data mapping", "data flow diagram", "data subject access request", "data processing agreement", "privacy impact assessment", "binding corporate rules", "standard contractual clauses", "adequacy decision", "data protection by design", "data protection by default", "accountability principle", "data minimization principle", "storage limitation", "data accuracy", "lawful processing", "consent mechanism", "opt-out mechanism", "data breach notification", "incident response plan"],
+            "context_indicators": ["legal analysis", "regulatory compliance", "case law review", "policy development", "best practices", "compliance framework", "data protection strategy", "privacy program", "legal counsel", "regulatory requirements", "data governance framework", "privacy compliance", "legal obligations", "regulatory oversight"],
+            "quality_patterns": [r'\b(GDPR|CCPA|HIPAA)\b', r'\b(data (protection|privacy|subject))\b', r'\b(privacy (law|policy|rights))\b', r'\b(compliance|regulatory)\b', r'\b(data (breach|controller|processor))\b', r'\b(consent|anonymization)\b', r'\b(intellectual property|copyright|patent)\b', r'\b(data (governance|ownership|ethics))\b', r'\b(breach notification|incident response)\b', r'\b(data protection (officer|impact assessment))\b']
         }
     }
 
