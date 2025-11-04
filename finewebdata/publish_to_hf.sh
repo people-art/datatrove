@@ -324,7 +324,7 @@ for dump_id in $selected_dumps; do
         --repo-name "$CURRENT_REPO_NAME" \
         --token "$HF_TOKEN" \
         --dump-id "$dump_id" \
-        --private true \
+        --private \
         ${DOMAIN_FILTER:+ --domain "$DOMAIN_FILTER"}
 
     echo "✅ Completed upload for dump: $dump_id"
