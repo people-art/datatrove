@@ -15,7 +15,7 @@ echo ""
 
 # Check cluster status
 echo "📋 Checking cluster status..."
-CLUSTER_STATUS=$(pcluster describe-cluster --cluster-name $CLUSTER_NAME --region $REGION --query "clusterStatus" --output text 2>/dev/null || echo "NOT_FOUND")
+CLUSTER_STATUS=$(pcluster describe-cluster --cluster-name $CLUSTER_NAME --region $REGION 2>/dev/null | grep -o '"clusterStatus": "[^"]*"' | cut -d'"' -f4 || echo "NOT_FOUND")
 
 if [ "$CLUSTER_STATUS" != "CREATE_COMPLETE" ]; then
     echo "❌ Cluster $CLUSTER_NAME is not ready. Status: $CLUSTER_STATUS"
