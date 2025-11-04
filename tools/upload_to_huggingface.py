@@ -8,6 +8,7 @@ Supports domain-specific datasets with proper privacy and licensing settings.
 
 import os
 import json
+import gzip
 import argparse
 from pathlib import Path
 from typing import List, Dict, Any
@@ -152,13 +153,22 @@ def load_jsonl_files(file_paths: List[str], batch_size: int = 10000) -> pd.DataF
                 key = '/'.join(path_parts[1:])
 
                 obj = s3_client.get_object(Bucket=bucket, Key=key)
-                content = obj['Body'].read().decode('utf-8')
+                compressed_data = obj['Body'].read()
+                # Decompress gzip data
+                content = gzip.decompress(compressed_data).decode('utf-8')
                 lines = content.strip().split('\n')
             else:
                 # Load from local file
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    lines = content.strip().split('\n')
+                if file_path.endswith('.gz'):
+                    # Handle compressed local files
+                    with gzip.open(file_path, 'rt', encoding='utf-8') as f:
+                        content = f.read()
+                        lines = content.strip().split('\n')
+                else:
+                    # Handle uncompressed local files
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        lines = content.strip().split('\n')
 
             # Parse JSON lines
             batch = []
