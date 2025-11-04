@@ -351,14 +351,26 @@ def main():
         private=args.private
     )
 
-    # Upload dataset card
+    # Upload dataset card (only if it doesn't exist or we want to overwrite)
     print("📝 Uploading dataset card...")
-    api.upload_file(
-        path_or_fileobj=dataset_card.encode(),
-        path_in_repo="README.md",
-        repo_id=args.repo_name,
-        token=token
-    )
+    try:
+        # Check if README already exists
+        api.hf_hub_download(
+            args.repo_name,
+            "README.md",
+            repo_type="dataset",
+            token=token
+        )
+        print("📝 README.md already exists, skipping upload")
+    except Exception:
+        # README doesn't exist, upload it
+        api.upload_file(
+            path_or_fileobj=dataset_card.encode(),
+            path_in_repo="README.md",
+            repo_id=args.repo_name,
+            token=token
+        )
+        print("📝 README.md uploaded successfully")
 
     print(f"✅ Successfully uploaded FineWeb-Data to https://huggingface.co/datasets/{args.repo_name}")
     print(f"📊 Final statistics: {stats['total_documents']:,} documents, {stats['total_tokens']:,} tokens")
