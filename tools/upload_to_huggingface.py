@@ -18,8 +18,6 @@ try:
     from datasets import Dataset, DatasetDict, load_dataset
     import pandas as pd
     import boto3
-    from botocore import UNSIGNED
-    from botocore.client import Config
 except ImportError as e:
     print(f"Missing required packages. Please install: {e}")
     print("Run: pip install huggingface_hub datasets pandas boto3 python-dotenv")
@@ -85,9 +83,8 @@ def get_s3_files(s3_path: str, max_files: int = 1000) -> List[str]:
     bucket = path_parts[0]
     prefix = '/'.join(path_parts[1:])
 
-    # Use anonymous access for public buckets
-    s3_client = boto3.client('s3',
-                           config=Config(signature_version=UNSIGNED))
+    # Use authenticated access for private buckets
+    s3_client = boto3.client('s3')
 
     paginator = s3_client.get_paginator('list_objects_v2')
     page_iterator = paginator.paginate(Bucket=bucket, Prefix=prefix)
@@ -148,9 +145,8 @@ def load_jsonl_files(file_paths: List[str], batch_size: int = 10000) -> pd.DataF
         print(f"Loading {file_path}...")
         try:
             if file_path.startswith('s3://'):
-                # Load from S3
-                s3_client = boto3.client('s3',
-                                       config=Config(signature_version=UNSIGNED))
+                # Load from S3 with authentication
+                s3_client = boto3.client('s3')
                 path_parts = file_path.replace('s3://', '').split('/')
                 bucket = path_parts[0]
                 key = '/'.join(path_parts[1:])
