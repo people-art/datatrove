@@ -329,11 +329,11 @@ def main():
 
     # Create repository if it doesn't exist
     try:
-        api.repo_info(args.repo_name)
+        api.repo_info(args.repo_name, repo_type="dataset")
         print(f"📦 Repository {args.repo_name} already exists")
-    except Exception:
-        print(f"📦 Creating repository {args.repo_name}")
-        create_repo(
+    except Exception as e:
+        print(f"📦 Creating repository {args.repo_name} (error: {e})")
+        api.create_repo(
             args.repo_name,
             token=token,
             private=args.private,
