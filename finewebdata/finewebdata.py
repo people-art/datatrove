@@ -1018,12 +1018,12 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
         print(f"📁 Processing dump: {DUMP_TO_PROCESS}")
         print(f"🎯 Target domain: {domain}")
         if not (use_llm_scoring and INFERENCE_RUNNER_AVAILABLE):
-            print("⚠️  Limited to 10000 documents per task for testing (remove limit with --use-llm-scoring for full processing)")
+            print("⚠️  Limited to 1,000,000 documents per task for testing (remove limit with --use-llm-scoring for full processing)")
             pipeline[0] = WarcReader(
                 data_folder=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
                 glob_pattern="*/warc/*",
                 default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain.replace(' ', '-')}"},
-                limit=10000,  # Limit for local testing
+                limit=1000000,  # Limit for local testing - increased to 1M
             )
         else:
             print("⚠️  LLM scoring enabled - processing full dump (may be slow on local machine)")
