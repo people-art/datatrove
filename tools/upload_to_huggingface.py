@@ -215,8 +215,8 @@ tags:
 - fineweb-data
 - common-crawl
 - web-scraping
-- text-dataset{'
-- ' + args.domain.replace(' ', '-').lower() if args.domain else ''}
+- text-dataset
+{"- " + args.domain.replace(' ', '-').lower() if args.domain else ""}
 size_categories:
 - {stats.get('size_category', 'unknown')}
 ---
