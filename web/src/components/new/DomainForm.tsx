@@ -85,24 +85,38 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
 
     try {
       setQuoteLoading(true);
-      // Note: This would need to be implemented in the API
-      // For now, we'll create a mock quote
-      const mockQuote: QuoteData = {
-        currency: 'USD',
-        estimated_tokens: 10000000,
-        subtotal: 50.00,
-        tax: 4.00,
-        total: 54.00,
-        pricing_notes: 'Estimate only. Benchmark preview is free. Final quote adjusts with actual coverage & quality.',
+
+      // Convert form data to quote request format
+      const quoteRequest = {
+        domain: data.domain,
+        keywords: data.keywords,
+        languages: data.languages,
+        startDate: data.timeRange.start,
+        endDate: data.timeRange.end,
+        qualityTier: data.qualityTier,
+        estimatedScale: data.estimatedScale ? { docs: parseInt(data.estimatedScale) || undefined } : undefined,
+      };
+
+      const quoteResponse = await benchmarkApi.createQuote(quoteRequest);
+
+      // Convert quote response to display format
+      const displayQuote: QuoteData = {
+        currency: quoteResponse.currency,
+        estimated_tokens: 10000000, // Placeholder - would be calculated
+        subtotal: (quoteResponse.estimate.low + quoteResponse.estimate.high) / 2,
+        tax: ((quoteResponse.estimate.low + quoteResponse.estimate.high) / 2) * 0.08,
+        total: ((quoteResponse.estimate.low + quoteResponse.estimate.high) / 2) * 1.08,
+        pricing_notes: `Quote ID: ${quoteResponse.quoteId}. Estimate only. Benchmark preview is free. Final quote adjusts with actual coverage & quality.`,
         breakdown: {
-          base_price_per_million: 50.0,
+          base_price_per_million: quoteResponse.unit.amount,
           language_factor: 1.0,
           domain_factor: 1.0,
           time_factor: 1.0,
-          adjusted_price_per_million: 50.0,
+          adjusted_price_per_million: quoteResponse.unit.amount,
         }
       };
-      setQuote(mockQuote);
+
+      setQuote(displayQuote);
     } catch (error) {
       console.error('Failed to fetch quote:', error);
     } finally {

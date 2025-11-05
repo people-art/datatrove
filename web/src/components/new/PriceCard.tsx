@@ -6,24 +6,7 @@ import { GradientCard } from "@/components/ui/gradient-card";
 import { AnimatedPrice } from "@/components/ui/animated-number";
 
 interface PriceCardProps {
-  quote?: {
-    currency: string;
-    estimated_tokens?: number;
-    actual_tokens?: number;
-    subtotal: number;
-    tax: number;
-    total: number;
-    pricing_notes: string;
-    breakdown?: {
-      base_price_per_million: number;
-      language_factor: number;
-      domain_factor: number;
-      time_factor: number;
-      adjusted_price_per_million: number;
-    };
-    quality_adjustment?: number;
-    benchmark_results?: any;
-  } | null;
+  quote?: QuoteData | null;
   isLoading?: boolean;
   className?: string;
 }
