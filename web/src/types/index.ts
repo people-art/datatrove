@@ -14,6 +14,13 @@ export interface DomainFormData {
 
 export interface BenchmarkJob {
   id: string;
+  domain: string;
+  keywords: string[];
+  languages: string[];
+  time_range_start: string;
+  time_range_end: string;
+  quality_tier: string;
+  email: string;
   status: 'queued' | 'running' | 'ready' | 'failed';
   progress: {
     pct: number;
@@ -21,6 +28,10 @@ export interface BenchmarkJob {
     docs_kept: number;
     tokens: number;
     dedup_rate: number;
+    coverage?: number;
+    quality_rate?: number;
+    pii_rate?: number;
+    relevance_score?: number;
   };
   metrics?: {
     coverage: number;
@@ -36,14 +47,27 @@ export interface BenchmarkJob {
     filters: Record<string, any>;
   };
   error?: string;
+  error_message?: string;
+  created_at: string;
 }
 
 export interface QuoteData {
   currency: string;
+  estimated_tokens?: number;
+  actual_tokens?: number;
   subtotal: number;
   tax: number;
   total: number;
   pricing_notes: string;
+  breakdown?: {
+    base_price_per_million: number;
+    language_factor: number;
+    domain_factor: number;
+    time_factor: number;
+    adjusted_price_per_million: number;
+  };
+  quality_adjustment?: number;
+  benchmark_results?: any;
 }
 
 export interface Order {

@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { cardHover } from "@/lib/animations";
 
 interface GradientCardProps {
   children: React.ReactNode;
@@ -17,28 +16,41 @@ export function GradientCard({
   glowOnHover = true,
   animate = true
 }: GradientCardProps) {
-  const CardComponent = animate ? motion.div : "div";
-
-  const motionProps = animate ? {
-    initial: { opacity: 0, y: 8 },
-    animate: { opacity: 1, y: 0 },
-    whileHover: glowOnHover ? "hover" : undefined,
-    variants: cardHover,
-    transition: { duration: 0.2 }
-  } : {};
+  if (animate) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={glowOnHover ? {
+          y: -4,
+          boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
+          transition: { duration: 0.2, ease: "easeOut" }
+        } : undefined}
+        transition={{ duration: 0.2 }}
+        className={cn(
+          "relative rounded-2xl p-px bg-gradient-to-b from-white/20 via-white/6 to-transparent",
+          glowOnHover && "transition-all duration-300 hover:shadow-[0_0_32px_rgba(45,91,255,0.15)]",
+          className
+        )}
+      >
+        <div className="rounded-2xl bg-card p-6 md:p-8 border border-white/5">
+          {children}
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
-    <CardComponent
+    <div
       className={cn(
         "relative rounded-2xl p-px bg-gradient-to-b from-white/20 via-white/6 to-transparent",
         glowOnHover && "transition-all duration-300 hover:shadow-[0_0_32px_rgba(45,91,255,0.15)]",
         className
       )}
-      {...motionProps}
     >
       <div className="rounded-2xl bg-card p-6 md:p-8 border border-white/5">
         {children}
       </div>
-    </CardComponent>
+    </div>
   );
 }

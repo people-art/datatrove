@@ -340,7 +340,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
                           <button
                             key={tier.value}
                             type="button"
-                            onClick={() => updateFormData({ qualityTier: tier.value })}
+                            onClick={() => updateFormData({ qualityTier: tier.value as "basic" | "standard" | "premium" })}
                             className={`w-full p-4 rounded-xl border text-left transition-all ${
                               formData.qualityTier === tier.value
                                 ? 'border-primary bg-primary/5'
@@ -431,14 +431,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
             onSubmit(formData);
           }
         }}
-        label={isLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Creating Preview...
-          </>
-        ) : (
-          "Generate Preview (1M pages)"
-        )}
+        label={isLoading ? "Creating Preview..." : "Generate Preview (1M pages)"}
         isVisible={true}
       />
 

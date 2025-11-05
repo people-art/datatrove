@@ -8,7 +8,8 @@ import { AnimatedPrice } from "@/components/ui/animated-number";
 interface PriceCardProps {
   quote?: {
     currency: string;
-    estimated_tokens: number;
+    estimated_tokens?: number;
+    actual_tokens?: number;
     subtotal: number;
     tax: number;
     total: number;
@@ -20,7 +21,9 @@ interface PriceCardProps {
       time_factor: number;
       adjusted_price_per_million: number;
     };
-  };
+    quality_adjustment?: number;
+    benchmark_results?: any;
+  } | null;
   isLoading?: boolean;
   className?: string;
 }
@@ -79,17 +82,19 @@ export function PriceCard({ quote, isLoading, className }: PriceCardProps) {
                 </div>
 
                 {/* Token Estimate */}
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                  <TrendingUp className="h-4 w-4 text-accent" />
-                  <div className="text-sm">
-                    <div className="font-medium">
-                      ~{quote.estimated_tokens.toLocaleString()} tokens
-                    </div>
-                    <div className="text-foreground/60">
-                      Estimated size
+                {quote.estimated_tokens && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/5 border border-accent/10">
+                    <TrendingUp className="h-4 w-4 text-accent" />
+                    <div className="text-sm">
+                      <div className="font-medium">
+                        ~{quote.estimated_tokens.toLocaleString()} tokens
+                      </div>
+                      <div className="text-foreground/60">
+                        Estimated size
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Pricing Notes */}
                 <div className="text-xs text-foreground/60 leading-relaxed">
