@@ -1,0 +1,95 @@
+"""
+Pydantic schemas for benchmark and order APIs
+"""
+
+from datetime import datetime
+from typing import Dict, List, Optional
+from pydantic import BaseModel, EmailStr
+
+
+class DomainFormData(BaseModel):
+    """Form data for creating a benchmark job."""
+    domain: str
+    keywords: List[str]
+    languages: List[str]
+    time_range: Dict[str, str]  # {"start": "2020-01-01", "end": "2024-12-31"}
+    quality_tier: str  # "basic", "standard", "premium"
+    estimated_scale: Optional[str] = None
+    email: EmailStr
+
+
+class BenchmarkProgress(BaseModel):
+    """Benchmark job progress information."""
+    pct: float
+    docs_read: int
+    docs_kept: int
+    tokens: int
+    dedup_rate: float
+
+
+class BenchmarkMetrics(BaseModel):
+    """Benchmark job quality metrics."""
+    coverage: float
+    quality_pass_rate: float
+    pii_rate: float
+    toxicity_rate: float
+    lang_dist: Dict[str, int]
+    domain_dist: Dict[str, int]
+
+
+class BenchmarkJobResponse(BaseModel):
+    """Response for benchmark job status."""
+    id: str
+    status: str  # "queued", "running", "ready", "failed"
+    progress: Optional[BenchmarkProgress] = None
+    metrics: Optional[BenchmarkMetrics] = None
+    sample_url: Optional[str] = None
+    suggested_params: Optional[Dict] = None
+    error: Optional[str] = None
+
+
+class QuoteRequest(BaseModel):
+    """Request for pricing quote."""
+    jobId: str
+
+
+class QuoteResponse(BaseModel):
+    """Response with pricing information."""
+    currency: str
+    subtotal: float
+    tax: float
+    total: float
+    pricing_notes: str
+
+
+class CheckoutSessionRequest(BaseModel):
+    """Request to create Stripe checkout session."""
+    jobId: str
+    plan: str = "one-off"
+
+
+class CheckoutSessionResponse(BaseModel):
+    """Response with Stripe client secret."""
+    client_secret: str
+    orderId: str
+
+
+class OrderTimelineEvent(BaseModel):
+    """Order timeline event."""
+    timestamp: str
+    label: str
+
+
+class OrderResponse(BaseModel):
+    """Order status response."""
+    id: str
+    status: str
+    timeline: List[OrderTimelineEvent]
+    live: Optional[Dict[str, int]] = None  # Production stats when running
+    delivery: Optional[Dict[str, Optional[str]]] = None  # Delivery URLs
+    error: Optional[str] = None
+
+
+class BenchmarkJobCreateResponse(BaseModel):
+    """Response for benchmark job creation."""
+    jobId: str

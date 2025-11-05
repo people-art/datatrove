@@ -1,0 +1,7 @@
+"""
+Database base configuration and utilities
+"""
+
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()

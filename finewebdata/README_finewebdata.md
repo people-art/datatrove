@@ -1,11 +1,11 @@
-# FineWeb-Data: Universal Domain-Specific Dataset Processing Pipeline
+# FineData: Universal Domain-Specific Dataset Build Pipeline
 
 FineWeb-Data 是一个通用的领域特定数据集处理管道，基于 FineWeb 方法论构建。该管道可以根据用户输入的主题词或领域动态生成本体论驱动的关键词，并从中创建高质量的领域数据集。
 
 ## 🚀 核心特性
 
 ### 🎯 动态领域生成
-- **LLM驱动的本体论构建**：使用 GPT-4 为任何领域自动生成结构化的知识体系
+- **LLM驱动的本体论构建**：使用 GPT-5 为任何领域自动生成结构化的知识体系
 - **多层次关键词体系**：核心概念、子领域、关键词、技术术语、上下文指标
 - **智能质量过滤**：基于领域本体论的正则表达式模式匹配
 
@@ -239,15 +239,12 @@ tail -f logs/base_processing/*/slurm_logs/slurm-<job_id>.out
 3. **数据量**：大型数据集需要集群环境
 4. **质量保证**：建议对新领域运行基准测试
 
-## 🤝 贡献
-
-欢迎提交问题和功能请求！对于新领域支持或算法改进，请提供详细说明。
 
 ---
 
 **示例输出数据集结构：**
 ```
-s3://fineweb-data/base_processing/output/CC-MAIN-2025-01/
+s3://finedata/base_processing/output/CC-MAIN-2025-01/
 ├── _SUCCESS
 ├── part-00000.jsonl.gz
 ├── part-00001.jsonl.gz
@@ -258,7 +255,7 @@ s3://fineweb-data/base_processing/output/CC-MAIN-2025-01/
   "text": "Full article text...",
   "url": "https://example.com/article",
   "dump": "CC-MAIN-2025-01",
-  "dataset": "fineweb-education",
+  "dataset": "finedata-education",
   "llm_domain_score": 4.2
 }
 ```

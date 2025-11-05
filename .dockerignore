@@ -1,0 +1,60 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Development files
+.env
+.env.*
+!.env.example
+env.example
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Node.js (for web)
+web/node_modules
+web/.next
+web/out
+web/.env*
+
+# Python (for api)
+api/__pycache__
+api/*.pyc
+api/.pytest_cache
+api/.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Test files
+tests/
+*_test.py
+test_*.py
+
+# Build artifacts
+build/
+dist/

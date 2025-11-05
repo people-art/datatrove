@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: finedata-postgres
+    environment:
+      POSTGRES_DB: finedata
+      POSTGRES_USER: finedata
+      POSTGRES_PASSWORD: finedata_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finedata -d finedata"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finedata-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: finedata-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finedata-network
+
+  # Backend API
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: finedata-api
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      - DEBUG=true
+      - SECRET_KEY=finedata-secret-key-change-in-production
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=finedata
+      - POSTGRES_PASSWORD=finedata_password
+      - POSTGRES_DB=finedata
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SERVER_HOST=http://api:8000
+      # Stripe (use test keys for development)
+      - STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
+      - STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+      - STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
+      # AWS S3 (optional for development)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - S3_BUCKET_DATASETS=finedata-dev-datasets
+      - S3_BUCKET_SAMPLES=finedata-dev-samples
+      # Hugging Face (optional for development)
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_ORG_NAME=${HF_ORG_NAME:-}
+      # Email (optional for development)
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+    networks:
+      - finedata-network
+    restart: unless-stopped
+
+  # Frontend
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: finedata-web
+    command: ["npm", "run", "dev"]
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - finedata-network
+    restart: unless-stopped
+
+  # Optional: Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: finedata-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - web
+      - api
+    networks:
+      - finedata-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+  redis_data:
+  nginx_logs:
+
+networks:
+  finedata-network:
+    driver: bridge
