@@ -11,6 +11,7 @@ import structlog
 from app.models.benchmark import OrderStatus
 from app.services.order import OrderService
 from app.services.benchmark import BenchmarkService
+from app.services.slurm import SlurmProductionService
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
@@ -23,6 +24,7 @@ class PaymentService:
         self.db = db
         self.order_service = OrderService(db)
         self.benchmark_service = BenchmarkService(db)
+        self.slurm_service = SlurmProductionService(self.order_service)
 
     async def create_payment_intent(
         self,
