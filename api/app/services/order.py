@@ -53,7 +53,8 @@ class OrderService:
         await self.add_timeline_event(
             order_id,
             "Order created",
-            f"Order created for benchmark job {benchmark_job_id}"
+            f"Order created for benchmark job {benchmark_job_id}",
+            None
         )
 
         return order
@@ -138,7 +139,8 @@ class OrderService:
             await self.add_timeline_event(
                 order_id,
                 f"Status changed to {status.value}",
-                f"Order status changed from {old_status.value} to {status.value}"
+                f"Order status changed from {old_status.value} to {status.value}",
+                None
             )
 
     async def get_order_by_id(self, order_id: str) -> Optional[Order]:
@@ -152,14 +154,14 @@ class OrderService:
         order_id: str,
         event_type: str,
         description: str,
-        metadata: Optional[Dict] = None
+        event_metadata: Optional[Dict] = None
     ) -> None:
         """Add timeline event to order."""
         event = OrderTimelineEvent(
             order_id=order_id,
             event_type=event_type,
             description=description,
-            metadata=metadata or {},
+            event_metadata=event_metadata or {},
         )
 
         self.db.add(event)

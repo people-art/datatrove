@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from app import schemas
+from app.schemas import benchmark as schemas
 from app.db.dependencies import get_db
 from app.models.benchmark import BenchmarkJob, BenchmarkStatus
 from app.services.benchmark import BenchmarkService

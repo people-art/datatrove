@@ -126,6 +126,6 @@ class OrderTimelineEvent(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     event_type = Column(String, nullable=False)  # Status change, payment, etc.
     description = Column(String, nullable=False)
-    metadata = Column(JSON, nullable=True)  # Additional event data
+    event_metadata = Column(JSON, nullable=True)  # Additional event data
 
     order = relationship("Order", back_populates="timeline_events")
