@@ -79,8 +79,7 @@ def method_2_pandas_analysis(dataset_id, token):
 
     # 基本统计
     if len(df) > 0:
-        print("
-统计信息:")
+        print("\n统计信息:")
         if 'text' in df.columns:
             print(f"  文本平均长度: {df['text'].str.len().mean():.0f} 字符")
             print(f"  文本最大长度: {df['text'].str.len().max()} 字符")
