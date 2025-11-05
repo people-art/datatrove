@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { DollarSign, TrendingUp } from "lucide-react";
 import { GradientCard } from "@/components/ui/gradient-card";
+import { AnimatedPrice } from "@/components/ui/animated-number";
 
 interface PriceCardProps {
   quote?: {
@@ -53,7 +54,7 @@ export function PriceCard({ quote, isLoading, className }: PriceCardProps) {
                 {/* Main Price */}
                 <div className="text-center p-4 rounded-xl bg-primary/5 border border-primary/10">
                   <div className="text-3xl font-bold text-primary">
-                    ${quote.total.toFixed(2)}
+                    <AnimatedPrice value={quote.total} duration={0.8} />
                   </div>
                   <div className="text-sm text-foreground/60 mt-1">
                     {quote.currency}
@@ -64,16 +65,16 @@ export function PriceCard({ quote, isLoading, className }: PriceCardProps) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-foreground/70">Subtotal</span>
-                    <span>${quote.subtotal.toFixed(2)}</span>
+                    <AnimatedPrice value={quote.subtotal} duration={0.6} />
                   </div>
                   <div className="flex justify-between">
                     <span className="text-foreground/70">Tax (8%)</span>
-                    <span>${quote.tax.toFixed(2)}</span>
+                    <AnimatedPrice value={quote.tax} duration={0.6} />
                   </div>
                   <hr className="border-line" />
                   <div className="flex justify-between font-medium">
                     <span>Total</span>
-                    <span>${quote.total.toFixed(2)}</span>
+                    <AnimatedPrice value={quote.total} duration={0.8} />
                   </div>
                 </div>
 

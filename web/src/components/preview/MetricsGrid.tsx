@@ -12,6 +12,7 @@ import {
   TrendingDown
 } from "lucide-react";
 import { GradientCard } from "@/components/ui/gradient-card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MetricsGridProps {
   metrics: {
@@ -91,12 +92,61 @@ const riskMetrics = [
 export function MetricsGrid({ metrics, isLoading }: MetricsGridProps) {
   if (isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="h-32 bg-muted/50 rounded-2xl" />
+      <div className="space-y-8">
+        {/* Quality Metrics Loading */}
+        <div>
+          <Skeleton className="h-6 w-32 mb-4" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <GradientCard key={i} animate={false} glowOnHover={false}>
+                <div className="text-center space-y-3">
+                  <Skeleton className="h-12 w-12 rounded-xl mx-auto" />
+                  <Skeleton className="h-6 w-16 mx-auto" />
+                  <Skeleton className="h-4 w-20 mx-auto" />
+                  <Skeleton className="h-3 w-24 mx-auto" />
+                </div>
+              </GradientCard>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Risk Assessment Loading */}
+        <div>
+          <Skeleton className="h-6 w-40 mb-4" />
+          <div className="grid gap-6 md:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <GradientCard key={i} animate={false} glowOnHover={false}>
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-xl flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-4 w-4 flex-shrink-0" />
+                </div>
+              </GradientCard>
+            ))}
+          </div>
+        </div>
+
+        {/* Insights Loading */}
+        <GradientCard animate={false} glowOnHover={false}>
+          <div className="text-center space-y-4">
+            <Skeleton className="h-5 w-24 mx-auto" />
+            <div className="grid gap-4 md:grid-cols-2 text-sm">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            </div>
+          </div>
+        </GradientCard>
       </div>
     );
   }
