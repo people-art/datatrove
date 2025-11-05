@@ -63,7 +63,7 @@ class PricingService:
     def __init__(self):
         pass
 
-    def calculate_initial_quote(
+    async def calculate_initial_quote(
         self,
         domain: str,
         keywords: list,

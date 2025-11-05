@@ -73,3 +73,30 @@ async def stripe_webhook(
     except Exception as e:
         logger.error("Webhook processing failed", error=str(e))
         raise HTTPException(status_code=400, detail="Webhook processing failed")
+
+
+@router.post("/webhook")
+async def stripe_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Handle Stripe webhook events for payment completion.
+    """
+    try:
+        payment_service = PaymentService(db)
+
+        # Get raw body for signature verification
+        body = await request.body()
+        signature = request.headers.get("stripe-signature")
+
+        # Process webhook
+        event = await payment_service.process_webhook(body, signature)
+
+        logger.info("Webhook processed", event_type=event.get("type"))
+
+        return {"status": "ok"}
+
+    except Exception as e:
+        logger.error("Webhook processing failed", error=str(e))
+        raise HTTPException(status_code=400, detail="Webhook processing failed")

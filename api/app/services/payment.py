@@ -182,4 +182,59 @@ class PaymentService:
         if payment_intent_id.startswith("pi_"):
             order_id = payment_intent_id.replace("pi_", "").split("_secret_")[0]
             return await self.order_service.get_order_by_id(order_id)
-        return None
+
+    async def create_payment_intent_for_quote(self, quote_id: str):
+        """Create a Stripe payment intent for a quote."""
+        try:
+            # For now, create a placeholder payment intent
+            # In production, this would integrate with Stripe API
+            import secrets
+
+            payment_intent = type('PaymentIntent', (), {
+                'id': f'pi_{secrets.token_hex(16)}',
+                'client_secret': f'pi_{secrets.token_hex(16)}_secret_{secrets.token_hex(16)}',
+                'amount': 10800,  # $108.00 in cents
+                'currency': 'usd',
+                'status': 'requires_payment_method'
+            })()
+
+            logger.info("Payment intent created for quote", quote_id=quote_id, pi_id=payment_intent.id)
+            return payment_intent
+
+        except Exception as e:
+            logger.error("Failed to create payment intent", quote_id=quote_id, error=str(e))
+            raise
+
+    async def process_webhook(self, body: bytes, signature: str):
+        """Process Stripe webhook event."""
+        try:
+            # In production, this would verify the Stripe signature
+            # For now, we'll simulate webhook processing
+
+            import json
+            event_data = json.loads(body.decode())
+
+            event_type = event_data.get("type")
+            payment_intent_id = event_data.get("data", {}).get("object", {}).get("id")
+
+            if event_type == "payment_intent.succeeded":
+                # Payment succeeded - trigger production
+                order = await self.get_order_by_payment_intent(payment_intent_id)
+                if order:
+                    await self.handle_payment_success(order.id)
+
+            elif event_type == "payment_intent.payment_failed":
+                # Payment failed
+                order = await self.get_order_by_payment_intent(payment_intent_id)
+                if order:
+                    await self.order_service.update_order_status(
+                        order.id,
+                        OrderStatus.FAILED,
+                        error_message="Payment failed"
+                    )
+
+            return event_data
+
+        except Exception as e:
+            logger.error("Webhook processing failed", error=str(e))
+            raise

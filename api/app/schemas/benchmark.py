@@ -93,3 +93,57 @@ class OrderResponse(BaseModel):
 class BenchmarkJobCreateResponse(BaseModel):
     """Response for benchmark job creation."""
     jobId: str
+
+
+class QuoteRequest(BaseModel):
+    """Request for generating a quote."""
+    domain: str
+    keywords: List[str]
+    languages: List[str]
+    startDate: str  # YYYY-MM-DD
+    endDate: str    # YYYY-MM-DD
+    qualityTier: str  # "basic", "standard", "premium"
+    estimatedScale: Optional[Dict[str, int]] = None  # {"docs": 100000} or {"tokens": 10000000}
+
+
+class QuoteEstimate(BaseModel):
+    """Quote price estimate range."""
+    low: float
+    high: float
+
+
+class QuoteUnit(BaseModel):
+    """Quote pricing unit information."""
+    basis: str  # "per_million_pages"
+    amount: float
+
+
+class QuoteResponse(BaseModel):
+    """Response for quote generation."""
+    quoteId: str
+    currency: str
+    estimate: QuoteEstimate
+    unit: QuoteUnit
+    expiresAt: str  # ISO-8601 timestamp
+
+
+class OrderCreateRequest(BaseModel):
+    """Request for creating an order."""
+    quoteId: str
+    jobId: str
+    email: EmailStr
+
+
+class OrderCreateResponse(BaseModel):
+    """Response for order creation."""
+    orderId: str
+    provider: str  # "stripe"
+    clientSecret: str
+
+
+class ProductionStatusResponse(BaseModel):
+    """Response for production status."""
+    status: str  # "initializing", "running", "dedup", "publishing", "delivered", "failed"
+    estCompleteAt: Optional[str] = None  # ISO-8601 timestamp
+    logsUrl: Optional[str] = None
+    error: Optional[str] = None

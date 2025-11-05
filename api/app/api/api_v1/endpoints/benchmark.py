@@ -12,10 +12,60 @@ from app.schemas import benchmark as schemas
 from app.db.dependencies import get_db
 from app.models.benchmark import BenchmarkJob, BenchmarkStatus
 from app.services.benchmark import BenchmarkService
+from app.services.pricing import PricingService
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
+
+
+@router.post("/quote", response_model=schemas.QuoteResponse)
+async def create_quote(
+    data: schemas.QuoteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Generate a quote for dataset generation based on requirements.
+    """
+    try:
+        pricing_service = PricingService()
+
+        # Convert request to pricing service format
+        quote_data = pricing_service.calculate_initial_quote(
+            domain=data.domain,
+            keywords=data.keywords,
+            languages=data.languages,
+            time_range={
+                "start": data.startDate,
+                "end": data.endDate
+            },
+            quality_tier=data.qualityTier,
+            estimated_scale=data.estimatedScale.get("docs") if data.estimatedScale else None
+        )
+
+        # Generate quote ID and expiration
+        quote_id = f"q_{uuid.uuid4().hex[:16]}"
+        expires_at = "2025-12-31T23:59:59Z"  # 6 months from now (placeholder)
+
+        logger.info("Quote generated", quote_id=quote_id, domain=data.domain)
+
+        return schemas.QuoteResponse(
+            quoteId=quote_id,
+            currency=quote_data["currency"],
+            estimate=schemas.QuoteEstimate(
+                low=round(quote_data["subtotal"] * 0.8, 2),  # Conservative low estimate
+                high=round(quote_data["subtotal"] * 1.2, 2)  # Conservative high estimate
+            ),
+            unit=schemas.QuoteUnit(
+                basis="per_million_pages",
+                amount=quote_data["breakdown"]["adjusted_price_per_million"]
+            ),
+            expiresAt=expires_at
+        )
+
+    except Exception as e:
+        logger.error("Failed to generate quote", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to generate quote")
 
 
 @router.post("/jobs", response_model=schemas.BenchmarkJobCreateResponse)

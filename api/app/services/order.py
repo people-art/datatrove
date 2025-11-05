@@ -10,6 +10,7 @@ import structlog
 
 from app.models.benchmark import Order, OrderStatus, OrderTimelineEvent
 from app.schemas.benchmark import OrderTimelineEvent as TimelineEventSchema
+from app.services.payment import PaymentService
 
 logger = structlog.get_logger(__name__)
 
@@ -166,3 +167,77 @@ class OrderService:
 
         self.db.add(event)
         await self.db.commit()
+
+    async def create_order(
+        self,
+        quote_id: str,
+        job_id: str,
+        email: str
+    ) -> Dict[str, Any]:
+        """Create a new order bound to a quote and benchmark job."""
+        # Create payment intent via PaymentService
+        payment_service = PaymentService(self.db)
+        payment_intent = await payment_service.create_payment_intent_for_quote(quote_id)
+
+        # Create order record
+        order_id = f"order_{quote_id.split('_')[1]}"  # Use quote ID suffix for order ID
+
+        # For now, create a placeholder order - in production this would be more sophisticated
+        order = Order(
+            id=order_id,
+            benchmark_job_id=job_id,
+            status=OrderStatus.AWAITING_PAYMENT,
+            currency="USD",
+            subtotal=100.0,  # Placeholder - would come from quote
+            tax=8.0,        # Placeholder - would come from quote
+            total=108.0,    # Placeholder - would come from quote
+            pricing_notes="Quote-based pricing",
+            stripe_payment_intent_id=payment_intent.id,
+            stripe_client_secret=payment_intent.client_secret,
+            quote_id=quote_id,
+            email=email
+        )
+
+        self.db.add(order)
+        await self.db.commit()
+        await self.db.refresh(order)
+
+        # Add timeline event
+        await self.add_timeline_event(
+            order_id,
+            "order_created",
+            f"Order created for quote {quote_id} and job {job_id}",
+            {"quote_id": quote_id, "job_id": job_id, "email": email}
+        )
+
+        return {
+            "id": order_id,
+            "client_secret": payment_intent.client_secret
+        }
+
+    async def get_production_status(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """Get production task status for an order."""
+        stmt = select(Order).where(Order.id == order_id)
+        result = await self.db.execute(stmt)
+        order = result.scalar_one_or_none()
+
+        if not order:
+            return None
+
+        # Map order status to production status
+        status_mapping = {
+            OrderStatus.CLUSTER_QUEUED: "initializing",
+            OrderStatus.RUNNING: "running",
+            OrderStatus.FINALIZING: "publishing",
+            OrderStatus.DELIVERED: "delivered",
+            OrderStatus.FAILED: "failed"
+        }
+
+        production_status = status_mapping.get(order.status, "unknown")
+
+        return {
+            "status": production_status,
+            "estCompleteAt": None,  # Would be calculated based on job progress
+            "logsUrl": None,       # Would point to Slurm logs
+            "error": order.error_message if order.status == OrderStatus.FAILED else None
+        }
