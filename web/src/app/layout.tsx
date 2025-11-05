@@ -3,7 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { MainNav } from "@/components/nav/MainNav";
+import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
+import { MainNav, SkipLink } from "@/components/nav/MainNav";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,12 +31,15 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <QueryProvider>
-            <MainNav />
-            <main className="min-h-screen">
-              {children}
-            </main>
-          </QueryProvider>
+          <AccessibilityProvider>
+            <SkipLink />
+            <QueryProvider>
+              <MainNav />
+              <main id="main-content" className="min-h-screen">
+                {children}
+              </main>
+            </QueryProvider>
+          </AccessibilityProvider>
         </ThemeProvider>
       </body>
     </html>
