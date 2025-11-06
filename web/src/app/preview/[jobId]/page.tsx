@@ -102,9 +102,14 @@ export default function PreviewPage({ params }: PreviewPageProps) {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight">
-                  Dataset Preview
-                </h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-semibold tracking-tight">
+                    Dataset Preview
+                  </h1>
+                  <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm font-medium rounded-full">
+                    Local Preview
+                  </span>
+                </div>
                 <p className="text-lg text-foreground/70">
                   Review quality metrics and sample data before ordering
                 </p>

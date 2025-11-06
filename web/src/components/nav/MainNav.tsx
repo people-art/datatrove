@@ -91,60 +91,67 @@ export function MainNav() {
           ))}
         </div>
 
-        {/* Right side actions */}
-        <div className="flex items-center space-x-3">
-          {/* Health indicator */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full ${
-                healthCheck.isSuccess
-                  ? 'bg-green-500'
-                  : healthCheck.isError
-                  ? 'bg-red-500'
-                  : 'bg-yellow-500 animate-pulse'
-              }`}
-              title={
-                healthCheck.isSuccess
-                  ? 'API healthy'
-                  : healthCheck.isError
-                  ? 'API unhealthy'
-                  : 'Checking API health...'
-              }
-            />
-            <Activity className="h-4 w-4 text-foreground/70" />
-          </div>
+                {/* Right side actions */}
+                <div className="flex items-center space-x-3">
+                  {/* Health indicator */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        healthCheck.isSuccess
+                          ? 'bg-green-500'
+                          : healthCheck.isError
+                          ? 'bg-red-500'
+                          : 'bg-yellow-500 animate-pulse'
+                      }`}
+                      title={
+                        healthCheck.isSuccess
+                          ? 'API healthy'
+                          : healthCheck.isError
+                          ? 'API unhealthy'
+                          : 'Checking API health...'
+                      }
+                    />
+                    <Activity className="h-4 w-4 text-foreground/70" />
+                  </div>
 
-          {/* Task badge */}
-          {taskCounts.total > 0 && (
-            <Badge variant="secondary" className="relative">
-              {taskCounts.total}
-              <span className="sr-only">
-                {taskCounts.running} running, {taskCounts.queued} queued tasks
-              </span>
-            </Badge>
-          )}
+                  {/* Task badge */}
+                  {taskCounts.total > 0 && (
+                    <Link href="/dashboard">
+                      <Badge variant="secondary" className="relative cursor-pointer hover:bg-secondary/80 transition-colors">
+                        {taskCounts.total}
+                        <span className="sr-only">
+                          {taskCounts.running} running, {taskCounts.queued} queued tasks
+                        </span>
+                      </Badge>
+                    </Link>
+                  )}
 
-          {/* Language switcher */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
-            className="flex items-center gap-1"
-          >
-            <Globe className="h-4 w-4" />
-            <span className="text-xs font-medium">
-              {language === 'en' ? '中文' : 'EN'}
-            </span>
-          </Button>
+                  {/* Language switcher */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+                    className="flex items-center gap-1"
+                  >
+                    <Globe className="h-4 w-4" />
+                    <span className="text-xs font-medium">
+                      {language === 'en' ? '中文' : 'EN'}
+                    </span>
+                  </Button>
 
-          <ThemeToggle />
+                  <ThemeToggle />
 
-          {/* Desktop CTA */}
-          <div className="hidden md:block">
-            <Button asChild size="sm">
-              <Link href="/new">{t('createDataset')}</Link>
-            </Button>
-          </div>
+                  {/* User menu placeholder */}
+                  <Button variant="ghost" size="sm">
+                    Sign in
+                  </Button>
+
+                  {/* Desktop CTA */}
+                  <div className="hidden md:block">
+                    <Button asChild size="sm">
+                      <Link href="/new">{t('createDataset')}</Link>
+                    </Button>
+                  </div>
 
           {/* Mobile menu button */}
           <Button

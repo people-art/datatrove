@@ -103,7 +103,12 @@ export default function OrderPage({ params }: OrderPageProps) {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Order Status</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold text-gray-900">Order Status</h1>
+                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-full">
+                  Slurm Production
+                </span>
+              </div>
               <p className="text-gray-600">Order #{params.orderId}</p>
             </div>
           </div>
