@@ -5,6 +5,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
 import { MainNav, SkipLink } from "@/components/nav/MainNav";
+import { I18nProvider } from "@/lib/i18n";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,15 +32,19 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <AccessibilityProvider>
-            <SkipLink />
-            <QueryProvider>
-              <MainNav />
-              <main id="main-content" className="min-h-screen">
-                {children}
-              </main>
-            </QueryProvider>
-          </AccessibilityProvider>
+          <I18nProvider>
+            <AccessibilityProvider>
+              <SkipLink />
+              <QueryProvider>
+                <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+                  <MainNav />
+                  <main id="main-content" className="mx-auto w-full max-w-6xl px-4 md:px-6 lg:px-8">
+                    {children}
+                  </main>
+                </div>
+              </QueryProvider>
+            </AccessibilityProvider>
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -14,6 +14,7 @@ from app.models.benchmark import BenchmarkJob, BenchmarkStatus
 from app.services.benchmark import BenchmarkService
 from app.services.pricing import PricingService
 from app.core.errors import (
+    AppError,
     BusinessError,
     BenchmarkError,
     ValidationError,
@@ -39,10 +40,10 @@ async def create_quote(
             raise ValidationError("domain", data.domain, "Domain cannot be empty", "Please specify a domain")
 
         if len(data.keywords) < 2:
-            raise BusinessLogicError(
-                ErrorCode.BENCHMARK_TOO_FEW_KEYWORDS,
-                "Insufficient keywords provided",
-                "Please provide at least 2 keywords to improve search accuracy"
+            raise BusinessError(
+                code="BENCHMARK_TOO_FEW_KEYWORDS",
+                message="Insufficient keywords provided",
+                details={"hint": "Please provide at least 2 keywords to improve search accuracy"}
             )
 
         if len(data.keywords) > 64:
@@ -70,10 +71,10 @@ async def create_quote(
             # Check if date range is too large (> 5 years)
             date_diff = (end_date - start_date).days
             if date_diff > 365 * 5:
-                raise BusinessLogicError(
-                    ErrorCode.BENCHMARK_TIME_RANGE_TOO_LARGE,
-                    "Time range too large",
-                    "Please reduce the date range to 5 years or less"
+                raise BusinessError(
+                    code="BENCHMARK_TIME_RANGE_TOO_LARGE",
+                    message="Time range too large",
+                    details={"hint": "Please reduce the date range to 5 years or less"}
                 )
 
         except ValueError as e:
@@ -86,7 +87,7 @@ async def create_quote(
         pricing_service = PricingService()
 
         # Convert request to pricing service format
-        quote_data = pricing_service.calculate_initial_quote(
+        quote_data = await pricing_service.calculate_initial_quote(
             domain=data.domain.strip(),
             keywords=unique_keywords,
             languages=data.languages,
@@ -119,24 +120,18 @@ async def create_quote(
                 high=round(quote_data["subtotal"] * 1.2, 2)  # Conservative high estimate
             ),
             unit=schemas.QuoteUnit(
-                basis="per_million_pages",
-                amount=quote_data["breakdown"]["adjusted_price_per_million"]
+                basis="per_million_tokens",
+                amount=quote_data.get("adjusted_price_per_million", 50.0)  # Fallback price
             ),
             expiresAt=expires_at
         )
 
-    except (ValidationError, BusinessLogicError):
+    except (ValidationError, BusinessError) as e:
         # Re-raise custom errors
         raise
     except Exception as e:
         logger.error("Failed to generate quote", error=str(e), domain=data.domain)
-        raise AppError(
-            f"Quote generation failed: {str(e)}",
-            ErrorCode.INTERNAL_ERROR,
-            status_code=500,
-            details={"domain": data.domain},
-            user_message="Unable to generate quote. Please try again or contact support."
-        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/jobs", response_model=schemas.BenchmarkJobCreateResponse)

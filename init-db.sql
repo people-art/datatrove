@@ -18,10 +18,7 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
     user_id VARCHAR(255),
     expires_at TIMESTAMP NOT NULL,
     response_data TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_idempotency_keys_key_hash (key_hash),
-    INDEX idx_idempotency_keys_expires_at (expires_at),
-    INDEX idx_idempotency_keys_user_id (user_id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes for better performance

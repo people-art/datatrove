@@ -92,6 +92,11 @@ class IdempotencyService:
         return deleted_count
 
 
+def get_idempotency_service(db_session):
+    """Get an idempotency service instance."""
+    return IdempotencyService(db_session)
+
+
 def generate_idempotency_key(request_data: Dict[str, Any], user_id: Optional[str] = None) -> str:
     """Generate a deterministic idempotency key from request data."""
     # Create a stable representation of the request

@@ -10,7 +10,6 @@ import structlog
 
 from app.models.benchmark import Order, OrderStatus, OrderTimelineEvent
 from app.schemas.benchmark import OrderTimelineEvent as TimelineEventSchema
-from app.services.payment import PaymentService
 
 logger = structlog.get_logger(__name__)
 
@@ -176,6 +175,8 @@ class OrderService:
     ) -> Dict[str, Any]:
         """Create a new order bound to a quote and benchmark job."""
         # Create payment intent via PaymentService
+        # Import here to avoid circular import
+        from app.services.payment import PaymentService
         payment_service = PaymentService(self.db)
         payment_intent = await payment_service.create_payment_intent_for_quote(quote_id)
 

@@ -28,7 +28,7 @@ class IdempotencyMiddleware:
 
     def __init__(self, app):
         self.app = app
-        self.idempotency_service = get_idempotency_service()
+        self.idempotency_service = None  # Will be created per request
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":

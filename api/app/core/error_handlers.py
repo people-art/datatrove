@@ -13,10 +13,24 @@ logger = structlog.get_logger(__name__)
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """Handle custom application errors"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=create_error_response(exc)
-    )
+    from app.core.errors import create_error_response
+
+    # Handle BusinessError specifically
+    if hasattr(exc, 'code'):
+        content = create_error_response(
+            code=exc.code,
+            message=exc.message,
+            details=exc.details
+        )
+    else:
+        # Handle general AppError
+        content = create_error_response(
+            code="INTERNAL_ERROR",
+            message=exc.message,
+            details=exc.details
+        )
+
+    return JSONResponse(status_code=exc.status_code, content=content)
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:

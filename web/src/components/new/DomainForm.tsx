@@ -3,17 +3,20 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GradientCard } from "@/components/ui/gradient-card";
+import { EmailField } from "@/components/ui/email-field";
 import { KeywordInput } from "./KeywordInput";
 import { PriceCard } from "./PriceCard";
 import { StickyFooterCta } from "./StickyFooterCta";
-import { benchmarkApi, emailApi } from "@/lib/api";
+import { useQuote, useCreateBenchmarkJob } from "@/hooks/use-api";
+import { useI18n } from "@/lib/i18n";
+import { getErrorMessage, getErrorSuggestion, getTraceId } from "@/lib/fetcher";
 import { debounce } from "@/lib/utils";
-import type { DomainFormData, QuoteData } from "@/types";
 
 const LANGUAGE_OPTIONS = [
   'English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Russian', 'Portuguese'
@@ -47,34 +50,77 @@ const DOMAIN_EXAMPLES = [
 
 const SCALE_OPTIONS = [
   { value: '', label: 'Auto-detect', description: 'Let us estimate based on your domain' },
-  { value: 'small', label: 'Small (~5M tokens)', description: 'Research papers, small datasets' },
-  { value: 'medium', label: 'Medium (~10M tokens)', description: 'Training smaller models' },
-  { value: 'large', label: 'Large (~20M tokens)', description: 'Fine-tuning medium models' },
-  { value: 'xlarge', label: 'Extra Large (~50M tokens)', description: 'Training large models' },
+  { value: '100000', label: '100k docs (~500k tokens)', description: 'Small research datasets' },
+  { value: '1000000', label: '1M docs (~5M tokens)', description: 'Medium research projects' },
+  { value: '10000000', label: '10M docs (~50M tokens)', description: 'Production-ready datasets' },
 ];
 
 interface DomainFormProps {
-  onSubmit: (formData: DomainFormData) => Promise<void>;
-  isLoading: boolean;
+  onSubmit?: (formData: any) => void;
 }
 
-export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
-  const [formData, setFormData] = useState<DomainFormData>({
+export function DomainForm({ onSubmit }: DomainFormProps) {
+  const { t } = useI18n();
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({
     domain: '',
-    keywords: [],
-    languages: ['English'],
+    keywords: [] as string[],
+    languages: ['English'] as string[],
     timeRange: {
       start: '2020-01-01',
       end: new Date().toISOString().split('T')[0]
     },
-    qualityTier: 'standard',
+    qualityTier: 'standard' as 'basic' | 'standard' | 'premium',
     estimatedScale: '',
     email: ''
   });
 
-  const [quote, setQuote] = useState<QuoteData | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [emailValid, setEmailValid] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // API hooks
+  const quoteMutation = useQuote();
+  const createJobMutation = useCreateBenchmarkJob();
+
+  // Debounced quote fetching
+  const fetchQuoteDebounced = debounce(async (data: typeof formData) => {
+    if (!data.domain.trim() || data.keywords.length < 2) {
+      return;
+    }
+
+    const quoteRequest = {
+      domain: data.domain,
+      keywords: data.keywords,
+      languages: data.languages,
+      startDate: data.timeRange.start,
+      endDate: data.timeRange.end,
+      qualityTier: data.qualityTier,
+      estimatedScale: data.estimatedScale ? { docs: parseInt(data.estimatedScale) } : undefined,
+    };
+
+    try {
+      await quoteMutation.mutateAsync(quoteRequest);
+    } catch (err: any) {
+      console.error('Quote fetch failed:', err);
+    }
+  }, 1000);
+
+  useEffect(() => {
+    fetchQuoteDebounced(formData);
+  }, [formData.domain, formData.keywords, formData.languages, formData.qualityTier, formData.estimatedScale, formData.timeRange]);
+
+  const updateFormData = (updates: Partial<typeof formData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+    setError(null);
+  };
+
+  // Form validation
+  const keywordsValid = formData.keywords.length >= 2;
+  const timeRangeValid = new Date(formData.timeRange.end) > new Date(formData.timeRange.start) &&
+                        (new Date(formData.timeRange.end).getTime() - new Date(formData.timeRange.start).getTime()) <= (5 * 365 * 24 * 60 * 60 * 1000); // 5 years
+  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;
 
   // Email validation state
   const [emailValidating, setEmailValidating] = useState(false);
@@ -163,7 +209,29 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(formData);
+
+    if (!isFormValid) return;
+
+    try {
+      const jobData = {
+        domain: formData.domain,
+        keywords: formData.keywords,
+        languages: formData.languages,
+        time_range: formData.timeRange,
+        quality_tier: formData.qualityTier,
+        estimated_scale: formData.estimatedScale ? parseInt(formData.estimatedScale) : undefined,
+        email: formData.email
+      };
+
+      const result = await createJobMutation.mutateAsync(jobData);
+      router.push(`/preview/${result.jobId}`);
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err);
+      const suggestion = getErrorSuggestion(err);
+      const traceId = getTraceId(err);
+
+      setError(`${errorMessage}${suggestion ? ` ${suggestion}` : ''}${traceId ? ` (${t('traceId')}: ${traceId})` : ''}`);
+    }
   };
 
   const isFormValid = formData.domain.trim() &&
@@ -201,16 +269,36 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
           </Link>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight mb-2">
-          Create Custom Dataset
+          {t('createDataset')}
         </h1>
         <p className="text-lg text-foreground/70">
-          Define your domain requirements and get a quality preview from 1M web pages
+          {t('generatePreview')}
         </p>
       </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Form */}
         <div className="lg:col-span-2 space-y-6">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                    {t('error')}
+                  </p>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    {error}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Domain & Topic */}
             <motion.div
@@ -443,19 +531,14 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
 
                   <div>
                     <Label htmlFor="email" className="text-sm font-medium text-foreground/80">
-                      Email Address *
+                      {t('email')} *
                     </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your.email@example.com"
+                    <EmailField
                       value={formData.email}
-                      onChange={(e) => {
-                        const newEmail = e.target.value;
-                        updateFormData({ email: newEmail });
-                        validateEmailDebounced(newEmail);
-                      }}
-                      className="h-11 mt-1"
+                      onChange={(value) => updateFormData({ email: value })}
+                      onValidationChange={setEmailValid}
+                      placeholder="your.email@example.com"
+                      className="mt-1"
                     />
                     <p className="text-xs text-foreground/50 mt-2">
                       We'll only use this for dataset delivery notifications.
@@ -515,7 +598,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
             onSubmit(formData);
           }
         }}
-        label={isLoading ? "Creating Preview..." : "Generate Preview (1M pages)"}
+        label={createJobMutation.isPending ? t('processing') : t('generatePreview')}
         isVisible={true}
       />
 

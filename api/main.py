@@ -12,7 +12,7 @@ from app.api.api_v1.api import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.error_handlers import setup_error_handlers
-from app.middleware.idempotency import IdempotencyMiddleware, idempotency_response_middleware
+# from app.middleware.idempotency import IdempotencyMiddleware, idempotency_response_middleware
 from app.db.session import engine
 from app.db.base import Base
 
@@ -70,7 +70,7 @@ def create_application() -> FastAPI:
         )
 
     # Add idempotency middleware
-    app.add_middleware(IdempotencyMiddleware)
+    # app.add_middleware(IdempotencyMiddleware)
 
     # Include API router
     app.include_router(api_router, prefix=settings.API_V1_STR)
@@ -78,8 +78,9 @@ def create_application() -> FastAPI:
     # Setup error handlers
     setup_error_handlers(app)
 
-    # Add idempotency response middleware
-    app.middleware("http")(idempotency_response_middleware)
+    # Add idempotency response middleware (disabled for now)
+    # TODO: Implement proper idempotency middleware
+    # app.middleware("http")(idempotency_response_middleware)
 
     @app.get("/health")
     async def health_check():

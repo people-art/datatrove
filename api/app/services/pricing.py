@@ -195,26 +195,25 @@ class PricingService:
         languages: list,
         time_range: Dict[str, str],
         quality_tier: str,
-        estimated_scale: Optional[str] = None
+        estimated_scale: Optional[int] = None
     ) -> int:
         """Estimate the size of the dataset in tokens."""
 
         # Base estimate: 10 million tokens
         base_tokens = 10_000_000
 
-        # Adjust based on user-provided scale estimate
-        if estimated_scale:
-            scale_multipliers = {
-                "small": 0.5,      # ~5M tokens
-                "medium": 1.0,     # ~10M tokens
-                "large": 2.0,      # ~20M tokens
-                "xlarge": 5.0,     # ~50M tokens
-            }
+        # Adjust based on user-provided scale estimate (number of documents)
+        if estimated_scale and isinstance(estimated_scale, int):
+            # Rough estimate: 500 tokens per document on average
+            estimated_tokens = estimated_scale * 500
 
-            for scale, multiplier in scale_multipliers.items():
-                if scale.lower() in estimated_scale.lower():
-                    base_tokens *= multiplier
-                    break
+            # Adjust base tokens based on estimated size
+            if estimated_tokens < 5_000_000:
+                base_tokens = 5_000_000  # Minimum estimate
+            elif estimated_tokens > 100_000_000:
+                base_tokens = 100_000_000  # Maximum estimate
+            else:
+                base_tokens = estimated_tokens
 
         # Adjust based on quality tier (higher quality = fewer tokens kept)
         quality_adjustments = {

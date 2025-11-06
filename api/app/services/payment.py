@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.models.benchmark import OrderStatus
-from app.services.order import OrderService
 from app.services.benchmark import BenchmarkService
 from app.services.slurm import SlurmProductionService
 from app.core.config import settings
@@ -22,6 +21,8 @@ class PaymentService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        # Import here to avoid circular import
+        from app.services.order import OrderService
         self.order_service = OrderService(db)
         self.benchmark_service = BenchmarkService(db)
         self.slurm_service = SlurmProductionService(self.order_service)

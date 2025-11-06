@@ -7,7 +7,22 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 
-class BusinessError(Exception):
+class AppError(Exception):
+    """Base class for application errors."""
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 500,
+        details: Optional[Dict[str, Any]] = None
+    ):
+        self.message = message
+        self.status_code = status_code
+        self.details = details or {}
+        super().__init__(self.message)
+
+
+class BusinessError(AppError):
     """Base class for business logic errors."""
 
     def __init__(

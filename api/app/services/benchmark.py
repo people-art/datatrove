@@ -9,7 +9,6 @@ from sqlalchemy import select
 import structlog
 
 from app.models.benchmark import BenchmarkJob, BenchmarkStatus
-from app.tasks.benchmark import benchmark_task
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
@@ -90,6 +89,8 @@ class BenchmarkService:
 
         # Queue the benchmark task to Celery
         try:
+            # Import here to avoid circular import
+            from app.tasks.benchmark import benchmark_task
             benchmark_task.delay(job_id)
             logger.info("Benchmark task queued to Celery", job_id=job_id)
         except Exception as e:
