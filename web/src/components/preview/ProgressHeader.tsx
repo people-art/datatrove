@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Loader2, Server } from "lucide-react";
 import { GradientCard } from "@/components/ui/gradient-card";
+import { Badge } from "@/components/ui/badge";
 
 interface ProgressHeaderProps {
   status: string;
@@ -66,7 +67,13 @@ export function ProgressHeader({ status, progress, jobId }: ProgressHeaderProps)
                 <Icon className={`h-6 w-6 ${config.color} ${status === 'running' || status === 'summarizing' ? 'animate-spin' : ''}`} />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Benchmark Progress</h2>
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-xl font-semibold">Benchmark Progress</h2>
+                  <Badge variant="outline" className="text-xs">
+                    <Server className="h-3 w-3 mr-1" />
+                    Local Preview (1M pages)
+                  </Badge>
+                </div>
                 <p className="text-sm text-foreground/60">{config.description}</p>
               </div>
             </div>

@@ -1,86 +1,119 @@
-"use client";
+import { Metadata } from 'next';
+import { useI18n } from '@/lib/i18n';
+import { GradientCard } from '@/components/ui/gradient-card';
+import { Badge } from '@/components/ui/badge';
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { Check, ArrowRight, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GradientCard } from "@/components/ui/gradient-card";
-import { useI18n } from "@/lib/i18n";
+export const metadata: Metadata = {
+  title: 'Features - FineData',
+  description: 'Learn about FineData\'s AI-powered data processing, enterprise-grade privacy, and massive web-scale coverage.',
+};
 
 export default function FeaturesPage() {
-  const { t } = useI18n();
+  // Note: Since this is a server component, we can't use useI18n hook directly
+  // We'll use static content for now, but in a real app you'd pass translations as props
+  const features = {
+    title: "Why FineData",
+    subtitle: "Purpose-built for AI teams, researchers, and enterprises that demand clean, controllable, and scalable training data.",
+    blocks: [
+      {
+        title: "AI-Powered Filtering",
+        body: "Ontology-driven keyword expansion, LLM-assisted scoring, and multi-stage quality filters ensure your dataset matches your exact domain and intent."
+      },
+      {
+        title: "Massive Web-Scale Coverage",
+        body: "Leverage Common Crawl and battle-tested pipelines to process billions of pages with deterministic, reproducible configurations."
+      },
+      {
+        title: "Enterprise-Grade Privacy",
+        body: "PII detection, HIPAA-ready patterns for medical content, and strict sanitization keep your datasets safe and compliant."
+      },
+      {
+        title: "Custom Domains in Days",
+        body: "Support any niche domain: finance, medical, robotics, law, education, energy, security, and internal ontologies."
+      },
+      {
+        title: "Transparent Metrics",
+        body: "Every run ships with coverage, dedup ratio, language mix, toxicity and PII rates, plus domain relevance reports."
+      },
+      {
+        title: "Private Delivery on Hugging Face",
+        body: "Datasets are delivered as private Hugging Face repositories or S3 buckets with fine-grained access control."
+      }
+    ]
+  };
 
   return (
-    <div className="py-16 md:py-24">
-      <div className="mb-16 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
+    <div className="min-h-screen py-16">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
+        {/* Hero Section */}
+        <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-            {t('features_title')}
+            {features.title}
           </h1>
-          <p className="text-xl text-foreground/70 max-w-3xl mx-auto leading-relaxed">
-            {t('features_subtitle')}
+          <p className="text-xl text-foreground/70 max-w-3xl mx-auto">
+            {features.subtitle}
           </p>
-        </motion.div>
-      </div>
+        </div>
 
-      {/* Main Features Grid */}
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-16">
-        {t('features_blocks').map((feature, index) => (
-          <motion.div
-            key={feature.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: index * 0.1 }}
-          >
-            <GradientCard className="h-full">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Check className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                  <p className="text-foreground/70 leading-relaxed">{feature.body}</p>
-                </div>
+        {/* Main Features Grid */}
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-16">
+          {features.blocks.slice(0, 3).map((feature, index) => (
+            <GradientCard key={index} className="h-full">
+              <div className="p-6">
+                <h3 className="text-xl font-semibold mb-4 text-primary">
+                  {feature.title}
+                </h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  {feature.body}
+                </p>
               </div>
             </GradientCard>
-          </motion.div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* CTA Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.8 }}
-        className="text-center"
-      >
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold mb-4">
-            Ready to get started?
+        {/* Secondary Features Grid */}
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {features.blocks.slice(3).map((feature, index) => (
+            <GradientCard key={index + 3} className="h-full">
+              <div className="p-6">
+                <h3 className="text-xl font-semibold mb-4 text-primary">
+                  {feature.title}
+                </h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  {feature.body}
+                </p>
+              </div>
+            </GradientCard>
+          ))}
+        </div>
+
+        {/* CTA Section */}
+        <div className="text-center mt-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full text-accent text-sm font-medium mb-6">
+            <Badge variant="secondary">Ready to get started?</Badge>
+          </div>
+          <h2 className="text-2xl font-bold mb-4">
+            Transform your AI training data today
           </h2>
-          <p className="text-lg text-foreground/70 mb-8">
-            Create your first custom dataset in minutes. No credit card required for the preview.
+          <p className="text-foreground/70 mb-8 max-w-2xl mx-auto">
+            Join leading AI teams who trust FineData for their critical data processing needs.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg">
-              <Link href="/new">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Create Dataset
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/pricing">
-                View Pricing
-              </Link>
-            </Button>
+          <div className="flex gap-4 justify-center">
+            <a
+              href="/new"
+              className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            >
+              Create Dataset
+            </a>
+            <a
+              href="/docs"
+              className="inline-flex items-center px-6 py-3 border border-border rounded-lg font-medium hover:bg-accent transition-colors"
+            >
+              Learn More
+            </a>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
