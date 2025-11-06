@@ -4,7 +4,7 @@ Main API router for v1 endpoints
 
 from fastapi import APIRouter
 
-from app.api.api_v1.endpoints import benchmark, orders, payments
+from app.api.api_v1.endpoints import benchmark, orders, payments, email
 
 api_router = APIRouter()
 
@@ -24,4 +24,10 @@ api_router.include_router(
     payments.router,
     prefix="/checkout",
     tags=["payments"]
+)
+
+api_router.include_router(
+    email.router,
+    prefix="/email",
+    tags=["email"]
 )

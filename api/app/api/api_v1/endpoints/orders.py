@@ -10,6 +10,8 @@ import structlog
 from app.schemas import benchmark as schemas
 from app.db.dependencies import get_db
 from app.services.order import OrderService
+from app.services.idempotency import IdempotencyService, generate_idempotency_key
+from app.core.errors import DuplicateResourceError, handle_business_error
 
 logger = structlog.get_logger(__name__)
 
@@ -19,13 +21,41 @@ router = APIRouter()
 @router.post("", response_model=schemas.OrderCreateResponse)
 async def create_order(
     data: schemas.OrderCreateRequest,
+    idempotency_key: str = None,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """
     Create a new order for dataset generation.
+
+    Uses idempotency to prevent duplicate orders.
     """
     try:
+        idempotency_service = IdempotencyService(db)
         order_service = OrderService(db)
+
+        # Generate idempotency key if not provided
+        if not idempotency_key:
+            key_data = {
+                "quote_id": data.quoteId,
+                "job_id": data.jobId,
+                "email": data.email
+            }
+            idempotency_key = generate_idempotency_key(key_data)
+
+        # Check for existing operation
+        cached_response = await idempotency_service.create_idempotency_key(
+            key=idempotency_key,
+            operation="create_order",
+            user_id=data.email,  # Use email as user identifier
+            ttl_seconds=3600  # 1 hour
+        )
+
+        if cached_response:
+            # Return cached response for duplicate request
+            import json
+            cached_data = json.loads(cached_response)
+            logger.info("Returning cached order response", order_id=cached_data["orderId"])
+            return schemas.OrderCreateResponse(**cached_data)
 
         # Create order with quote and benchmark job binding
         order_data = await order_service.create_order(
@@ -34,14 +64,24 @@ async def create_order(
             email=data.email
         )
 
-        logger.info("Order created", order_id=order_data["id"], quote_id=data.quoteId)
-
-        return schemas.OrderCreateResponse(
-            orderId=order_data["id"],
-            provider="stripe",  # For now, only Stripe is supported
-            clientSecret=order_data["client_secret"]
+        # Cache the response
+        response_data = {
+            "orderId": order_data["id"],
+            "provider": "stripe",
+            "clientSecret": order_data["client_secret"]
+        }
+        await idempotency_service.update_idempotency_response(
+            key_hash=idempotency_key,
+            response_data=json.dumps(response_data)
         )
 
+        logger.info("Order created", order_id=order_data["id"], quote_id=data.quoteId)
+
+        return schemas.OrderCreateResponse(**response_data)
+
+    except DuplicateResourceError as e:
+        logger.warning("Duplicate order creation attempt", error=e.details)
+        raise handle_business_error(e)
     except Exception as e:
         logger.error("Failed to create order", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to create order")

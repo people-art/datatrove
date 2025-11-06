@@ -9,6 +9,7 @@ from sqlalchemy import select
 import structlog
 
 from app.models.benchmark import BenchmarkJob, BenchmarkStatus
+from app.tasks.benchmark import benchmark_task
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
@@ -81,24 +82,22 @@ class BenchmarkService:
         await self.db.commit()
 
     async def start_benchmark_task(self, job_id: str) -> None:
-        """Start benchmark task (placeholder - will be implemented with Celery)."""
-        # TODO: Integrate with Celery for async task processing
-        # For now, we'll simulate the benchmark process
-
+        """Start benchmark task using Celery for async processing."""
         logger.info("Starting benchmark task", job_id=job_id)
 
         # Update status to running
         await self.update_job_status(job_id, BenchmarkStatus.RUNNING)
 
-        # TODO: Call actual benchmark logic here
-        # This would typically involve:
-        # 1. Creating a finewebdata.py job with benchmark parameters
-        # 2. Processing sample data
-        # 3. Updating progress and metrics
-        # 4. Generating sample download URL
-
-        # Simulate completion for development
-        await self._simulate_benchmark_completion(job_id)
+        # Queue the benchmark task to Celery
+        try:
+            benchmark_task.delay(job_id)
+            logger.info("Benchmark task queued to Celery", job_id=job_id)
+        except Exception as e:
+            logger.error("Failed to queue benchmark task to Celery, falling back to simulation",
+                        job_id=job_id, error=str(e))
+            # Fallback to simulation if Celery is unavailable
+            import asyncio
+            asyncio.create_task(self._simulate_benchmark_completion(job_id))
 
     async def _simulate_benchmark_completion(self, job_id: str) -> None:
         """Simulate benchmark completion for development."""

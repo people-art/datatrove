@@ -129,3 +129,16 @@ class OrderTimelineEvent(Base):
     event_metadata = Column(JSON, nullable=True)  # Additional event data
 
     order = relationship("Order", back_populates="timeline_events")
+
+
+class IdempotencyKey(Base):
+    """Idempotency keys for preventing duplicate operations."""
+    __tablename__ = "idempotency_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key_hash = Column(String, unique=True, index=True, nullable=False)
+    operation = Column(String, nullable=False)  # e.g., "create_quote", "create_order"
+    user_id = Column(String, nullable=True, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    response_data = Column(Text, nullable=False)  # JSON string of cached response
+    created_at = Column(DateTime, default=datetime.utcnow)

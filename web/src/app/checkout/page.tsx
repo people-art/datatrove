@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QuoteCard } from '@/components/quote-card';
 import { ArrowLeft, Shield, CreditCard, Loader2 } from 'lucide-react';
-import { paymentApi, benchmarkApi } from '@/lib/api';
+import { orderApi, benchmarkApi } from '@/lib/api';
 import type { QuoteData } from '@/types';
 
 function CheckoutPageContent() {
@@ -35,14 +35,42 @@ function CheckoutPageContent() {
     try {
       setLoading(true);
 
-      // Get quote
-      const quoteData = await benchmarkApi.getQuote(jobId!);
-      setQuote(quoteData);
+      // Get job data to extract required information
+      const jobData = await benchmarkApi.getJob(jobId!);
 
-      // Create checkout session
-      const sessionData = await paymentApi.createSession(jobId!);
-      setClientSecret(sessionData.client_secret);
-      setOrderId(sessionData.orderId);
+      // Create quote first
+      const quoteRequest = {
+        domain: jobData.domain,
+        keywords: jobData.keywords,
+        languages: jobData.languages,
+        startDate: jobData.time_range_start,
+        endDate: jobData.time_range_end,
+        qualityTier: jobData.quality_tier,
+        estimatedScale: jobData.estimated_scale ? { docs: jobData.estimated_scale.docs } : undefined
+      };
+
+      const quoteData = await benchmarkApi.createQuote(quoteRequest);
+      setQuote({
+        currency: quoteData.currency,
+        subtotal: (quoteData.estimate.low + quoteData.estimate.high) / 2,
+        tax: ((quoteData.estimate.low + quoteData.estimate.high) / 2) * 0.08,
+        total: ((quoteData.estimate.low + quoteData.estimate.high) / 2) * 1.08,
+        pricing_notes: `Quote expires: ${new Date(quoteData.expiresAt).toLocaleDateString()}`,
+        breakdown: {
+          adjusted_price_per_million: quoteData.unit.amount
+        }
+      });
+
+      // Create order with idempotency key
+      const idempotencyKey = `order_${jobId}_${Date.now()}`;
+      const orderData = await orderApi.createOrder({
+        quoteId: quoteData.quoteId,
+        jobId: jobId,
+        email: jobData.email
+      }, idempotencyKey);
+
+      setClientSecret(orderData.clientSecret);
+      setOrderId(orderData.orderId);
 
     } catch (error) {
       console.error('Failed to initialize checkout:', error);

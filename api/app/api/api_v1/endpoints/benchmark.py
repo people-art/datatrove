@@ -13,6 +13,12 @@ from app.db.dependencies import get_db
 from app.models.benchmark import BenchmarkJob, BenchmarkStatus
 from app.services.benchmark import BenchmarkService
 from app.services.pricing import PricingService
+from app.core.errors import (
+    BusinessError,
+    BenchmarkError,
+    ValidationError,
+    handle_business_error
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -28,12 +34,61 @@ async def create_quote(
     Generate a quote for dataset generation based on requirements.
     """
     try:
+        # Validate input data
+        if not data.domain or not data.domain.strip():
+            raise ValidationError("domain", data.domain, "Domain cannot be empty", "Please specify a domain")
+
+        if len(data.keywords) < 2:
+            raise BusinessLogicError(
+                ErrorCode.BENCHMARK_TOO_FEW_KEYWORDS,
+                "Insufficient keywords provided",
+                "Please provide at least 2 keywords to improve search accuracy"
+            )
+
+        if len(data.keywords) > 64:
+            raise ValidationError("keywords", len(data.keywords), "Too many keywords", "Maximum 64 keywords allowed")
+
+        # Check for duplicate keywords
+        unique_keywords = list(set(data.keywords))
+        if len(unique_keywords) != len(data.keywords):
+            logger.warning("Duplicate keywords provided", original=len(data.keywords), unique=len(unique_keywords))
+
+        # Validate quality tier
+        valid_tiers = ["basic", "standard", "premium"]
+        if data.qualityTier not in valid_tiers:
+            raise ValidationError("qualityTier", data.qualityTier, f"Must be one of {valid_tiers}", "Invalid quality tier selected")
+
+        # Validate time range
+        from datetime import datetime
+        try:
+            start_date = datetime.fromisoformat(data.startDate.replace('Z', '+00:00'))
+            end_date = datetime.fromisoformat(data.endDate.replace('Z', '+00:00'))
+
+            if end_date <= start_date:
+                raise ValidationError("endDate", data.endDate, "Must be after start date", "End date must be after start date")
+
+            # Check if date range is too large (> 5 years)
+            date_diff = (end_date - start_date).days
+            if date_diff > 365 * 5:
+                raise BusinessLogicError(
+                    ErrorCode.BENCHMARK_TIME_RANGE_TOO_LARGE,
+                    "Time range too large",
+                    "Please reduce the date range to 5 years or less"
+                )
+
+        except ValueError as e:
+            raise ValidationError("date", f"{data.startDate} - {data.endDate}", "Invalid date format", "Please use valid ISO date format")
+
+        # Validate languages
+        if not data.languages:
+            raise ValidationError("languages", data.languages, "At least one language required", "Please select at least one language")
+
         pricing_service = PricingService()
 
         # Convert request to pricing service format
         quote_data = pricing_service.calculate_initial_quote(
-            domain=data.domain,
-            keywords=data.keywords,
+            domain=data.domain.strip(),
+            keywords=unique_keywords,
             languages=data.languages,
             time_range={
                 "start": data.startDate,
@@ -47,7 +102,14 @@ async def create_quote(
         quote_id = f"q_{uuid.uuid4().hex[:16]}"
         expires_at = "2025-12-31T23:59:59Z"  # 6 months from now (placeholder)
 
-        logger.info("Quote generated", quote_id=quote_id, domain=data.domain)
+        logger.info(
+            "Quote generated",
+            quote_id=quote_id,
+            domain=data.domain,
+            keywords=len(unique_keywords),
+            languages=data.languages,
+            quality_tier=data.qualityTier
+        )
 
         return schemas.QuoteResponse(
             quoteId=quote_id,
@@ -63,9 +125,18 @@ async def create_quote(
             expiresAt=expires_at
         )
 
+    except (ValidationError, BusinessLogicError):
+        # Re-raise custom errors
+        raise
     except Exception as e:
-        logger.error("Failed to generate quote", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to generate quote")
+        logger.error("Failed to generate quote", error=str(e), domain=data.domain)
+        raise AppError(
+            f"Quote generation failed: {str(e)}",
+            ErrorCode.INTERNAL_ERROR,
+            status_code=500,
+            details={"domain": data.domain},
+            user_message="Unable to generate quote. Please try again or contact support."
+        )
 
 
 @router.post("/jobs", response_model=schemas.BenchmarkJobCreateResponse)

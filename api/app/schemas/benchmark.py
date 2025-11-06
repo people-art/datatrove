@@ -147,3 +147,27 @@ class ProductionStatusResponse(BaseModel):
     estCompleteAt: Optional[str] = None  # ISO-8601 timestamp
     logsUrl: Optional[str] = None
     error: Optional[str] = None
+
+
+# Email validation schemas
+class EmailValidationRequest(BaseModel):
+    """Request for email validation."""
+    email: EmailStr
+
+
+class EmailValidationResponse(BaseModel):
+    """Response for email validation."""
+    email: str
+    isValid: bool
+    domain: str
+    checks: Dict[str, bool]
+
+
+class EmailVerificationRequest(BaseModel):
+    """Request for sending email verification."""
+    email: EmailStr
+
+
+class EmailVerificationConfirmRequest(BaseModel):
+    """Request for confirming email verification."""
+    token: str

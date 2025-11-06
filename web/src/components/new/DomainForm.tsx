@@ -11,7 +11,7 @@ import { GradientCard } from "@/components/ui/gradient-card";
 import { KeywordInput } from "./KeywordInput";
 import { PriceCard } from "./PriceCard";
 import { StickyFooterCta } from "./StickyFooterCta";
-import { benchmarkApi } from "@/lib/api";
+import { benchmarkApi, emailApi } from "@/lib/api";
 import { debounce } from "@/lib/utils";
 import type { DomainFormData, QuoteData } from "@/types";
 
@@ -76,6 +76,35 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
 
+  // Email validation state
+  const [emailValidating, setEmailValidating] = useState(false);
+  const [emailValidation, setEmailValidation] = useState<{
+    isValid: boolean;
+    checks: Record<string, boolean>;
+  } | null>(null);
+
+  // Debounced email validation
+  const validateEmailDebounced = debounce(async (email: string) => {
+    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+      setEmailValidation(null);
+      return;
+    }
+
+    try {
+      setEmailValidating(true);
+      const result = await emailApi.validateEmail(email);
+      setEmailValidation({
+        isValid: result.isValid,
+        checks: result.checks
+      });
+    } catch (error) {
+      console.error('Email validation failed:', error);
+      setEmailValidation(null);
+    } finally {
+      setEmailValidating(false);
+    }
+  }, 500);
+
   // Debounced quote fetching
   const fetchQuote = debounce(async (data: DomainFormData) => {
     if (!data.domain.trim() || data.keywords.length === 0) {
@@ -137,7 +166,10 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
     await onSubmit(formData);
   };
 
-  const isFormValid = formData.domain.trim() && formData.keywords.length >= 2 && formData.email.trim();
+  const isFormValid = formData.domain.trim() &&
+    formData.keywords.length >= 2 &&
+    formData.email.trim() &&
+    emailValidation?.isValid;
 
   const loadExampleKeywords = (domain: string) => {
     const examples: Record<string, string[]> = {
@@ -418,12 +450,50 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps) {
                       type="email"
                       placeholder="your.email@example.com"
                       value={formData.email}
-                      onChange={(e) => updateFormData({ email: e.target.value })}
+                      onChange={(e) => {
+                        const newEmail = e.target.value;
+                        updateFormData({ email: newEmail });
+                        validateEmailDebounced(newEmail);
+                      }}
                       className="h-11 mt-1"
                     />
                     <p className="text-xs text-foreground/50 mt-2">
                       We'll only use this for dataset delivery notifications.
                     </p>
+
+                    {/* Email validation status */}
+                    {emailValidating && (
+                      <p className="text-xs text-foreground/70 mt-1 flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Validating email...
+                      </p>
+                    )}
+
+                    {emailValidation && !emailValidating && (
+                      <div className="mt-2 space-y-1">
+                        {emailValidation.isValid ? (
+                          <p className="text-xs text-accent flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Email looks good
+                          </p>
+                        ) : (
+                          <p className="text-xs text-danger flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Email validation failed
+                          </p>
+                        )}
+
+                        {/* Show specific validation checks */}
+                        <div className="text-xs space-y-0.5">
+                          {Object.entries(emailValidation.checks).map(([check, passed]) => (
+                            <div key={check} className={`flex items-center gap-1 ${passed ? 'text-accent' : 'text-danger'}`}>
+                              <div className={`h-1 w-1 rounded-full ${passed ? 'bg-accent' : 'bg-danger'}`} />
+                              {check.replace(/([A-Z])/g, ' $1').toLowerCase()}: {passed ? '✓' : '✗'}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </GradientCard>

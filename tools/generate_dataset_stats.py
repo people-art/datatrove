@@ -244,8 +244,8 @@ language:
 tags:
 - fineweb-data
 - common-crawl
-- web-scraping{'
-- ' + domain.replace(' ', '-').lower() if domain else ''}
+- web-scraping
+- {domain.replace(' ', '-').lower() if domain else ''}
 ---
 
 # FineWeb-Data Dataset Statistics{domain_info}

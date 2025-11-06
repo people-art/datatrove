@@ -1,292 +1,321 @@
 """
-Email service for sending notifications
+Email service for sending notifications and verification emails
 """
 
-import asyncio
-from typing import Optional
+import uuid
+from typing import Dict, Any, Optional
+from datetime import datetime, timedelta
 import structlog
-
-try:
-    from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail, Email, To, Content
-except ImportError:
-    SendGridAPIClient = None
-    Mail = None
-    Email = None
-    To = None
-    Content = None
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
 
 from app.core.config import settings
+from app.core.errors import AppError, ErrorCode
 
 logger = structlog.get_logger(__name__)
 
 
 class EmailService:
-    """Service for sending email notifications."""
+    """Service for sending emails"""
 
     def __init__(self):
-        if SendGridAPIClient and settings.SENDGRID_API_KEY:
-            self.sg = SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
-        else:
-            self.sg = None
-            logger.warning("SendGrid not configured - email notifications disabled")
+        self.smtp_server = settings.SMTP_SERVER or "smtp.gmail.com"
+        self.smtp_port = settings.SMTP_PORT or 587
+        self.smtp_username = settings.SMTP_USERNAME
+        self.smtp_password = settings.SMTP_PASSWORD
+        self.from_email = settings.FROM_EMAIL or "noreply@finedata.ai"
+        self.from_name = settings.FROM_NAME or "FineData"
 
-    async def send_email(
+    def _create_verification_token(self) -> str:
+        """Generate a secure verification token"""
+        return str(uuid.uuid4())
+
+    def _send_email(
         self,
         to_email: str,
         subject: str,
-        body: str,
-        html_body: Optional[str] = None
+        html_content: str,
+        text_content: Optional[str] = None
     ) -> bool:
-        """Send email using SendGrid."""
-
-        if not self.sg:
-            logger.warning("Email service not available - skipping email send")
-            return False
-
+        """Send an email via SMTP"""
         try:
-            from_email = Email(settings.EMAIL_FROM, settings.EMAIL_FROM_NAME)
-            to_email_obj = To(to_email)
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = f"{self.from_name} <{self.from_email}>"
+            msg['To'] = to_email
 
-            # Create plain text content
-            content = Content("text/plain", body)
+            # Add text content
+            if text_content:
+                msg.attach(MIMEText(text_content, 'plain'))
 
-            # Create HTML content if provided
-            if html_body:
-                from sendgrid.helpers.mail import Content as HtmlContent
-                html_content = HtmlContent("text/html", html_body)
-                mail = Mail(from_email, to_email_obj, subject, html_content)
-                mail.add_content(content)  # Add plain text as alternative
-            else:
-                mail = Mail(from_email, to_email_obj, subject, content)
+            # Add HTML content
+            msg.attach(MIMEText(html_content, 'html'))
 
             # Send email
-            response = self.sg.send(mail)
-
-            if response.status_code in [200, 201, 202]:
-                logger.info(
-                    "Email sent successfully",
-                    to=to_email,
-                    subject=subject,
-                    status_code=response.status_code
-                )
+            if self.smtp_username and self.smtp_password:
+                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+                server.starttls()
+                server.login(self.smtp_username, self.smtp_password)
+                server.sendmail(self.from_email, to_email, msg.as_string())
+                server.quit()
+                logger.info("Email sent successfully", to=to_email, subject=subject)
                 return True
             else:
-                logger.error(
-                    "Email send failed",
-                    to=to_email,
-                    status_code=response.status_code,
-                    response_body=response.body
-                )
-                return False
+                # For development/testing - just log
+                logger.info("Email would be sent (SMTP not configured)", to=to_email, subject=subject)
+                return True
 
         except Exception as e:
-            logger.error(
-                "Email send error",
-                to=to_email,
-                subject=subject,
-                error=str(e)
+            logger.error("Failed to send email", error=str(e), to=to_email)
+            raise AppError(
+                f"Failed to send email: {str(e)}",
+                ErrorCode.DELIVERY_EMAIL_FAILED,
+                details={"to": to_email, "subject": subject}
             )
-            return False
 
-    async def send_order_confirmation(self, order_id: str, email: str, order_details: dict) -> bool:
-        """Send order confirmation email."""
+    def send_verification_email(self, email: str, verification_token: str) -> bool:
+        """Send email verification link"""
+        verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
 
-        subject = f"FineData Order Confirmation - {order_id}"
+        subject = "Verify your email - FineData"
 
-        body = f"""
-Dear Customer,
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Verify your email</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #2D5BFF;">Welcome to FineData!</h1>
 
-Thank you for your order! Your dataset generation request has been received and is being processed.
+                <p>Please verify your email address to continue creating custom datasets.</p>
 
-Order Details:
-- Order ID: {order_id}
-- Domain: {order_details.get('domain', 'N/A')}
-- Quality Tier: {order_details.get('quality_tier', 'N/A')}
-- Estimated Cost: ${order_details.get('total', 0):.2f}
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{verification_url}"
+                       style="background-color: #2D5BFF; color: white; padding: 12px 24px;
+                              text-decoration: none; border-radius: 6px; display: inline-block;">
+                        Verify Email Address
+                    </a>
+                </div>
 
-Next Steps:
-1. We'll run a benchmark preview (usually completes in 5-10 minutes)
-2. Review the quality metrics and pricing
-3. Confirm payment to start full production processing
-4. Receive delivery notification via email
+                <p>If the button doesn't work, copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
+                    {verification_url}
+                </p>
 
-You can track your order progress at:
-http://localhost:3000/order/{order_id}
+                <p>This verification link will expire in 24 hours.</p>
 
-If you have any questions, please contact support@finedata.example.com
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
 
-Best regards,
-The FineData Team
-"""
+                <p style="color: #666; font-size: 14px;">
+                    If you didn't request this email, you can safely ignore it.
+                </p>
 
-        return await self.send_email(email, subject, body)
+                <p style="color: #666; font-size: 14px;">
+                    Best regards,<br>
+                    The FineData Team
+                </p>
+            </div>
+        </body>
+        </html>
+        """
 
-    async def send_benchmark_ready(self, order_id: str, email: str, benchmark_results: dict) -> bool:
-        """Send benchmark completion notification."""
+        text_content = f"""
+        Welcome to FineData!
 
-        subject = f"FineData Benchmark Complete - {order_id}"
+        Please verify your email address by clicking this link:
+        {verification_url}
 
-        body = f"""
-Dear Customer,
+        This verification link will expire in 24 hours.
 
-Your benchmark analysis is complete! Here are the quality metrics for your dataset:
+        If you didn't request this email, you can safely ignore it.
 
-Quality Metrics:
-- Coverage: {benchmark_results.get('coverage', 0):.1%}
-- Quality Pass Rate: {benchmark_results.get('quality_pass_rate', 0):.1%}
-- Documents Found: {benchmark_results.get('docs_kept', 0):,}
-- Estimated Tokens: {benchmark_results.get('tokens', 0):,}
+        Best regards,
+        The FineData Team
+        """
 
-Pricing:
-- Subtotal: ${benchmark_results.get('subtotal', 0):.2f}
-- Tax: ${benchmark_results.get('tax', 0):.2f}
-- Total: ${benchmark_results.get('total', 0):.2f}
+        return self._send_email(email, subject, html_content, text_content)
 
-Next Step:
-Please review the results and proceed with payment to start full production processing.
-
-Review your benchmark at:
-http://localhost:3000/order/{order_id}
-
-Best regards,
-The FineData Team
-"""
-
-        return await self.send_email(email, subject, body)
-
-    async def send_payment_confirmation(self, order_id: str, email: str, payment_details: dict) -> bool:
-        """Send payment confirmation email."""
-
-        subject = f"FineData Payment Confirmed - {order_id}"
-
-        body = f"""
-Dear Customer,
-
-Your payment has been successfully processed! Production processing has begun.
-
-Payment Details:
-- Order ID: {order_id}
-- Amount Paid: ${payment_details.get('amount', 0):.2f}
-- Processing Time: 2-4 hours (depending on dataset size)
-
-What happens next:
-1. Your data will be processed on our Slurm cluster
-2. Quality filtering, deduplication, and privacy protection will be applied
-3. The final dataset will be uploaded to a private HuggingFace repository
-4. You'll receive a delivery notification with access instructions
-
-Track progress at:
-http://localhost:3000/order/{order_id}
-
-Best regards,
-The FineData Team
-"""
-
-        return await self.send_email(email, subject, body)
-
-    async def send_processing_update(self, order_id: str, email: str, progress: dict) -> bool:
-        """Send processing progress update."""
-
-        subject = f"FineData Processing Update - {order_id}"
-
-        body = f"""
-Dear Customer,
-
-Your dataset is currently being processed. Here's the latest progress:
-
-Processing Status:
-- Documents Processed: {progress.get('fetched', 0):,}
-- Documents Filtered: {progress.get('filtered', 0):,}
-- Documents Deduplicated: {progress.get('deduped', 0):,}
-- Tokens Generated: {progress.get('tokens', 0):,}
-- Estimated Completion: {progress.get('eta', 'Unknown')}
-
-Track detailed progress at:
-http://localhost:3000/order/{order_id}
-
-Best regards,
-The FineData Team
-"""
-
-        return await self.send_email(email, subject, body)
-
-    async def send_delivery_notification(
+    def send_dataset_ready_email(
         self,
-        order_id: str,
         email: str,
-        delivery_info: dict
-    ) -> bool:
-        """Send dataset delivery notification."""
-
-        subject = f"Your FineData Dataset is Ready! - {order_id}"
-
-        body = f"""
-Dear Customer,
-
-🎉 Your custom dataset has been successfully processed and delivered!
-
-Dataset Details:
-- Order ID: {order_id}
-- Dataset URL: {delivery_info.get('hf_url', 'N/A')}
-- Dataset Card: {delivery_info.get('dataset_card', 'N/A')}
-- Invoice: {delivery_info.get('invoice_url', 'N/A')}
-
-Important Notes:
-- The dataset is stored in a private HuggingFace repository
-- Access is restricted to your account only
-- The dataset may only be used for internal training purposes
-- All PII has been removed and content has been sanitized
-
-To access your dataset:
-1. Visit the HuggingFace URL provided above
-2. Log in with your HuggingFace account
-3. Download or use the dataset directly
-
-If you need to share access with team members or have any questions, please contact support@finedata.example.com
-
-Thank you for choosing FineData!
-
-Best regards,
-The FineData Team
-"""
-
-        return await self.send_email(email, subject, body)
-
-    async def send_failure_notification(
-        self,
         order_id: str,
-        email: str,
-        error_message: str,
-        failure_type: str = "processing"
+        hf_repo_url: str,
+        dataset_info: Dict[str, Any]
     ) -> bool:
-        """Send failure notification email."""
+        """Send dataset delivery notification"""
+        subject = f"Your FineData dataset is ready - Order {order_id}"
 
-        subject = f"FineData {failure_type.title()} Failed - {order_id}"
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Your dataset is ready</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #12B886;">Your Dataset is Ready!</h1>
 
-        body = f"""
-Dear Customer,
+                <p>Great news! Your custom domain dataset has been processed and is now available.</p>
 
-We're sorry to inform you that there was an issue with your order processing.
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3>Dataset Details:</h3>
+                    <ul>
+                        <li><strong>Order ID:</strong> {order_id}</li>
+                        <li><strong>Domain:</strong> {dataset_info.get('domain', 'N/A')}</li>
+                        <li><strong>Quality Tier:</strong> {dataset_info.get('quality_tier', 'N/A')}</li>
+                        <li><strong>Languages:</strong> {', '.join(dataset_info.get('languages', []))}</li>
+                        <li><strong>Estimated Size:</strong> {dataset_info.get('estimated_tokens', 'N/A')} tokens</li>
+                    </ul>
+                </div>
 
-Order Details:
-- Order ID: {order_id}
-- Issue Type: {failure_type.title()}
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{hf_repo_url}"
+                       style="background-color: #12B886; color: white; padding: 12px 24px;
+                              text-decoration: none; border-radius: 6px; display: inline-block;">
+                        Access Your Dataset
+                    </a>
+                </div>
 
-Error Details:
-{error_message}
+                <h3>How to Access Your Dataset:</h3>
+                <ol>
+                    <li>Click the "Access Your Dataset" button above</li>
+                    <li>Sign in to your Hugging Face account (or create one if you don't have one)</li>
+                    <li>The dataset will be available in your private repository</li>
+                    <li>Use the Hugging Face datasets library to load your data:
+                        <code style="background-color: #f5f5f5; padding: 2px 4px; border-radius: 3px;">
+                            from datasets import load_dataset<br>
+                            dataset = load_dataset("{hf_repo_url}")
+                        </code>
+                    </li>
+                </ol>
 
-What to do next:
-1. Visit your order page: http://localhost:3000/order/{order_id}
-2. Contact our support team for assistance
-3. We may be able to retry the processing or provide a refund
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px;
+                           border-radius: 6px; margin: 20px 0;">
+                    <strong>Important:</strong> This dataset is private and contains watermarking for verification purposes.
+                    Please review our terms of service regarding data usage and privacy.
+                </div>
 
-Our support team is available at support@finedata.example.com and will help resolve this issue as quickly as possible.
+                <p>Need help? Contact our support team at support@finedata.ai</p>
 
-We apologize for any inconvenience this may have caused.
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
 
-Best regards,
-The FineData Team
-"""
+                <p style="color: #666; font-size: 14px;">
+                    Thank you for choosing FineData!<br>
+                    Best regards,<br>
+                    The FineData Team
+                </p>
+            </div>
+        </body>
+        </html>
+        """
 
-        return await self.send_email(email, subject, body)
+        text_content = f"""
+        Your Dataset is Ready!
+
+        Great news! Your custom domain dataset has been processed and is now available.
+
+        Dataset Details:
+        - Order ID: {order_id}
+        - Domain: {dataset_info.get('domain', 'N/A')}
+        - Quality Tier: {dataset_info.get('quality_tier', 'N/A')}
+        - Languages: {', '.join(dataset_info.get('languages', []))}
+        - Estimated Size: {dataset_info.get('estimated_tokens', 'N/A')} tokens
+
+        Access your dataset here: {hf_repo_url}
+
+        How to use your dataset:
+        1. Click the link above
+        2. Sign in to Hugging Face (or create an account)
+        3. The dataset is in your private repository
+        4. Load with: from datasets import load_dataset; dataset = load_dataset("{hf_repo_url}")
+
+        Important: This dataset is private and contains watermarking for verification.
+        Please review our terms of service.
+
+        Need help? Contact support@finedata.ai
+
+        Thank you for choosing FineData!
+        Best regards,
+        The FineData Team
+        """
+
+        return self._send_email(email, subject, html_content, text_content)
+
+    def send_payment_failed_email(self, email: str, order_id: str, reason: str) -> bool:
+        """Send payment failure notification"""
+        subject = f"Payment Failed - Order {order_id}"
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Payment Failed</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #EF4444;">Payment Failed</h1>
+
+                <p>We're sorry, but your payment for order {order_id} could not be processed.</p>
+
+                <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 15px;
+                           border-radius: 6px; margin: 20px 0;">
+                    <strong>Reason:</strong> {reason}
+                </div>
+
+                <p>You can try again by visiting your order page or contact our support team for assistance.</p>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{settings.FRONTEND_URL}/orders/{order_id}"
+                       style="background-color: #EF4444; color: white; padding: 12px 24px;
+                              text-decoration: none; border-radius: 6px; display: inline-block;">
+                        Retry Payment
+                    </a>
+                </div>
+
+                <p>If you need help, please contact support@finedata.ai</p>
+
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+                <p style="color: #666; font-size: 14px;">
+                    Best regards,<br>
+                    The FineData Team
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_content = f"""
+        Payment Failed
+
+        We're sorry, but your payment for order {order_id} could not be processed.
+
+        Reason: {reason}
+
+        You can try again by visiting your order page or contact our support team for assistance.
+
+        Order page: {settings.FRONTEND_URL}/orders/{order_id}
+
+        If you need help, please contact support@finedata.ai
+
+        Best regards,
+        The FineData Team
+        """
+
+        return self._send_email(email, subject, html_content, text_content)
+
+
+# Global instance
+email_service = EmailService()
+
+
+def get_email_service() -> EmailService:
+    """Dependency injection for email service"""
+    return email_service

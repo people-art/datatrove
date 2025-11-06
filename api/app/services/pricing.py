@@ -330,14 +330,19 @@ class PricingService:
         notes.append(f"Quality tier: {quality_tier.title()}")
 
         if language_factor > 1.05:
-            notes.append(".2f"        elif language_factor < 0.95:
-            notes.append(".2f"
+            notes.append(f"Language complexity premium: +{(language_factor - 1) * 100:.0f}%")
+        elif language_factor < 0.95:
+            notes.append(f"Language complexity discount: -{(1 - language_factor) * 100:.0f}%")
         if domain_factor > 1.05:
-            notes.append(".2f"        elif domain_factor < 0.95:
-            notes.append(".2f"
+            notes.append(f"Domain complexity premium: +{(domain_factor - 1) * 100:.0f}%")
+        elif domain_factor < 0.95:
+            notes.append(f"Domain complexity discount: -{(1 - domain_factor) * 100:.0f}%")
+
         if time_factor > 1.05:
-            notes.append(".2f"        elif time_factor < 0.95:
-            notes.append(".2f"
+            notes.append(f"Time range premium: +{(time_factor - 1) * 100:.0f}%")
+        elif time_factor < 0.95:
+            notes.append(f"Time range discount: -{(1 - time_factor) * 100:.0f}%")
+
         notes.append("Final price may vary based on actual processing results and quality metrics")
 
         return " | ".join(notes)
@@ -359,11 +364,13 @@ class PricingService:
         quality_rate = benchmark_results.get('quality_pass_rate', 0)
 
         if coverage > 0:
-            notes.append(".1f"        if quality_rate > 0:
-            notes.append(".1f"
+            notes.append(f"Coverage: {coverage:.1f}%")
+        if quality_rate > 0:
+            notes.append(f"Quality rate: {quality_rate:.1f}%")
         if quality_adjustment > 1.05:
-            notes.append(".2f"        elif quality_adjustment < 0.95:
-            notes.append(".2f"
+            notes.append(f"Quality adjustment: +{(quality_adjustment - 1) * 100:.0f}%")
+        elif quality_adjustment < 0.95:
+            notes.append(f"Quality adjustment: -{(1 - quality_adjustment) * 100:.0f}%")
         return " | ".join(notes)
 
     def _get_fallback_pricing(self, quality_tier: str) -> Dict[str, Any]:
