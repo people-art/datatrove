@@ -3,6 +3,7 @@
 import { GradientCard } from '@/components/ui/gradient-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useDashboardStats } from '@/hooks/use-api';
 import {
   Activity,
   Clock,
@@ -54,12 +55,15 @@ const mockTasks = [
 ];
 
 export default function DashboardPage() {
-  // In a real app, you'd aggregate data from multiple queries
-  const stats = {
-    total: mockTasks.length,
-    running: mockTasks.filter(t => t.status === 'running' || t.status === 'processing').length,
-    completed: mockTasks.filter(t => t.status === 'ready' || t.status === 'completed').length,
-    failed: mockTasks.filter(t => t.status === 'failed').length
+  const { data: stats, isLoading } = useDashboardStats();
+
+  // Fallback stats while loading
+  const displayStats = stats || {
+    activeTasks: 0,
+    runningTasks: 0,
+    completedTasks: 0,
+    failedTasks: 0,
+    avgCompletionTime: '0h'
   };
 
   const getStatusIcon = (status: string) => {
@@ -115,8 +119,8 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-primary">{stats.total}</p>
-                <p className="text-sm text-foreground/70">Total Tasks</p>
+                <p className="text-2xl font-bold text-primary">{displayStats.activeTasks}</p>
+                <p className="text-sm text-foreground/70">Active Tasks</p>
               </div>
               <Database className="h-8 w-8 text-primary/70" />
             </div>
@@ -127,7 +131,7 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-blue-600">{stats.running}</p>
+                <p className="text-2xl font-bold text-blue-600">{displayStats.runningTasks}</p>
                 <p className="text-sm text-foreground/70">Running</p>
               </div>
               <Activity className="h-8 w-8 text-blue-600/70" />
@@ -139,7 +143,7 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+                <p className="text-2xl font-bold text-green-600">{displayStats.completedTasks}</p>
                 <p className="text-sm text-foreground/70">Completed</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600/70" />
@@ -151,10 +155,10 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
-                <p className="text-sm text-foreground/70">Failed</p>
+                <p className="text-2xl font-bold text-amber-600">{displayStats.avgCompletionTime}</p>
+                <p className="text-sm text-foreground/70">Avg. Completion</p>
               </div>
-              <XCircle className="h-8 w-8 text-red-600/70" />
+              <Clock className="h-8 w-8 text-amber-600/70" />
             </div>
           </div>
         </GradientCard>

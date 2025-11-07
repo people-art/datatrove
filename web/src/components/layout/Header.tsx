@@ -34,8 +34,8 @@ export function Header() {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/80 backdrop-blur-md border-b border-border/60">
-      <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between gap-6">
+    <header className="sticky top-0 z-40 h-16 border-b border-neutral-200/80 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 h-full flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Sparkles className="h-5 w-5 text-primary" />
@@ -43,20 +43,29 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-6">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`px-3 py-2 text-sm rounded-md transition-colors ${
+              className={`relative px-3 py-2 text-sm font-medium transition-colors ${
                 isActive(item.href)
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "text-neutral-900 border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {item.label}
             </Link>
           ))}
+          {/* Task Badge next to Dashboard */}
+          {isActive('/dashboard') && mockTasks.total > 0 && (
+            <Badge
+              variant="secondary"
+              className="ml-1 px-2 py-0.5 text-xs bg-primary/10 text-primary border-primary/20"
+            >
+              {mockTasks.total}
+            </Badge>
+          )}
         </nav>
 
         {/* Right Actions */}
@@ -75,24 +84,8 @@ export function Header() {
           {/* Theme Toggle */}
           <ThemeToggle />
 
-          {/* Task Badge */}
-          {mockTasks.total > 0 && (
-            <Link href="/dashboard">
-              <Badge
-                variant="secondary"
-                className="relative cursor-pointer hover:bg-secondary/80 transition-colors px-2 py-1"
-              >
-                <Activity className="h-3 w-3 mr-1" />
-                {mockTasks.total}
-                <span className="sr-only">
-                  {mockTasks.running} running, {mockTasks.queued} queued tasks
-                </span>
-              </Badge>
-            </Link>
-          )}
-
           {/* Sign in */}
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+          <Button variant="outline" size="sm" className="text-muted-foreground hover:text-foreground">
             Sign in
           </Button>
 
@@ -115,49 +108,52 @@ export function Header() {
                 {/* Mobile Navigation */}
                 <nav className="flex flex-col gap-2">
                   {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`px-4 py-3 text-sm rounded-md transition-colors ${
-                        isActive(item.href)
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
+                    <div key={item.href} className="flex items-center justify-between">
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex-1 px-4 py-3 text-sm rounded-md transition-colors ${
+                          isActive(item.href)
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                      {item.href === '/dashboard' && mockTasks.total > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 px-2 py-0.5 text-xs bg-primary/10 text-primary border-primary/20"
+                        >
+                          {mockTasks.total}
+                        </Badge>
+                      )}
+                    </div>
                   ))}
                 </nav>
 
                 {/* Mobile Actions */}
                 <div className="flex flex-col gap-3 pt-4 border-t">
-                  <Link href="/new" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full">
-                      Create Dataset
-                    </Button>
-                  </Link>
-                  <Button variant="outline" className="w-full">
-                    Sign in
-                  </Button>
-                </div>
-
-                {/* Mobile Settings */}
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <span className="text-sm text-muted-foreground">Theme</span>
-                  <ThemeToggle />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Language</span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
-                    className="flex items-center gap-1.5"
+                    className="flex items-center gap-1.5 justify-start"
                   >
                     <Globe className="h-4 w-4" />
                     {language === 'en' ? '中文' : 'EN'}
                   </Button>
+                  <ThemeToggle />
+                  <div className="pt-2 border-t">
+                    <Link href="/new" onClick={() => setMobileMenuOpen(false)}>
+                      <Button className="w-full mb-2">
+                        Create Dataset
+                      </Button>
+                    </Link>
+                    <Button variant="outline" className="w-full">
+                      Sign in
+                    </Button>
+                  </div>
                 </div>
               </div>
             </SheetContent>

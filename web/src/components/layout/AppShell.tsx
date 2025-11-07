@@ -12,8 +12,8 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       <Header />
-      <main className="pt-16">
-        <div className="max-w-6xl mx-auto px-6 py-8">
+      <main className="min-h-[calc(100vh-64px)]">
+        <div className="max-w-6xl mx-auto px-6 lg:px-8 pt-10 pb-16">
           {children}
         </div>
       </main>

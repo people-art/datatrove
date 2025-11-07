@@ -25,23 +25,23 @@ export default function Home() {
         </div>
 
         <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">
-          为 AI 团队定制的<br />领域数据集工厂
+          {t('hero_title') || 'Custom Domain Datasets for AI Teams'}
         </h1>
 
         <p className="text-sm md:text-base text-muted-foreground mb-8 max-w-2xl mx-auto">
-          从数十亿网页中生成高质量、特定领域的训练数据集，为专业 AI 模型、研究和分析做好准备。
+          {t('hero_subtitle') || 'From billions of web pages to curated, domain-specific datasets — ready for specialized models and RAG systems.'}
         </p>
 
         <div className="flex gap-3 justify-center">
           <Link href="/new">
             <Button size="lg" className="gap-2">
-              创建数据集
+              {t('hero_cta_primary') || 'Create Dataset'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
           <Link href="/docs">
             <Button variant="outline" size="lg">
-              查看文档
+              {t('hero_cta_secondary') || 'View Docs'}
             </Button>
           </Link>
         </div>
@@ -49,27 +49,27 @@ export default function Home() {
 
       {/* Why Choose Section */}
       <section>
-        <h2 className="text-2xl font-semibold text-center mb-8">为什么选择 FineData</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 flex flex-col gap-1">
-            <Database className="h-5 w-5 text-primary mb-2" />
-            <h3 className="text-sm font-medium">AI 驱动过滤</h3>
-            <p className="text-xs text-muted-foreground">
-              基于本体的关键词扩展、LLM 相关性打分、多阶段质量过滤，精准匹配你的细分领域。
+        <h2 className="text-2xl font-semibold text-center mb-12">{t('why_title') || 'Why FineData'}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-card/70 border border-border/70 rounded-2xl px-6 py-5 hover:shadow-sm transition-all">
+            <Database className="h-6 w-6 text-primary mb-3" />
+            <h3 className="text-base font-medium mb-2">{t('why_ai_filtering') || 'AI-Powered Filtering'}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t('why_ai_filtering_desc') || 'Ontology-based keyword expansion, LLM relevance scoring, multi-stage quality filtering for precise domain matching.'}
             </p>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 flex flex-col gap-1">
-            <Zap className="h-5 w-5 text-primary mb-2" />
-            <h3 className="text-sm font-medium">万亿级网页覆盖</h3>
-            <p className="text-xs text-muted-foreground">
-              基于 Common Crawl 与工程化流水线，稳定处理数十亿网页，配置可追踪、结果可复现。
+          <div className="bg-card/70 border border-border/70 rounded-2xl px-6 py-5 hover:shadow-sm transition-all">
+            <Zap className="h-6 w-6 text-primary mb-3" />
+            <h3 className="text-base font-medium mb-2">{t('why_scale') || 'Trillion-Scale Coverage'}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t('why_scale_desc') || 'Built on Common Crawl with engineered pipelines, processing billions of pages with traceable configs and reproducible results.'}
             </p>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-4 flex flex-col gap-1">
-            <Shield className="h-5 w-5 text-primary mb-2" />
-            <h3 className="text-sm font-medium">企业级隐私与合规</h3>
-            <p className="text-xs text-muted-foreground">
-              内置 PII 检测、医疗场景 HIPAA 规则、脱敏与审计日志，确保数据安全合规。
+          <div className="bg-card/70 border border-border/70 rounded-2xl px-6 py-5 hover:shadow-sm transition-all">
+            <Shield className="h-6 w-6 text-primary mb-3" />
+            <h3 className="text-base font-medium mb-2">{t('why_privacy') || 'Enterprise Privacy & Compliance'}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t('why_privacy_desc') || 'Built-in PII detection, HIPAA rules for healthcare, anonymization and audit logs ensuring data security and compliance.'}
             </p>
           </div>
         </div>
@@ -77,8 +77,8 @@ export default function Home() {
 
       {/* How It Works */}
       <section>
-        <h2 className="text-2xl font-semibold text-center mb-8">工作流程</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <h2 className="text-2xl font-semibold text-center mb-12">{t('workflow_title') || 'How It Works'}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium mb-3">
               1

@@ -194,3 +194,40 @@ export const useHealthCheck = () => {
     refetchInterval: 30000, // Check every 30 seconds
   });
 };
+
+// Dashboard stats aggregation hook
+export const useDashboardStats = () => {
+  // Mock data for now - in real implementation, aggregate from multiple API endpoints
+  return useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      // TODO: Aggregate from /benchmark/jobs and /orders endpoints
+      return {
+        activeTasks: 3,
+        runningTasks: 1,
+        completedTasks: 47,
+        failedTasks: 2,
+        avgCompletionTime: '2.5h'
+      };
+    },
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+};
+
+// Simple auth hook (mock implementation)
+export const useAuth = () => {
+  // Mock auth state - in real app, this would integrate with your auth system
+  return {
+    isAuthenticated: false, // Set to true when user logs in
+    user: null,
+    login: () => {
+      // Mock login - redirect to login page
+      window.location.href = '/signin';
+    },
+    logout: () => {
+      // Mock logout
+      localStorage.removeItem('auth-token');
+      window.location.reload();
+    }
+  };
+};
