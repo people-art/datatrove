@@ -23,11 +23,5 @@ export default function NewDatasetPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen">
-      <div className="container py-8">
-        <DomainForm onSubmit={handleSubmit} isLoading={loading} />
-      </div>
-    </div>
-  );
+  return <DomainForm onSubmit={handleSubmit} isLoading={loading} />;
 }

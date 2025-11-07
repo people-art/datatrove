@@ -4,8 +4,8 @@ import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
-import { MainNav, SkipLink } from "@/components/nav/MainNav";
-import { Footer } from "@/components/nav/Footer";
+import { SkipLink } from "@/components/nav/MainNav";
+import { AppShell } from "@/components/layout/AppShell";
 import { I18nProvider } from "@/lib/i18n";
 
 const inter = Inter({
@@ -37,13 +37,9 @@ export default function RootLayout({
             <AccessibilityProvider>
               <SkipLink />
               <QueryProvider>
-              <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
-                <MainNav />
-                          <main id="main-content" className="mx-auto w-full max-w-6xl px-4 md:px-6 lg:px-8">
-                            {children}
-                          </main>
-                          <Footer />
-              </div>
+                <AppShell>
+                  {children}
+                </AppShell>
               </QueryProvider>
             </AccessibilityProvider>
           </I18nProvider>

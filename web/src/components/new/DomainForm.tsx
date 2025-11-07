@@ -59,7 +59,7 @@ interface DomainFormProps {
   onSubmit?: (formData: any) => void;
 }
 
-export function DomainForm({ onSubmit }: DomainFormProps) {
+export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoading?: boolean }) {
   const { t } = useI18n();
   const router = useRouter();
 
@@ -79,6 +79,8 @@ export function DomainForm({ onSubmit }: DomainFormProps) {
   const [emailValid, setEmailValid] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quote, setQuote] = useState<QuoteData | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
   // API hooks
   const quoteMutation = useQuote();
@@ -203,10 +205,6 @@ export function DomainForm({ onSubmit }: DomainFormProps) {
     fetchQuote(formData);
   }, [formData.domain, formData.keywords, formData.languages, formData.qualityTier, formData.estimatedScale]);
 
-  const updateFormData = (updates: Partial<DomainFormData>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -234,11 +232,6 @@ export function DomainForm({ onSubmit }: DomainFormProps) {
     }
   };
 
-  const isFormValid = formData.domain.trim() &&
-    formData.keywords.length >= 2 &&
-    formData.email.trim() &&
-    emailValidation?.isValid;
-
   const loadExampleKeywords = (domain: string) => {
     const examples: Record<string, string[]> = {
       'artificial intelligence': ['machine learning', 'neural networks', 'deep learning', 'AI ethics', 'computer vision'],
@@ -252,360 +245,281 @@ export function DomainForm({ onSubmit }: DomainFormProps) {
   };
 
   return (
-    <>
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className="mb-8"
-      >
-        <div className="flex items-center gap-4 mb-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight mb-2">
-          {t('createDataset')}
-        </h1>
-        <p className="text-lg text-foreground/70">
-          {t('generatePreview')}
-        </p>
-      </motion.div>
-
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Form */}
-        <div className="lg:col-span-2 space-y-6">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg"
-            >
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                    {t('error')}
-                  </p>
-                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                    {error}
-                  </p>
+    <div className="space-y-8">
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] gap-6 items-start">
+        {/* Left: Form */}
+        <div className="space-y-4">
+          {/* Domain & Topic Section */}
+          <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
+            <header className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-medium">领域与主题</h2>
+              <span className="text-[10px] text-muted-foreground">步骤 1 / 4</span>
+            </header>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  领域/主题 *
+                </label>
+                <input
+                  type="text"
+                  placeholder="例如：人工智能、气候变化、医疗研究"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  value={formData.domain}
+                  onChange={(e) => updateFormData({ domain: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  关键词 *
+                </label>
+                <div className="min-h-[80px] p-3 rounded-lg border border-border bg-background focus-within:ring-2 focus-within:ring-primary/20">
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {formData.keywords.map((keyword, index) => (
+                      <span key={index} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded">
+                        {keyword}
+                        <button
+                          onClick={() => updateFormData({
+                            keywords: formData.keywords.filter((_, i) => i !== index)
+                          })}
+                          className="hover:text-destructive"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="输入关键词，按回车添加..."
+                    className="w-full text-sm bg-transparent border-0 p-0 focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                        e.preventDefault();
+                        updateFormData({
+                          keywords: [...formData.keywords, e.currentTarget.value.trim()]
+                        });
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            </motion.div>
-          )}
+            </div>
+          </section>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Domain & Topic */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.1 }}
-            >
-              <GradientCard>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">Domain & Topic</h3>
-                    <p className="text-sm text-foreground/60">What area do you want to collect data about?</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="domain" className="text-sm font-medium text-foreground/80">
-                        Domain/Topic *
-                      </Label>
-                      <Input
-                        id="domain"
-                        placeholder="e.g., artificial intelligence, climate change, quantum computing"
-                        value={formData.domain}
-                        onChange={(e) => updateFormData({ domain: e.target.value })}
-                        className="h-11 mt-1"
-                      />
-                      <p className="text-xs text-foreground/50 mt-2">
-                        Examples: {DOMAIN_EXAMPLES.slice(0, 4).join(', ')}
-                        <button
-                          type="button"
-                          onClick={() => setShowExamples(!showExamples)}
-                          className="ml-1 text-primary hover:underline"
-                        >
-                          {showExamples ? 'hide' : 'show more'}
-                        </button>
-                      </p>
-
-                      {showExamples && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mt-2 flex flex-wrap gap-2"
-                        >
-                          {DOMAIN_EXAMPLES.map(example => (
-                            <button
-                              key={example}
-                              type="button"
-                              onClick={() => loadExampleKeywords(example)}
-                              className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                            >
-                              {example}
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium text-foreground/80">
-                        Keywords * <span className="text-xs text-foreground/50">(at least 2)</span>
-                      </Label>
-                      <div className="mt-1">
-                        <KeywordInput
-                          value={formData.keywords}
-                          onChange={(keywords) => updateFormData({ keywords })}
-                          placeholder="Add relevant keywords for better filtering..."
-                          maxKeywords={64}
-                        />
-                      </div>
-                      <p className="text-xs text-foreground/50 mt-2">
-                        Separate with commas or paste a list. More specific keywords = better results.
-                      </p>
-                    </div>
-                  </div>
+          {/* Languages & Time Section */}
+          <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
+            <header className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-medium">语言与时间范围</h2>
+              <span className="text-[10px] text-muted-foreground">步骤 2 / 4</span>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  语言
+                </label>
+                <select
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  value={formData.languages[0] || ''}
+                  onChange={(e) => updateFormData({ languages: [e.target.value] })}
+                >
+                  <option value="English">English</option>
+                  <option value="Chinese">中文</option>
+                  <option value="Spanish">Español</option>
+                  <option value="French">Français</option>
+                  <option value="German">Deutsch</option>
+                </select>
+              </div>
+              <div className="md:col-span-2 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    开始日期
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    value={formData.timeRange.start}
+                    onChange={(e) => updateFormData({
+                      timeRange: { ...formData.timeRange, start: e.target.value }
+                    })}
+                  />
                 </div>
-              </GradientCard>
-            </motion.div>
-
-            {/* Language & Time */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.2 }}
-            >
-              <GradientCard>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">Language & Time Range</h3>
-                    <p className="text-sm text-foreground/60">Specify the content scope for your dataset</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium text-foreground/80">Languages</Label>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {LANGUAGE_OPTIONS.map(lang => (
-                          <button
-                            key={lang}
-                            type="button"
-                            onClick={() => {
-                              const newLangs = formData.languages.includes(lang)
-                                ? formData.languages.filter(l => l !== lang)
-                                : [...formData.languages, lang];
-                              updateFormData({ languages: newLangs });
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                              formData.languages.includes(lang)
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted hover:bg-muted/80 text-foreground/70'
-                            }`}
-                          >
-                            {lang}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="start-date" className="text-sm font-medium text-foreground/80">
-                          Start Date
-                        </Label>
-                        <Input
-                          id="start-date"
-                          type="date"
-                          value={formData.timeRange.start}
-                          onChange={(e) => updateFormData({
-                            timeRange: { ...formData.timeRange, start: e.target.value }
-                          })}
-                          className="h-11 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="end-date" className="text-sm font-medium text-foreground/80">
-                          End Date
-                        </Label>
-                        <Input
-                          id="end-date"
-                          type="date"
-                          value={formData.timeRange.end}
-                          min={formData.timeRange.start}
-                          onChange={(e) => updateFormData({
-                            timeRange: { ...formData.timeRange, end: e.target.value }
-                          })}
-                          className="h-11 mt-1"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    结束日期
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    value={formData.timeRange.end}
+                    onChange={(e) => updateFormData({
+                      timeRange: { ...formData.timeRange, end: e.target.value }
+                    })}
+                  />
                 </div>
-              </GradientCard>
-            </motion.div>
+              </div>
+            </div>
+          </section>
 
-            {/* Quality & Scale */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.3 }}
-            >
-              <GradientCard>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">Quality & Scale</h3>
-                    <p className="text-sm text-foreground/60">Choose the quality level and expected dataset size</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium text-foreground/80">Quality Tier</Label>
-                      <div className="mt-2 space-y-2">
-                        {QUALITY_TIERS.map(tier => (
-                          <button
-                            key={tier.value}
-                            type="button"
-                            onClick={() => updateFormData({ qualityTier: tier.value as "basic" | "standard" | "premium" })}
-                            className={`w-full p-4 rounded-xl border text-left transition-all ${
-                              formData.qualityTier === tier.value
-                                ? 'border-primary bg-primary/5'
-                                : 'border-line hover:border-primary/50'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium">{tier.label}</span>
-                              {formData.qualityTier === tier.value && (
-                                <Sparkles className="h-4 w-4 text-primary" />
-                              )}
-                            </div>
-                            <p className="text-sm text-foreground/70 mb-1">{tier.description}</p>
-                            <p className="text-xs text-foreground/50">{tier.price}</p>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="scale" className="text-sm font-medium text-foreground/80">
-                        Estimated Scale
-                      </Label>
-                      <select
-                        id="scale"
-                        value={formData.estimatedScale}
-                        onChange={(e) => updateFormData({ estimatedScale: e.target.value })}
-                        className="w-full h-11 mt-1 px-3 rounded-xl border border-line bg-background text-sm focus:border-primary focus:outline-none"
-                      >
-                        {SCALE_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label} - {option.description}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+          {/* Quality & Scale Section */}
+          <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
+            <header className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-medium">质量与规模</h2>
+              <span className="text-[10px] text-muted-foreground">步骤 3 / 4</span>
+            </header>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-3 block">
+                  质量等级
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'basic', label: '基础', desc: '快速处理，基本过滤' },
+                    { value: 'standard', label: '标准', desc: '平衡质量与速度' },
+                    { value: 'premium', label: '高级', desc: '最高质量，深度过滤' }
+                  ].map((tier) => (
+                    <button
+                      key={tier.value}
+                      onClick={() => updateFormData({ qualityTier: tier.value as any })}
+                      className={`p-3 rounded-lg border text-left transition-colors ${
+                        formData.qualityTier === tier.value
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="font-medium text-sm">{tier.label}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{tier.desc}</div>
+                    </button>
+                  ))}
                 </div>
-              </GradientCard>
-            </motion.div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  预估规模 (百万 tokens)
+                </label>
+                <input
+                  type="number"
+                  placeholder="1-1000"
+                  min="1"
+                  max="1000"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  value={formData.estimatedScale}
+                  onChange={(e) => updateFormData({ estimatedScale: e.target.value })}
+                />
+              </div>
+            </div>
+          </section>
 
-            {/* Contact */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.4 }}
-            >
-              <GradientCard>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">Contact Information</h3>
-                    <p className="text-sm text-foreground/60">We'll send you delivery updates and dataset access</p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email" className="text-sm font-medium text-foreground/80">
-                      {t('email')} *
-                    </Label>
-                    <EmailField
-                      value={formData.email}
-                      onChange={(value) => updateFormData({ email: value })}
-                      onValidationChange={setEmailValid}
-                      placeholder="your.email@example.com"
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-foreground/50 mt-2">
-                      We'll only use this for dataset delivery notifications.
-                    </p>
-
-                    {/* Email validation status */}
-                    {emailValidating && (
-                      <p className="text-xs text-foreground/70 mt-1 flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Validating email...
-                      </p>
-                    )}
-
-                    {emailValidation && !emailValidating && (
-                      <div className="mt-2 space-y-1">
-                        {emailValidation.isValid ? (
-                          <p className="text-xs text-accent flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Email looks good
-                          </p>
-                        ) : (
-                          <p className="text-xs text-danger flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Email validation failed
-                          </p>
-                        )}
-
-                        {/* Show specific validation checks */}
-                        <div className="text-xs space-y-0.5">
-                          {Object.entries(emailValidation.checks).map(([check, passed]) => (
-                            <div key={check} className={`flex items-center gap-1 ${passed ? 'text-accent' : 'text-danger'}`}>
-                              <div className={`h-1 w-1 rounded-full ${passed ? 'bg-accent' : 'bg-danger'}`} />
-                              {check.replace(/([A-Z])/g, ' $1').toLowerCase()}: {passed ? '✓' : '✗'}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+          {/* Email Section */}
+          <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
+            <header className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-medium">联系信息</h2>
+              <span className="text-[10px] text-muted-foreground">步骤 4 / 4</span>
+            </header>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                邮箱地址 *
+              </label>
+              <input
+                type="email"
+                placeholder="your.email@example.com"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                value={formData.email}
+                onChange={(e) => updateFormData({ email: e.target.value })}
+              />
+              {emailValidation && (
+                <div className="mt-2 text-xs">
+                  {emailValidation.isValid ? (
+                    <span className="text-green-600">✓ 邮箱验证通过</span>
+                  ) : (
+                    <span className="text-red-600">✗ 邮箱格式无效</span>
+                  )}
                 </div>
-              </GradientCard>
-            </motion.div>
-          </form>
+              )}
+            </div>
+          </section>
         </div>
 
-        {/* Price Card - Desktop */}
-        <div className="hidden lg:block">
-          <PriceCard quote={quote} isLoading={quoteLoading} />
+        {/* Right: Pricing Sidebar */}
+        <div className="space-y-6">
+          {/* Estimated Price */}
+          <div className="sticky top-24">
+            <div className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-4">
+              <h3 className="font-medium">预估价格</h3>
+
+              {quote ? (
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      {quote.currency} {quote.total?.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      基于你的配置估算
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span>基础价格</span>
+                      <span>{quote.currency} {quote.subtotal?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>税费 (8%)</span>
+                      <span>{quote.currency} {quote.tax?.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t text-xs text-muted-foreground">
+                    {quote.pricing_notes}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-muted-foreground text-sm">
+                    填写表单后显示价格预估
+                  </div>
+                </div>
+              )}
+
+              {/* Benchmark Status */}
+              <div className="pt-4 border-t space-y-3">
+                <h4 className="font-medium text-sm">Benchmark 状态</h4>
+                <div className="text-xs text-muted-foreground">
+                  准备运行 100 万页本地预览
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span>本地预览 • 1 个节点</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <div className="mt-4">
+              <button
+                onClick={() => {
+                  if (isFormValid && !isLoading) {
+                    onSubmit(formData);
+                  }
+                }}
+                disabled={!isFormValid || isLoading}
+                className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-colors ${
+                  isFormValid && !isLoading
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                }`}
+              >
+                {isLoading ? '创建中...' : '确认并运行 Benchmark'}
+              </button>
+              <div className="text-xs text-muted-foreground text-center mt-2">
+                无需预付费用 • Benchmark 完成后确认支付
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Sticky Footer CTA */}
-      <StickyFooterCta
-        disabled={!isFormValid || isLoading}
-        onClick={() => {
-          if (isFormValid && !isLoading) {
-            onSubmit(formData);
-          }
-        }}
-        label={createJobMutation.isPending ? t('processing') : t('generatePreview')}
-        isVisible={true}
-      />
-
-      {/* Mobile Price Card */}
-      <div className="lg:hidden mt-6">
-        <PriceCard quote={quote} isLoading={quoteLoading} />
-      </div>
-    </>
+    </div>
   );
 }
+

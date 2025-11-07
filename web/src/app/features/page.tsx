@@ -1,117 +1,157 @@
-import { Metadata } from 'next';
-import { useI18n } from '@/lib/i18n';
-import { GradientCard } from '@/components/ui/gradient-card';
-import { Badge } from '@/components/ui/badge';
+"use client";
 
-export const metadata: Metadata = {
-  title: 'Features - FineData',
-  description: 'Learn about FineData\'s AI-powered data processing, enterprise-grade privacy, and massive web-scale coverage.',
-};
+import Link from "next/link";
+import { useI18n } from '@/lib/i18n';
+import { Database, Shield, Zap, Globe, BarChart, Lock, Cpu, Users, Building, ArrowRight } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 export default function FeaturesPage() {
-  // Note: Since this is a server component, we can't use useI18n hook directly
-  // We'll use static content for now, but in a real app you'd pass translations as props
-  const features = {
-    title: "Why FineData",
-    subtitle: "Purpose-built for AI teams, researchers, and enterprises that demand clean, controllable, and scalable training data.",
-    blocks: [
-      {
-        title: "AI-Powered Filtering",
-        body: "Ontology-driven keyword expansion, LLM-assisted scoring, and multi-stage quality filters ensure your dataset matches your exact domain and intent."
-      },
-      {
-        title: "Massive Web-Scale Coverage",
-        body: "Leverage Common Crawl and battle-tested pipelines to process billions of pages with deterministic, reproducible configurations."
-      },
-      {
-        title: "Enterprise-Grade Privacy",
-        body: "PII detection, HIPAA-ready patterns for medical content, and strict sanitization keep your datasets safe and compliant."
-      },
-      {
-        title: "Custom Domains in Days",
-        body: "Support any niche domain: finance, medical, robotics, law, education, energy, security, and internal ontologies."
-      },
-      {
-        title: "Transparent Metrics",
-        body: "Every run ships with coverage, dedup ratio, language mix, toxicity and PII rates, plus domain relevance reports."
-      },
-      {
-        title: "Private Delivery on Hugging Face",
-        body: "Datasets are delivered as private Hugging Face repositories or S3 buckets with fine-grained access control."
-      }
-    ]
-  };
+  const { t } = useI18n();
+
+  const features = [
+    {
+      icon: Database,
+      title: 'AI 驱动过滤',
+      description: '基于本体的关键词扩展、LLM 相关性打分、多阶段质量过滤，精准匹配你的细分领域和使用场景。'
+    },
+    {
+      icon: Zap,
+      title: '万亿级网页覆盖',
+      description: '基于 Common Crawl 与工程化流水线，稳定处理数十亿网页，配置可追踪、结果可复现。'
+    },
+    {
+      icon: Shield,
+      title: '企业级隐私与合规',
+      description: '内置 PII 检测、医疗场景 HIPAA 规则、脱敏与审计日志，确保数据安全合规。'
+    },
+    {
+      icon: Globe,
+      title: '任意垂直领域定制',
+      description: '支持金融、医疗、法律、教育、能源、安全、机器人等高价值领域，以及自定义业务本体。'
+    },
+    {
+      icon: BarChart,
+      title: '完整质量度量',
+      description: '每次运行提供覆盖率、去重率、语言分布、毒性和隐私指标，以及领域相关性报告。'
+    },
+    {
+      icon: Lock,
+      title: '私有交付与权限控制',
+      description: '通过 Hugging Face 私有仓库或 S3 等方式交付，支持精细化访问控制和审计。'
+    }
+  ];
+
+  const builtFor = [
+    { name: 'Fintech', icon: Building },
+    { name: 'Healthcare', icon: Shield },
+    { name: 'LLM Labs', icon: Cpu },
+    { name: 'Research', icon: Users }
+  ];
 
   return (
-    <div className="min-h-screen py-16">
-      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-        {/* Hero Section */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-            {features.title}
-          </h1>
-          <p className="text-xl text-foreground/70 max-w-3xl mx-auto">
-            {features.subtitle}
-          </p>
-        </div>
+    <div className="space-y-16">
+      <header className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
+          {t('features_title')}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+          {t('features_subtitle')}
+        </p>
+      </header>
 
-        {/* Main Features Grid */}
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-16">
-          {features.blocks.slice(0, 3).map((feature, index) => (
-            <GradientCard key={index} className="h-full">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-4 text-primary">
-                  {feature.title}
-                </h3>
-                <p className="text-foreground/70 leading-relaxed">
-                  {feature.body}
-                </p>
+      {/* Main Features */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          {features.slice(0, 3).map((feature, index) => (
+            <div key={index} className="flex gap-4 p-4 rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm">
+              <feature.icon className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-medium mb-1">{feature.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
               </div>
-            </GradientCard>
+            </div>
           ))}
         </div>
 
-        {/* Secondary Features Grid */}
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {features.blocks.slice(3).map((feature, index) => (
-            <GradientCard key={index + 3} className="h-full">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-4 text-primary">
-                  {feature.title}
-                </h3>
-                <p className="text-foreground/70 leading-relaxed">
-                  {feature.body}
-                </p>
+        <div className="space-y-4">
+          {features.slice(3).map((feature, index) => (
+            <div key={index + 3} className="flex gap-4 p-4 rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm">
+              <feature.icon className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-medium mb-1">{feature.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
               </div>
-            </GradientCard>
+            </div>
           ))}
         </div>
+      </div>
 
-        {/* CTA Section */}
-        <div className="text-center mt-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full text-accent text-sm font-medium mb-6">
-            <Badge variant="secondary">Ready to get started?</Badge>
+      {/* Technical Highlights */}
+      <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-6">
+        <h2 className="text-lg font-semibold mb-4">技术亮点</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="flex items-start gap-3">
+            <div className="h-2 w-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <div className="font-medium">Common Crawl 集成</div>
+              <div className="text-muted-foreground text-xs">直接处理原始 Common Crawl 数据，无中间环节</div>
+            </div>
           </div>
-          <h2 className="text-2xl font-bold mb-4">
-            Transform your AI training data today
-          </h2>
-          <p className="text-foreground/70 mb-8 max-w-2xl mx-auto">
-            Join leading AI teams who trust FineData for their critical data processing needs.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <a
-              href="/new"
-              className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-            >
-              Create Dataset
-            </a>
-            <a
-              href="/docs"
-              className="inline-flex items-center px-6 py-3 border border-border rounded-lg font-medium hover:bg-accent transition-colors"
-            >
-              Learn More
-            </a>
+          <div className="flex items-start gap-3">
+            <div className="h-2 w-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <div className="font-medium">Slurm 集群支持</div>
+              <div className="text-muted-foreground text-xs">大规模分布式处理，支持数TB数据集生成</div>
+            </div>
           </div>
+          <div className="flex items-start gap-3">
+            <div className="h-2 w-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <div className="font-medium">多语言支持</div>
+              <div className="text-muted-foreground text-xs">自动语言检测与过滤，支持100+种语言</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="h-2 w-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <div className="font-medium">实时质量监控</div>
+              <div className="text-muted-foreground text-xs">处理过程中实时监控数据质量指标</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Built For */}
+      <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-6">
+        <h2 className="text-lg font-semibold mb-4">适用于</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {builtFor.map((item, index) => (
+            <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <item.icon className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">{item.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="text-center">
+        <h2 className="text-xl font-semibold mb-4">准备开始了吗？</h2>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          在几分钟内创建你的第一个定制数据集
+        </p>
+        <div className="flex gap-3 justify-center">
+          <Link href="/new">
+            <Button size="lg" className="gap-2">
+              创建数据集
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/docs">
+            <Button variant="outline" size="lg">
+              查看文档
+            </Button>
+          </Link>
         </div>
       </div>
     </div>
