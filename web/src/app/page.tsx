@@ -3,17 +3,20 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { ArrowRight, Database, Shield, Zap, Sparkles, Activity, Clock } from "lucide-react";
-
-// Mock live job data - in real app, fetch from API
-const liveJobStats = {
-  activeBenchmarks: 3,
-  activeOrders: 1,
-  avgCompletionTime: "2.5h"
-};
+import { useSystemStats } from "@/hooks/use-api";
+import { ArrowRight, Database, Shield, Zap, Sparkles, Activity, Clock, CheckCircle } from "lucide-react";
 
 export default function Home() {
   const { t } = useI18n();
+  const { loading, activeBenchmarks, completedBenchmarks, activeOrders, totalTasks } = useSystemStats();
+
+  // Fallback stats for when no data is available
+  const displayStats = {
+    activeBenchmarks: activeBenchmarks || 0,
+    completedBenchmarks: completedBenchmarks || 0,
+    activeOrders: activeOrders || 0,
+    totalTasks: totalTasks || 0,
+  };
 
   return (
     <div className="space-y-16">
@@ -122,28 +125,43 @@ export default function Home() {
       <section className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-sm p-6">
         <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
-          系统状态概览
+          {t('system_status_overview') || 'System Status Overview'}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="flex items-center gap-3">
             <Database className="h-5 w-5 text-blue-500" />
             <div>
-              <div className="text-lg font-semibold">{liveJobStats.activeBenchmarks}</div>
-              <div className="text-xs text-muted-foreground">活跃基准任务</div>
+              <div className="text-lg font-semibold">{displayStats.activeBenchmarks}</div>
+              <div className="text-xs text-muted-foreground">
+                {t('active_benchmarks') || 'Active Benchmarks'}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Zap className="h-5 w-5 text-green-500" />
+            <CheckCircle className="h-5 w-5 text-green-500" />
             <div>
-              <div className="text-lg font-semibold">{liveJobStats.activeOrders}</div>
-              <div className="text-xs text-muted-foreground">生产中订单</div>
+              <div className="text-lg font-semibold">{displayStats.completedBenchmarks}</div>
+              <div className="text-xs text-muted-foreground">
+                {t('completed_benchmarks') || 'Completed Benchmarks'}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5 text-orange-500" />
+            <Zap className="h-5 w-5 text-orange-500" />
             <div>
-              <div className="text-lg font-semibold">{liveJobStats.avgCompletionTime}</div>
-              <div className="text-xs text-muted-foreground">平均完成时间</div>
+              <div className="text-lg font-semibold">{displayStats.activeOrders}</div>
+              <div className="text-xs text-muted-foreground">
+                {t('active_orders') || 'Active Orders'}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Activity className="h-5 w-5 text-purple-500" />
+            <div>
+              <div className="text-lg font-semibold">{displayStats.totalTasks}</div>
+              <div className="text-xs text-muted-foreground">
+                {t('total_tasks') || 'Total Tasks'}
+              </div>
             </div>
           </div>
         </div>

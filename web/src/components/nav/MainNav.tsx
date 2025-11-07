@@ -1,203 +1,180 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-import { Menu, X, Activity, Globe } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useHealthCheck } from "@/hooks/use-api";
 import { useI18n } from "@/lib/i18n";
-import { Badge } from "@/components/ui/badge";
-
-// Skip to main content link
-export function SkipLink() {
-  return (
-    <a
-      href="#main-content"
-      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-    >
-      Skip to main content
-    </a>
-  );
-}
+import { useAuth } from "@/hooks/use-api";
+import { Button } from "@/components/ui/button";
+import { Sparkles, Menu } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 export function MainNav() {
   const { t, language, setLanguage } = useI18n();
+  const { isAuthenticated, login, logout, user } = useAuth();
   const pathname = usePathname();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { href: "/features", label: t('features') },
-    { href: "/pricing", label: t('pricing') },
-    { href: "/docs", label: t('docs') },
+  const links = [
+    { href: "/features", label: t("nav.features") || "Features" },
+    { href: "/pricing", label: t("nav.pricing") || "Pricing" },
+    { href: "/docs", label: t("nav.docs") || "Docs" },
+    { href: "/dashboard", label: t("nav.dashboard") || "Dashboard" },
   ];
 
-  // Mock task counts (in real app, aggregate from queries)
-  const taskCounts = {
-    running: 2,
-    queued: 1,
-    total: 3,
-  };
-
-  const healthCheck = useHealthCheck();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname?.startsWith(href);
-  };
-
   return (
-    <header
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        isScrolled
-          ? "bg-background/80 backdrop-blur-md border-b border-line"
-          : "bg-transparent"
-      }`}
-    >
-      <nav className="container flex items-center justify-between h-16">
-        {/* Logo */}
-        <Link
-          href="/"
-          className="text-xl font-semibold text-foreground hover:text-primary transition-colors"
-        >
-          FineData
+    <nav className="sticky top-0 z-40 border-b border-neutral-200/80 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+        {/* Left: Brand */}
+        <Link href="/" className="flex items-center gap-2 font-semibold text-neutral-900">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-white text-[11px]">
+            F
+          </span>
+          <span>FineData</span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive(item.href)
-                  ? "text-primary"
-                  : "text-foreground/70"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-
-                {/* Right side actions */}
-                <div className="flex items-center space-x-3">
-                  {/* Health indicator */}
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`h-2 w-2 rounded-full ${
-                        healthCheck.isSuccess
-                          ? 'bg-green-500'
-                          : healthCheck.isError
-                          ? 'bg-red-500'
-                          : 'bg-yellow-500 animate-pulse'
-                      }`}
-                      title={
-                        healthCheck.isSuccess
-                          ? 'API healthy'
-                          : healthCheck.isError
-                          ? 'API unhealthy'
-                          : 'Checking API health...'
-                      }
-                    />
-                    <Activity className="h-4 w-4 text-foreground/70" />
-                  </div>
-
-                  {/* Task badge */}
-                  {taskCounts.total > 0 && (
-                    <Link href="/dashboard">
-                      <Badge variant="secondary" className="relative cursor-pointer hover:bg-secondary/80 transition-colors">
-                        {taskCounts.total}
-                        <span className="sr-only">
-                          {taskCounts.running} running, {taskCounts.queued} queued tasks
-                        </span>
-                      </Badge>
-                    </Link>
+        {/* Center: Navigation */}
+        <ul className="hidden md:flex items-center gap-6 text-sm text-neutral-600">
+          {links.map(link => {
+            const active = pathname === link.href;
+            return (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className={cn(
+                    "pb-0.5 border-b-2 border-transparent hover:text-neutral-900 hover:border-neutral-300 transition-colors",
+                    active && "text-neutral-900 border-neutral-900"
                   )}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
 
-                  {/* Language switcher */}
+        {/* Right: Actions + Mobile Menu */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+            className="flex items-center gap-1.5 text-sm"
+          >
+            <span className="hidden sm:inline">{language === 'en' ? '中文' : 'EN'}</span>
+            <span className="sm:hidden">{language === 'en' ? 'ZH' : 'EN'}</span>
+          </Button>
+
+          <ThemeToggle />
+
+          {isAuthenticated ? (
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-sm text-neutral-600">{user?.name || 'User'}</span>
+              <button
+                onClick={logout}
+                className="h-8 px-3 text-xs rounded-full border border-neutral-300 hover:bg-neutral-50"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={login}
+              className="hidden sm:inline-flex h-8 px-3 text-xs rounded-full border border-neutral-300 hover:bg-neutral-50"
+            >
+              {t("nav.signIn") || "Sign in"}
+            </button>
+          )}
+
+          <Link
+            href="/new"
+            className="hidden sm:inline-flex h-8 px-4 text-xs rounded-full bg-neutral-900 text-white hover:bg-neutral-800 transition-colors"
+          >
+            {t("nav.createDataset") || "Create Dataset"}
+          </Link>
+
+          {/* Mobile Menu */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" className="md:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-80">
+              <div className="flex flex-col gap-6 mt-6">
+                {/* Mobile Navigation */}
+                <nav className="flex flex-col gap-2">
+                  {links.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "px-4 py-3 text-sm rounded-md transition-colors",
+                        pathname === item.href
+                          ? "bg-neutral-100 text-neutral-900"
+                          : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+
+                {/* Mobile Actions */}
+                <div className="flex flex-col gap-3 pt-4 border-t">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1.5 justify-start"
                   >
-                    <Globe className="h-4 w-4" />
-                    <span className="text-xs font-medium">
-                      {language === 'en' ? '中文' : 'EN'}
-                    </span>
+                    <span>{language === 'en' ? '中文' : 'EN'}</span>
                   </Button>
-
                   <ThemeToggle />
-
-                  {/* User menu placeholder */}
-                  <Button variant="ghost" size="sm">
-                    Sign in
-                  </Button>
-
-                  {/* Desktop CTA */}
-                  <div className="hidden md:block">
-                    <Button asChild size="sm">
-                      <Link href="/new">{t('createDataset')}</Link>
-                    </Button>
+                  <div className="pt-2 border-t">
+                    <Link href="/new" onClick={() => setMobileMenuOpen(false)}>
+                      <Button className="w-full mb-2">
+                        {t("nav.createDataset") || "Create Dataset"}
+                      </Button>
+                    </Link>
+                    {isAuthenticated ? (
+                      <div className="space-y-2">
+                        <div className="text-sm text-neutral-600 text-center py-2">
+                          Signed in as {user?.name || 'User'}
+                        </div>
+                        <Button
+                          onClick={() => {
+                            logout();
+                            setMobileMenuOpen(false);
+                          }}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          Sign out
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          login();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {t("nav.signIn") || "Sign in"}
+                      </Button>
+                    )}
                   </div>
-
-          {/* Mobile menu button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="md:hidden"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-            <span className="sr-only">Toggle menu</span>
-          </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-      </nav>
-
-      {/* Mobile Navigation Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-line bg-background/95 backdrop-blur-md">
-          <div className="container py-4 space-y-3">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`block text-sm font-medium transition-colors hover:text-primary ${
-                  isActive(item.href)
-                    ? "text-primary"
-                    : "text-foreground/70"
-                }`}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-            <div className="pt-2">
-              <Button asChild size="sm" className="w-full">
-                <Link href="/new" onClick={() => setIsMobileMenuOpen(false)}>
-                  Create Dataset
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </header>
+      </div>
+    </nav>
   );
 }

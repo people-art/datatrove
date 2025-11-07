@@ -3,7 +3,7 @@
 import { GradientCard } from '@/components/ui/gradient-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useDashboardStats } from '@/hooks/use-api';
+import { useDashboardStats, useAuth } from '@/hooks/use-api';
 import {
   Activity,
   Clock,
@@ -56,6 +56,7 @@ const mockTasks = [
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
+  const { isAuthenticated, login } = useAuth();
 
   // Fallback stats while loading
   const displayStats = stats || {
@@ -65,6 +66,20 @@ export default function DashboardPage() {
     failedTasks: 0,
     avgCompletionTime: '0h'
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="text-center py-16">
+        <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+        <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+          Please sign in to view your dataset processing tasks and system status.
+        </p>
+        <Button onClick={login} size="lg">
+          Sign In to Continue
+        </Button>
+      </div>
+    );
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {

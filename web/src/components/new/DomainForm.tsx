@@ -223,6 +223,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
       };
 
       const result = await createJobMutation.mutateAsync(jobData);
+
+      // Track the job ID for system stats
+      if (typeof window !== 'undefined') {
+        const trackedJobs = JSON.parse(localStorage.getItem('tracked_jobs') || '[]');
+        if (!trackedJobs.includes(result.jobId)) {
+          trackedJobs.push(result.jobId);
+          localStorage.setItem('tracked_jobs', JSON.stringify(trackedJobs));
+        }
+      }
+
       router.push(`/preview/${result.jobId}`);
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);

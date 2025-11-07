@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, API_BASE } from '@/lib/fetcher';
 import { getOrCreateIdemKey } from '@/lib/idempotency';
@@ -217,17 +218,85 @@ export const useDashboardStats = () => {
 // Simple auth hook (mock implementation)
 export const useAuth = () => {
   // Mock auth state - in real app, this would integrate with your auth system
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('fd_demo_user') === 'true';
+    }
+    return false;
+  });
+
   return {
-    isAuthenticated: false, // Set to true when user logs in
-    user: null,
+    isAuthenticated,
+    user: isAuthenticated ? { name: 'Demo User' } : null,
     login: () => {
-      // Mock login - redirect to login page
-      window.location.href = '/signin';
+      localStorage.setItem('fd_demo_user', 'true');
+      setIsAuthenticated(true);
     },
     logout: () => {
-      // Mock logout
-      localStorage.removeItem('auth-token');
-      window.location.reload();
+      localStorage.removeItem('fd_demo_user');
+      setIsAuthenticated(false);
     }
   };
+};
+
+// System stats hook for homepage
+export const useSystemStats = () => {
+  // Load tracked job and order IDs from localStorage
+  const loadLocalJobsAndOrders = () => {
+    if (typeof window === 'undefined') return { jobIds: [], orderIds: [] };
+    try {
+      const jobs = JSON.parse(localStorage.getItem('tracked_jobs') || '[]');
+      const orders = JSON.parse(localStorage.getItem('tracked_orders') || '[]');
+      return { jobIds: jobs, orderIds: orders };
+    } catch {
+      return { jobIds: [], orderIds: [] };
+    }
+  };
+
+  const { jobIds, orderIds } = loadLocalJobsAndOrders();
+
+  const jobsQuery = useQuery({
+    queryKey: ["stats", "jobs", jobIds],
+    enabled: jobIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        jobIds.map(id =>
+          api.get(`/benchmark/jobs/${id}`).then(r => r.data).catch(() => null)
+        )
+      );
+      return results.filter(Boolean);
+    },
+  });
+
+  const ordersQuery = useQuery({
+    queryKey: ["stats", "orders", orderIds],
+    enabled: orderIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        orderIds.map(id =>
+          api.get(`/orders/${id}`).then(r => r.data).catch(() => null)
+        )
+      );
+      return results.filter(Boolean);
+    },
+  });
+
+  return useMemo(() => {
+    const jobs = jobsQuery.data ?? [];
+    const orders = ordersQuery.data ?? [];
+
+    const activeBenchmarks = jobs.filter(j => j.status === "queued" || j.status === "running").length;
+    const completedBenchmarks = jobs.filter(j => j.status === "ready").length;
+    const activeOrders = orders.filter(o =>
+      ["awaiting_payment", "processing"].includes(o.status)
+    ).length;
+
+    return {
+      loading: jobsQuery.isLoading || ordersQuery.isLoading,
+      activeBenchmarks,
+      completedBenchmarks,
+      activeOrders,
+      totalTasks: jobs.length + orders.length,
+    };
+  }, [jobsQuery.data, ordersQuery.data, jobsQuery.isLoading, ordersQuery.isLoading]);
 };
