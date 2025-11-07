@@ -19,22 +19,22 @@ export function SiteFooter() {
         <div className="flex items-center gap-2">
           <span className="font-semibold text-neutral-800">FineData</span>
           <span className="hidden xs:inline-block">
-            {t("footer.tagline") || "Custom domain datasets for AI teams."}
+            {t("footer.tagline")}
           </span>
         </div>
 
         <div className="flex items-center gap-4">
-          <Link href="/docs" className="hover:text-neutral-800">{t("footer.docs") || "Docs"}</Link>
-          <Link href="/pricing" className="hover:text-neutral-800">{t("footer.pricing") || "Pricing"}</Link>
-          <Link href="/status" className="hover:text-neutral-800">{t("footer.status") || "Status"}</Link>
-          <Link href="/security" className="hover:text-neutral-800">{t("footer.security") || "Security"}</Link>
+          <Link href="/docs" className="hover:text-neutral-800">{t("footer.docs")}</Link>
+          <Link href="/pricing" className="hover:text-neutral-800">{t("footer.pricing")}</Link>
+          <Link href="/status" className="hover:text-neutral-800">{t("footer.status")}</Link>
+          <Link href="/security" className="hover:text-neutral-800">{t("footer.security")}</Link>
         </div>
 
         <div className="flex items-center gap-2">
           <span>© 2025 FineData</span>
           <span className="inline-flex items-center gap-1">
             <span className={`h-2 w-2 rounded-full ${color}`} />
-            <span>{t(`footer.apiStatus.${health?.status || 'checking'}`) || `API: ${health?.status === 'healthy' ? 'Healthy' : 'Checking...'}`}</span>
+            <span>{t(`footer.api${health?.status === 'healthy' ? 'Healthy' : health?.status === 'degraded' ? 'Degraded' : 'Down'}`)}</span>
           </span>
         </div>
       </div>
