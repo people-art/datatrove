@@ -57,6 +57,10 @@ function CheckoutPageContent() {
         total: ((quoteData.estimate.low + quoteData.estimate.high) / 2) * 1.08,
         pricing_notes: `Quote expires: ${new Date(quoteData.expiresAt).toLocaleDateString()}`,
         breakdown: {
+          base_price_per_million: quoteData.unit.amount,
+          language_factor: 1.0,
+          domain_factor: 1.0,
+          time_factor: 1.0,
           adjusted_price_per_million: quoteData.unit.amount
         }
       });
@@ -65,7 +69,7 @@ function CheckoutPageContent() {
       const idempotencyKey = `order_${jobId}_${Date.now()}`;
       const orderData = await orderApi.createOrder({
         quoteId: quoteData.quoteId,
-        jobId: jobId,
+        jobId: jobId!,
         email: jobData.email
       }, idempotencyKey);
 

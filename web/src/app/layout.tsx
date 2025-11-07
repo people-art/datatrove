@@ -4,7 +4,7 @@ import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
-import { SkipLink } from "@/components/nav/MainNav";
+import { SkipLink } from "@/components/nav/SkipLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { I18nProvider } from "@/lib/i18n";
 
@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`min-h-screen bg-gradient-to-b from-[#f6f7fb] to-[#fdfdfd] text-neutral-900 ${inter.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

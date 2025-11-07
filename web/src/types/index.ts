@@ -21,6 +21,10 @@ export interface BenchmarkJob {
   time_range_end: string;
   quality_tier: string;
   email: string;
+  estimated_scale?: {
+    docs?: number;
+    tokens?: number;
+  };
   status: 'queued' | 'running' | 'ready' | 'failed';
   progress: {
     pct: number;
