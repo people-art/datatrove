@@ -109,3 +109,140 @@ function CheckoutPageContent() {
 
   if (loading) {
     return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Initializing checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!quote) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">No quote available</p>
+          <Link href="/new">
+            <Button className="mt-4">Create New Dataset</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link href={`/preview/${jobId}`}>
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Preview
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-semibold">Checkout</h1>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* Order Summary */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Order Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span>Dataset Processing</span>
+                <span>${quote.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Tax</span>
+                <span>${quote.tax.toFixed(2)}</span>
+              </div>
+              <div className="border-t pt-4 flex justify-between font-semibold">
+                <span>Total</span>
+                <span>${quote.total.toFixed(2)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Terms Agreement */}
+          <div className="flex items-start gap-3 p-4 border rounded-lg">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1"
+            />
+            <label htmlFor="terms" className="text-sm">
+              I agree to the{' '}
+              <Link href="/terms" className="text-primary hover:underline">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" className="text-primary hover:underline">
+                Privacy Policy
+              </Link>
+            </label>
+          </div>
+        </div>
+
+        {/* Payment Form */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Payment Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg text-center text-muted-foreground">
+                  <CreditCard className="h-12 w-12 mx-auto mb-4" />
+                  <p>Stripe payment integration</p>
+                  <p className="text-sm">Coming soon in production</p>
+                </div>
+
+                <Button
+                  onClick={handlePayment}
+                  disabled={!agreedToTerms || processing}
+                  className="w-full"
+                  size="lg"
+                >
+                  {processing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Complete Payment - ${quote.total.toFixed(2)}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    }>
+      <CheckoutPageContent />
+    </Suspense>
+  );
+}
