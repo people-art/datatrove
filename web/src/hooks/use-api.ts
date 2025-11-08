@@ -210,12 +210,16 @@ export const useDashboardStats = () => {
 // Simple auth hook (mock implementation)
 export const useAuth = () => {
   // Mock auth state - in real app, this would integrate with your auth system
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+  // Use useState with initial value false to avoid hydration mismatch
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Use useEffect to check localStorage only on client side after hydration
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('fd_demo_user') === 'true';
+      const stored = localStorage.getItem('fd_demo_user') === 'true';
+      setIsAuthenticated(stored);
     }
-    return false;
-  });
+  }, []);
 
   return {
     isAuthenticated,
