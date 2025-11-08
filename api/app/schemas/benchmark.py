@@ -171,3 +171,29 @@ class EmailVerificationRequest(BaseModel):
 class EmailVerificationConfirmRequest(BaseModel):
     """Request for confirming email verification."""
     token: str
+
+
+# Ontology schemas
+class OntologyExample(BaseModel):
+    """Example content or page."""
+    title: str
+    url: Optional[str] = None
+
+
+class OntologyResponse(BaseModel):
+    """Response containing generated ontology."""
+    summary: str
+    concepts: Optional[List[str]] = None
+    entities: Optional[List[str]] = None
+    intents: Optional[List[str]] = None
+    positive_keywords: Optional[List[str]] = None
+    negative_keywords: Optional[List[str]] = None
+    languages_suggested: Optional[List[str]] = None
+    examples: Optional[List[OntologyExample]] = None
+    raw: Optional[Dict[str, Any]] = None
+
+
+class OntologyGenerateRequest(BaseModel):
+    """Request to generate ontology for a domain."""
+    domain: str
+    locale: Optional[str] = 'en'
