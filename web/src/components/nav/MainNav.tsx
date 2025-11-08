@@ -118,7 +118,7 @@ export function MainNav() {
                           : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
                       )}
                     >
-                      {item.label}
+                      {t(item.labelKey)}
                     </Link>
                   ))}
                 </nav>

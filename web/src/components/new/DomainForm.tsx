@@ -14,10 +14,11 @@ import { KeywordInput } from "./KeywordInput";
 import { PriceCard } from "./PriceCard";
 import { StickyFooterCta } from "./StickyFooterCta";
 import { useQuote, useCreateBenchmarkJob } from "@/hooks/use-api";
-import { benchmarkApi } from "@/lib/api";
+import { benchmarkApi, emailApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { getErrorMessage, getErrorSuggestion, getTraceId } from "@/lib/fetcher";
 import { debounce } from "@/lib/utils";
+import type { QuoteData, DomainFormData } from "@/types";
 
 const LANGUAGE_OPTIONS = [
   'English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Russian', 'Portuguese'
@@ -57,7 +58,7 @@ const SCALE_OPTIONS = [
 ];
 
 interface DomainFormProps {
-  onSubmit?: (formData: any) => void;
+  onSubmit: (formData: DomainFormData) => void;
 }
 
 export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoading?: boolean }) {

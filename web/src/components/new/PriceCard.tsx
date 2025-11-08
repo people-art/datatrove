@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DollarSign, TrendingUp } from "lucide-react";
 import { GradientCard } from "@/components/ui/gradient-card";
 import { AnimatedPrice } from "@/components/ui/animated-number";
+import type { QuoteData } from "@/types";
 
 interface PriceCardProps {
   quote?: QuoteData | null;

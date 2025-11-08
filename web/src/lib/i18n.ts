@@ -145,7 +145,17 @@ export interface Translations {
   docs_notes: string[];
 }
 
-const translations: Record<Language, Translations> = {
+// Tool function: get value by dot path from nested object
+function getByPath(obj: any, path: string): any {
+  return path.split('.').reduce((acc, part) => {
+    if (acc && typeof acc === 'object' && part in acc) {
+      return acc[part];
+    }
+    return undefined;
+  }, obj);
+}
+
+const translations: Record<Language, any> = {
   en: {
     // Navigation
     'nav.features': 'Features',
@@ -699,7 +709,7 @@ const translations: Record<Language, Translations> = {
 interface I18nContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: keyof Translations) => string;
+  t: (key: string) => string;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
@@ -732,8 +742,15 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('fd.lang', lang);
   };
 
-  const t = (key: keyof Translations): string => {
-    return translations[language][key] || key;
+  const t = (key: string): string => {
+    // First try current language with nested path
+    let value = getByPath(translations[language], key);
+    if (value === undefined) {
+      // Then try English fallback with nested path
+      value = getByPath(translations.en, key);
+    }
+    if (typeof value === 'string') return value;
+    return key; // Final fallback to show the key for debugging
   };
 
   return (
