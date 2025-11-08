@@ -102,10 +102,10 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   };
 
   // Form validation
-  const ontologyValid = ontology   const keywordsValid = formData.keywords.length >= 2;  const keywordsValid = formData.keywords.length >= 2; !ontoLoading   const keywordsValid = formData.keywords.length >= 2;  const keywordsValid = formData.keywords.length >= 2; !ontoError;
+  const ontologyValid = ontology && !ontoLoading && !ontoError;
   const timeRangeValid = new Date(formData.timeRange.end) > new Date(formData.timeRange.start) &&
                         (new Date(formData.timeRange.end).getTime() - new Date(formData.timeRange.start).getTime()) <= (5 * 365 * 24 * 60 * 60 * 1000); // 5 years
-  const isFormValid = formData.domain.trim()   const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid; ontologyValid   const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid; timeRangeValid   const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid; emailValid;
+  const isFormValid = formData.domain.trim() && ontologyValid && timeRangeValid && emailValid;
 
   // Email validation state
   const [emailValidating, setEmailValidating] = useState(false);
