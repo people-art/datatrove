@@ -87,6 +87,13 @@ async def create_quote(
         pricing_service = PricingService()
 
         # Convert request to pricing service format
+        estimated_scale = None
+        if data.estimatedScale and data.estimatedScale.get("docs"):
+            try:
+                estimated_scale = int(data.estimatedScale.get("docs"))
+            except (ValueError, TypeError):
+                logger.warning("Invalid estimated_scale format", value=data.estimatedScale.get("docs"))
+
         quote_data = await pricing_service.calculate_initial_quote(
             domain=data.domain.strip(),
             keywords=unique_keywords,
@@ -96,7 +103,7 @@ async def create_quote(
                 "end": data.endDate
             },
             quality_tier=data.qualityTier,
-            estimated_scale=data.estimatedScale.get("docs") if data.estimatedScale else None
+            estimated_scale=estimated_scale
         )
 
         # Generate quote ID and expiration
@@ -121,7 +128,7 @@ async def create_quote(
             ),
             unit=schemas.QuoteUnit(
                 basis="per_million_tokens",
-                amount=quote_data.get("adjusted_price_per_million", 50.0)  # Fallback price
+                amount=quote_data.get("breakdown", {}).get("adjusted_price_per_million", 50.0)  # Fallback price
             ),
             expiresAt=expires_at
         )
@@ -228,28 +235,3 @@ async def get_benchmark_job(
     except Exception as e:
         logger.error("Failed to get benchmark job", job_id=job_id, error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get benchmark job")
-
-
-@router.post("/quote", response_model=schemas.QuoteResponse)
-async def get_quote(
-    request: schemas.QuoteRequest,
-    db: AsyncSession = Depends(get_db),
-) -> Any:
-    """
-    Get pricing quote for a completed benchmark job.
-    """
-    try:
-        benchmark_service = BenchmarkService(db)
-        quote = await benchmark_service.calculate_quote(request.jobId)
-
-        return schemas.QuoteResponse(
-            currency=quote["currency"],
-            subtotal=quote["subtotal"],
-            tax=quote["tax"],
-            total=quote["total"],
-            pricing_notes=quote["pricing_notes"],
-        )
-
-    except Exception as e:
-        logger.error("Failed to get quote", job_id=request.jobId, error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to calculate quote")
