@@ -14,6 +14,24 @@ export interface QuoteRequest {
   estimatedScale?: { docs?: number; tokens?: number };
 }
 
+// Ontology Types
+export interface Ontology {
+  summary: string;                    // 对领域的简要说明（段落）
+  concepts?: string[];                // 核心概念（简短短语）
+  entities?: string[];                // 重要实体/机构/产品名
+  intents?: string[];                 // 用户意图/任务类别
+  positive_keywords?: string[];       // 建议的正向关键词（用于 pipeline）
+  negative_keywords?: string[];       // 建议的排除词（黑名单）
+  languages_suggested?: string[];     // 建议语言（如未在表单勾选）
+  examples?: Array<{title: string; url?: string}>; // 示例页面或内容标题
+  raw?: Record<string, any>;          // 原始LLM返回（调试/导出）
+}
+
+type GenerateOntologyParams = {
+  domain: string;         // 用户输入的领域/主题
+  locale?: 'en' | 'zh';   // 跟随 UI 语言
+};
+
 export interface QuoteResponse {
   quoteId: string;
   currency: string;
@@ -295,4 +313,20 @@ export const useSystemStats = () => {
       totalTasks: jobs.length + orders.length,
     };
   }, [jobsQuery.data, ordersQuery.data, jobsQuery.isLoading, ordersQuery.isLoading]);
+};
+
+// ---------- Ontology ----------
+
+export const useOntology = (params: GenerateOntologyParams | undefined) => {
+  return useQuery({
+    enabled: !!params?.domain && params.domain.trim().length >= 3,
+    queryKey: ['ontology', params],
+    queryFn: async () => {
+      const { data } = await api.post('/ontology/generate', params);
+      // 说明：如果后端已存在其它路径，请只改这里的路径；前端其它地方不感知。
+      return data as Ontology;
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+  });
 };

@@ -9,16 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GradientCard } from "@/components/ui/gradient-card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { EmailField } from "@/components/ui/email-field";
 import { KeywordInput } from "./KeywordInput";
 import { PriceCard } from "./PriceCard";
 import { StickyFooterCta } from "./StickyFooterCta";
-import { useQuote, useCreateBenchmarkJob } from "@/hooks/use-api";
+import { useQuote, useCreateBenchmarkJob, useOntology } from "@/hooks/use-api";
+import { useDebouncedValue } from "@/hooks/use-debounce";
 import { benchmarkApi, emailApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { getErrorMessage, getErrorSuggestion, getTraceId } from "@/lib/fetcher";
 import { debounce } from "@/lib/utils";
 import type { QuoteData, DomainFormData } from "@/types";
+import type { Ontology } from "@/hooks/use-api";
 
 const LANGUAGE_OPTIONS = [
   'English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Russian', 'Portuguese'
@@ -99,10 +102,10 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   };
 
   // Form validation
-  const keywordsValid = formData.keywords.length >= 2;
+  const ontologyValid = ontology   const keywordsValid = formData.keywords.length >= 2;  const keywordsValid = formData.keywords.length >= 2; !ontoLoading   const keywordsValid = formData.keywords.length >= 2;  const keywordsValid = formData.keywords.length >= 2; !ontoError;
   const timeRangeValid = new Date(formData.timeRange.end) > new Date(formData.timeRange.start) &&
                         (new Date(formData.timeRange.end).getTime() - new Date(formData.timeRange.start).getTime()) <= (5 * 365 * 24 * 60 * 60 * 1000); // 5 years
-  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;
+  const isFormValid = formData.domain.trim()   const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid; ontologyValid   const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid; timeRangeValid   const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid;  const isFormValid = formData.domain.trim() && keywordsValid && timeRangeValid && emailValid; emailValid;
 
   // Email validation state
   const [emailValidating, setEmailValidating] = useState(false);
@@ -241,6 +244,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
         {/* Left: Form */}
         <div className="space-y-4">
           {/* Domain & Topic Section */}
+          {/* Ontology Section */}
+          <OntologyCard 
+            ontology={ontology}
+            isLoading={ontoLoading}
+            isError={ontoError}
+            onRetry={refetchOnto}
+            t={t}
+          />
+
+
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
             <header className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-medium">领域与主题</h2>
@@ -261,24 +274,6 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  关键词 *
-                </label>
-                <div className="min-h-[80px] p-3 rounded-lg border border-border bg-background focus-within:ring-2 focus-within:ring-primary/20">
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {formData.keywords.map((keyword, index) => (
-                      <span key={index} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded">
-                        {keyword}
-                        <button
-                          onClick={() => updateFormData({
-                            keywords: formData.keywords.filter((_, i) => i !== index)
-                          })}
-                          className="hover:text-destructive"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
                   <input
                     type="text"
                     placeholder="输入关键词，按回车添加..."
@@ -299,6 +294,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
           </section>
 
           {/* Languages & Time Section */}
+          {/* Ontology Section */}
+          <OntologyCard 
+            ontology={ontology}
+            isLoading={ontoLoading}
+            isError={ontoError}
+            onRetry={refetchOnto}
+            t={t}
+          />
+
+
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
             <header className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-medium">语言与时间范围</h2>
@@ -353,6 +358,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
           </section>
 
           {/* Quality & Scale Section */}
+          {/* Ontology Section */}
+          <OntologyCard 
+            ontology={ontology}
+            isLoading={ontoLoading}
+            isError={ontoError}
+            onRetry={refetchOnto}
+            t={t}
+          />
+
+
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
             <header className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-medium">质量与规模</h2>
@@ -402,6 +417,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
           </section>
 
           {/* Email Section */}
+          {/* Ontology Section */}
+          <OntologyCard 
+            ontology={ontology}
+            isLoading={ontoLoading}
+            isError={ontoError}
+            onRetry={refetchOnto}
+            t={t}
+          />
+
+
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
             <header className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-medium">联系信息</h2>
@@ -513,3 +538,119 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   );
 }
 
+// Ontology Card Component
+function OntologyCard({ ontology, isLoading, isError, onRetry, t }: {
+  ontology?: Ontology;
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <Card className="rounded-2xl border border-border/60 bg-card/70">
+      <CardHeader className="flex items-center justify-between">
+        <CardTitle className="text-sm font-medium">{t("new.ontology.title")}</CardTitle>
+        <div className="text-xs text-muted-foreground">
+          {isLoading ? t("new.ontology.generating") : t("new.ontology.generated")}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading && <OntologySkeleton />}
+        {isError && (
+          <ErrorInline
+            title={t("new.ontology.error_title")}
+            actionLabel={t("common.retry")}
+            onAction={onRetry}
+          />
+        )}
+        {!isLoading && ontology && (
+          <>
+            <p className="text-sm leading-6 text-neutral-700 mb-4">{ontology.summary}</p>
+            <div className="grid md:grid-cols-3 gap-4">
+              <ChipColumn title={t("new.ontology.concepts")} items={ontology.concepts} />
+              <ChipColumn title={t("new.ontology.entities")} items={ontology.entities} />
+              <ChipColumn title={t("new.ontology.intents")} items={ontology.intents} />
+            </div>
+            <div className="mt-6 grid md:grid-cols-2 gap-4">
+              <ChipColumn title={t("new.ontology.positive_keywords")} items={ontology.positive_keywords} variant="success" />
+              <ChipColumn title={t("new.ontology.negative_keywords")} items={ontology.negative_keywords} variant="destructive" />
+            </div>
+            {ontology.examples?.length ? (
+              <div className="mt-6">
+                <h4 className="text-sm font-medium mb-2">{t("new.ontology.examples")}</h4>
+                <ul className="space-y-1 text-sm">
+                  {ontology.examples.map((ex, i) => (
+                    <li key={i} className="truncate">
+                      {ex.url ? (
+                        <a href={ex.url} className="underline underline-offset-2" target="_blank" rel="noreferrer">
+                          {ex.title}
+                        </a>
+                      ) : (
+                        ex.title
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OntologySkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+      <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+      <div className="grid md:grid-cols-3 gap-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="space-y-2">
+            <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
+            <div className="flex flex-wrap gap-1">
+              {[1, 2, 3].map(j => (
+                <div key={j} className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChipColumn({ title, items, variant }: { title: string; items?: string[]; variant?: "success" | "destructive" }) {
+  if (!items?.length) return null;
+  return (
+    <div>
+      <h4 className="text-sm font-medium mb-2">{title}</h4>
+      <div className="flex flex-wrap gap-1">
+        {items.map((item, i) => (
+          <span
+            key={i}
+            className={`inline-block px-2 py-1 text-xs rounded ${"
+              variant === "success" ? "bg-green-100 text-green-800" :
+              variant === "destructive" ? "bg-red-100 text-red-800" :
+              "bg-gray-100 text-gray-800"}
+            `}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ErrorInline({ title, actionLabel, onAction }: { title: string; actionLabel: string; onAction: () => void }) {
+  return (
+    <div className="text-center py-8">
+      <div className="text-sm text-muted-foreground mb-2">{title}</div>
+      <Button variant="outline" size="sm" onClick={onAction}>
+        {actionLabel}
+      </Button>
+    </div>
+  );
+}

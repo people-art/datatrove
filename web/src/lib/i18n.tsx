@@ -62,6 +62,30 @@ export interface Translations {
     security: string;
     apiDown: string;
   };
+  new: {
+    ontology: {
+      title: string;
+      generating: string;
+      generated: string;
+      error_title: string;
+      required: string;
+      concepts: string;
+      entities: string;
+      intents: string;
+      positive_keywords: string;
+      negative_keywords: string;
+      examples: string;
+      advanced_edit: string;
+      apply_changes: string;
+      reset: string;
+    };
+    quote: {
+      uses_ontology_hint: string;
+    };
+  };
+  common: {
+    retry: string;
+  };
   // Additional keys can be added as needed
 }
 
@@ -119,6 +143,30 @@ const translations: Record<Language, Translations> = {
       security: 'Security',
       apiDown: 'API Down',
     },
+    new: {
+      ontology: {
+        title: 'Ontology (auto-generated)',
+        generating: 'Generating…',
+        generated: 'Generated',
+        error_title: 'Failed to generate ontology',
+        required: 'Please enter a domain and wait for the ontology to be generated.',
+        concepts: 'Core Concepts',
+        entities: 'Key Entities',
+        intents: 'User Intents',
+        positive_keywords: 'Recommended Keywords',
+        negative_keywords: 'Excluded Terms',
+        examples: 'Examples',
+        advanced_edit: 'Advanced edit',
+        apply_changes: 'Apply changes',
+        reset: 'Reset to auto',
+      },
+      quote: {
+        uses_ontology_hint: 'An ontology has been generated for this domain and will be used for pricing and preview.',
+      },
+    },
+    common: {
+      retry: 'Retry',
+    },
   },
 
   zh: {
@@ -173,6 +221,30 @@ const translations: Record<Language, Translations> = {
       status: '状态',
       security: '安全',
       apiDown: 'API 离线',
+    },
+    new: {
+      ontology: {
+        title: '数据本体（自动生成）',
+        generating: '正在生成…',
+        generated: '已生成',
+        error_title: '生成数据本体失败',
+        required: '请先输入领域名称，并等待生成数据本体。',
+        concepts: '核心概念',
+        entities: '关键实体',
+        intents: '用户意图',
+        positive_keywords: '建议的正向关键词',
+        negative_keywords: '建议排除词',
+        examples: '示例',
+        advanced_edit: '高级编辑',
+        apply_changes: '应用修改',
+        reset: '恢复自动结果',
+      },
+      quote: {
+        uses_ontology_hint: '已根据当前领域自动生成数据本体，将用于后续定价与预览。',
+      },
+    },
+    common: {
+      retry: '重试',
     },
   }
 };
