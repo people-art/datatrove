@@ -137,8 +137,8 @@ async def create_quote(
         # Re-raise custom errors
         raise
     except Exception as e:
-        logger.error("Failed to generate quote", error=str(e), domain=data.domain)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error("Failed to generate quote", error=str(e), error_type=type(e).__name__, domain=getattr(data, 'domain', 'unknown'), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.post("/jobs", response_model=schemas.BenchmarkJobCreateResponse)
