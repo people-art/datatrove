@@ -15,7 +15,7 @@ export interface ApiError {
   request_id?: string;
 }
 
-export interface ApiConfig extends AxiosRequestConfig {
+export interface ApiConfig extends AxiosRequestConfig<any> {
   idempotencyKey?: string;
 }
 

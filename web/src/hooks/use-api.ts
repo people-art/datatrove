@@ -115,10 +115,7 @@ export const useBenchmarkJob = (jobId?: string) => {
     queryKey: ['benchmark', jobId],
     queryFn: () => api.get(`${API_BASE}/benchmark/jobs/${jobId}`).then(r => r.data),
     enabled: !!jobId,
-    refetchInterval: (last) => {
-      const status = last?.status;
-      return (!status || status === 'queued' || status === 'running') ? 3000 : false;
-    },
+    refetchInterval: 5000, // Poll every 5 seconds while active
   });
 };
 
@@ -128,7 +125,7 @@ export const useCreateOrder = () => {
     mutationFn: ({ quoteId, jobId, email }: OrderCreateRequest) => {
       const idempotencyKey = getOrCreateIdemKey('order', `${quoteId}:${jobId}:${email}`);
       return api.post(`${API_BASE}/orders`, { quoteId, jobId, email }, {
-        idempotencyKey
+        headers: { 'Idempotency-Key': idempotencyKey }
       }).then(r => r.data);
     },
   });
@@ -139,10 +136,7 @@ export const useOrder = (orderId?: string) => {
     queryKey: ['order', orderId],
     queryFn: () => api.get(`${API_BASE}/orders/${orderId}`).then(r => r.data),
     enabled: !!orderId,
-    refetchInterval: (data) => {
-      const doneStatuses = ['completed', 'failed', 'delivered'];
-      return data && doneStatuses.includes(data.status) ? false : 5000;
-    },
+    refetchInterval: 10000, // Poll every 10 seconds for order updates
   });
 };
 
@@ -151,9 +145,7 @@ export const useProduction = (orderId?: string) => {
     queryKey: ['production', orderId],
     queryFn: () => api.get(`${API_BASE}/orders/${orderId}/production`).then(r => r.data),
     enabled: !!orderId,
-    refetchInterval: (data) => {
-      return (data && ['delivered', 'failed'].includes(data.status)) ? false : 5000;
-    },
+    refetchInterval: 8000, // Poll every 8 seconds for production updates
   });
 };
 
@@ -260,7 +252,7 @@ export const useSystemStats = () => {
     enabled: jobIds.length > 0,
     queryFn: async () => {
       const results = await Promise.all(
-        jobIds.map(id =>
+        jobIds.map((id: string) =>
           api.get(`/benchmark/jobs/${id}`).then(r => r.data).catch(() => null)
         )
       );
@@ -273,7 +265,7 @@ export const useSystemStats = () => {
     enabled: orderIds.length > 0,
     queryFn: async () => {
       const results = await Promise.all(
-        orderIds.map(id =>
+        orderIds.map((id: string) =>
           api.get(`/orders/${id}`).then(r => r.data).catch(() => null)
         )
       );
