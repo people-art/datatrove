@@ -70,7 +70,7 @@ class PricingService:
         languages: list,
         time_range: Dict[str, str],
         quality_tier: str,
-        estimated_scale: Optional[str] = None
+        estimated_scale: Optional[int] = None
     ) -> Dict[str, Any]:
         """Calculate initial quote based on user requirements."""
 
