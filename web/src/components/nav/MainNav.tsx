@@ -18,10 +18,10 @@ export function MainNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const links = [
-    { href: "/features", label: t("nav.features") || "Features" },
-    { href: "/pricing", label: t("nav.pricing") || "Pricing" },
-    { href: "/docs", label: t("nav.docs") || "Docs" },
-    { href: "/dashboard", label: t("nav.dashboard") || "Dashboard" },
+    { href: "/features", labelKey: "nav.features" },
+    { href: "/pricing", labelKey: "nav.pricing" },
+    { href: "/docs", labelKey: "nav.docs" },
+    { href: "/dashboard", labelKey: "nav.dashboard" },
   ];
 
   return (
@@ -48,7 +48,7 @@ export function MainNav() {
                     active && "text-neutral-900 border-neutral-900"
                   )}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               </li>
             );
@@ -84,7 +84,7 @@ export function MainNav() {
               onClick={login}
               className="hidden sm:inline-flex h-8 px-3 text-xs rounded-full border border-neutral-300 hover:bg-neutral-50"
             >
-              {t("nav.signIn") || "Sign in"}
+              {t("nav.signin")}
             </button>
           )}
 
@@ -92,7 +92,7 @@ export function MainNav() {
             href="/new"
             className="hidden sm:inline-flex h-8 px-4 text-xs rounded-full bg-neutral-900 text-white hover:bg-neutral-800 transition-colors"
           >
-            {t("nav.createDataset") || "Create Dataset"}
+            {t("nav.createDataset")}
           </Link>
 
           {/* Mobile Menu */}
@@ -137,7 +137,7 @@ export function MainNav() {
                   <div className="pt-2 border-t">
                     <Link href="/new" onClick={() => setMobileMenuOpen(false)}>
                       <Button className="w-full mb-2">
-                        {t("nav.createDataset") || "Create Dataset"}
+                        {t("nav.createDataset")}
                       </Button>
                     </Link>
                     {isAuthenticated ? (
@@ -165,7 +165,7 @@ export function MainNav() {
                         variant="outline"
                         className="w-full"
                       >
-                        {t("nav.signIn") || "Sign in"}
+                        {t("nav.signin")}
                       </Button>
                     )}
                   </div>
