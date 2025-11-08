@@ -1,0 +1,238 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState } from 'react';
+
+export type Language = 'en' | 'zh';
+
+// Utility function to get nested object property by dot-notation path
+function getByPath(obj: any, path: string): any {
+  return path.split('.').reduce((current, key) => current?.[key], obj);
+}
+
+export interface Translations {
+  nav: {
+    features: string;
+    pricing: string;
+    docs: string;
+    dashboard: string;
+    signin: string;
+    createDataset: string;
+  };
+  home: {
+    hero: {
+      eyebrow: string;
+      title: string;
+      subtitle: string;
+      cta_primary: string;
+      cta_secondary: string;
+    };
+    why: {
+      title: string;
+      ai_filtering_title: string;
+      ai_filtering_desc: string;
+      scale_title: string;
+      scale_desc: string;
+      privacy_title: string;
+      privacy_desc: string;
+    };
+    workflow: {
+      title: string;
+      step1_title: string;
+      step1_desc: string;
+      step2_title: string;
+      step2_desc: string;
+      step3_title: string;
+      step3_desc: string;
+      step4_title: string;
+      step4_desc: string;
+    };
+    system_status_overview: string;
+    stats: {
+      active_benchmarks: string;
+      completed_benchmarks: string;
+      active_orders: string;
+      total_tasks: string;
+    };
+  };
+  footer: {
+    tagline: string;
+    docs: string;
+    pricing: string;
+    status: string;
+    security: string;
+    apiDown: string;
+  };
+  // Additional keys can be added as needed
+}
+
+const translations: Record<Language, Translations> = {
+  en: {
+    nav: {
+      features: 'Features',
+      pricing: 'Pricing',
+      docs: 'Docs',
+      dashboard: 'Dashboard',
+      signin: 'Sign in',
+      createDataset: 'Create Dataset',
+    },
+    home: {
+      hero: {
+        eyebrow: 'Custom Domain Datasets',
+        title: 'Custom Domain Datasets. Powered by AI.',
+        subtitle: 'Generate high-quality, domain-specific datasets from billions of web pages—ready for training specialized AI models, research, and analytics.',
+        cta_primary: 'Get Started',
+        cta_secondary: 'Learn More',
+      },
+      why: {
+        title: 'Why FineData',
+        ai_filtering_title: 'AI-Powered Filtering',
+        ai_filtering_desc: 'Ontology-driven keyword expansion, LLM-assisted scoring, and multi-stage quality filters ensure your dataset matches your exact domain and intent.',
+        scale_title: 'Massive Web-Scale Coverage',
+        scale_desc: 'Leverage Common Crawl and battle-tested pipelines to process billions of pages with deterministic, reproducible configurations.',
+        privacy_title: 'Enterprise-Grade Privacy',
+        privacy_desc: 'PII detection, HIPAA-ready patterns for medical content, and strict sanitization keep your datasets safe and compliant.',
+      },
+      workflow: {
+        title: 'How It Works',
+        step1_title: 'Submit Requirements',
+        step1_desc: 'Define your domain, keywords, languages, time range, and quality tier via the web console or API.',
+        step2_title: 'Run Benchmark (1M pages)',
+        step2_desc: 'We execute a local preview run using the exact same pipeline configuration and return metrics plus a sample dataset.',
+        step3_title: 'Approve & Pay',
+        step3_desc: 'Once you\'re satisfied with the preview, confirm the quote and complete payment via secure card checkout.',
+        step4_title: 'Cluster Production & Delivery',
+        step4_desc: 'A Slurm-based cluster run processes full Common Crawl segments. When finished, you receive a private Hugging Face URL via email.',
+      },
+      system_status_overview: 'System Status Overview',
+      stats: {
+        active_benchmarks: 'Active Benchmarks',
+        completed_benchmarks: 'Completed Benchmarks',
+        active_orders: 'Active Orders',
+        total_tasks: 'Total Tasks',
+      },
+    },
+    footer: {
+      tagline: 'Enterprise-grade dataset generation for AI teams',
+      docs: 'Docs',
+      pricing: 'Pricing',
+      status: 'Status',
+      security: 'Security',
+      apiDown: 'API Down',
+    },
+  },
+
+  zh: {
+    nav: {
+      features: '功能特性',
+      pricing: '价格方案',
+      docs: '文档',
+      dashboard: '控制台',
+      signin: '登录',
+      createDataset: '创建数据集',
+    },
+    home: {
+      hero: {
+        eyebrow: '定制领域数据集',
+        title: '定制领域数据集。由 AI 驱动。',
+        subtitle: '从数十亿网页中生成高质量、特定领域的训练数据集——为专业 AI 模型、研究和分析做好准备。',
+        cta_primary: '开始使用',
+        cta_secondary: '了解更多',
+      },
+      why: {
+        title: '为什么选择 FineData',
+        ai_filtering_title: 'AI 驱动过滤',
+        ai_filtering_desc: '基于本体的关键词扩展、LLM 相关性打分、多阶段质量过滤，精准匹配你的细分领域和使用场景。',
+        scale_title: '万亿级网页覆盖',
+        scale_desc: '基于 Common Crawl 与工程化流水线，稳定处理数十亿网页，配置可追踪、结果可复现。',
+        privacy_title: '企业级隐私与合规',
+        privacy_desc: '内置 PII 检测、医疗场景 HIPAA 规则、脱敏与审计日志，确保数据安全合规。',
+      },
+      workflow: {
+        title: '工作流程',
+        step1_title: '提交需求',
+        step1_desc: '通过控制台或 API 配置领域、关键词、语言、时间范围和质量档位。',
+        step2_title: '运行 Benchmark',
+        step2_desc: '使用真实流水线在本地环境运行预览任务，返回质量指标和可下载样本。',
+        step3_title: '确认并支付',
+        step3_desc: '确认预览效果与报价后，通过安全银行卡支付完成下单。',
+        step4_title: '集群生产与交付',
+        step4_desc: '在 Slurm 集群上执行全量生产，完成后通过邮件发送 Hugging Face 私有仓库链接。',
+      },
+      system_status_overview: '系统状态概览',
+      stats: {
+        active_benchmarks: '活跃基准测试',
+        completed_benchmarks: '已完成基准测试',
+        active_orders: '活跃订单',
+        total_tasks: '总任务数',
+      },
+    },
+    footer: {
+      tagline: '为 AI 团队提供企业级数据集生成服务',
+      docs: '文档',
+      pricing: '定价',
+      status: '状态',
+      security: '安全',
+      apiDown: 'API 离线',
+    },
+  }
+};
+
+interface I18nContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
+}
+
+const I18nContext = createContext<I18nContextType | undefined>(undefined);
+
+export const useI18n = () => {
+  const context = useContext(I18nContext);
+  if (!context) {
+    throw new Error('useI18n must be used within an I18nProvider');
+  }
+  return context;
+};
+
+export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [language, setLanguageState] = useState<Language>('en');
+
+  useEffect(() => {
+    // Load language from localStorage
+    const saved = localStorage.getItem('fd.lang') as Language;
+    if (saved && (saved === 'en' || saved === 'zh')) {
+      setLanguageState(saved);
+    } else {
+      // Default to browser language
+      const browserLang = navigator.language.startsWith('zh') ? 'zh' : 'en';
+      setLanguageState(browserLang);
+    }
+  }, []);
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('fd.lang', lang);
+  };
+
+  const t = (key: string): string => {
+    // Try current language first
+    const value = getByPath(translations[language], key);
+    if (value !== undefined) {
+      return value;
+    }
+
+    // Fallback to English
+    const englishValue = getByPath(translations.en, key);
+    if (englishValue !== undefined) {
+      return englishValue;
+    }
+
+    // Final fallback to the key itself
+    return key;
+  };
+
+  return (
+    <I18nContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </I18nContext.Provider>
+  );
+};
