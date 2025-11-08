@@ -88,31 +88,9 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   const quoteMutation = useQuote();
   const createJobMutation = useCreateBenchmarkJob();
 
-  // Debounced quote fetching
-  const fetchQuoteDebounced = debounce(async (data: typeof formData) => {
-    if (!data.domain.trim() || data.keywords.length < 2) {
-      return;
-    }
-
-    const quoteRequest = {
-      domain: data.domain,
-      keywords: data.keywords,
-      languages: data.languages,
-      startDate: data.timeRange.start,
-      endDate: data.timeRange.end,
-      qualityTier: data.qualityTier,
-      estimatedScale: data.estimatedScale ? { docs: parseInt(data.estimatedScale) } : undefined,
-    };
-
-    try {
-      await quoteMutation.mutateAsync(quoteRequest);
-    } catch (err: any) {
-      console.error('Quote fetch failed:', err);
-    }
-  }, 1000);
 
   useEffect(() => {
-    fetchQuoteDebounced(formData);
+    fetchQuote(formData);
   }, [formData.domain, formData.keywords, formData.languages, formData.qualityTier, formData.estimatedScale, formData.timeRange]);
 
   const updateFormData = (updates: Partial<typeof formData>) => {
@@ -173,7 +151,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
         startDate: data.timeRange.start,
         endDate: data.timeRange.end,
         qualityTier: data.qualityTier,
-        estimatedScale: data.estimatedScale ? { docs: parseInt(data.estimatedScale) || undefined } : undefined,
+        estimatedScale: data.estimatedScale && data.estimatedScale.trim() ? { docs: parseInt(data.estimatedScale) || 1000000 } : undefined,
       };
 
       const quoteResponse = await benchmarkApi.createQuote(quoteRequest);
