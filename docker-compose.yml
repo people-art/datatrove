@@ -100,8 +100,8 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:18000/api/v1
       - NEXT_TELEMETRY_DISABLED=1
       - NODE_ENV=development
-    ports:
-      - "23000:3000"
+      - PORT=23000
+    # Using host network mode, port mapping not needed
     depends_on:
       - api
     volumes:
@@ -118,13 +118,12 @@ services:
       - web-next:/app/.next
     working_dir: /app
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:23000 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - finedata-network
+    network_mode: host
     restart: unless-stopped
 
   # Celery worker for async tasks
