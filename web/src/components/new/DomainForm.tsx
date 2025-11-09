@@ -87,6 +87,12 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
 
+  // Ontology hooks
+  const { t, locale } = useI18n();
+  const debouncedDomain = useDebouncedValue(formData.domain, 600);
+  const { data: ontology, isLoading: ontoLoading, isError: ontoError, refetch: refetchOnto } =
+    useOntology(debouncedDomain ? { domain: debouncedDomain, locale } : undefined);
+
   // API hooks
   const quoteMutation = useQuote();
   const createJobMutation = useCreateBenchmarkJob();
