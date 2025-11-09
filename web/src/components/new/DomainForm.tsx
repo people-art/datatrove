@@ -612,11 +612,11 @@ function ChipColumn({ title, items, variant }: { title: string; items?: string[]
         {items.map((item, i) => (
           <span
             key={i}
-            className={`inline-block px-2 py-1 text-xs rounded ${"
+            className={`inline-block px-2 py-1 text-xs rounded ${
               variant === "success" ? "bg-green-100 text-green-800" :
               variant === "destructive" ? "bg-red-100 text-red-800" :
-              "bg-gray-100 text-gray-800"}
-            `}
+              "bg-gray-100 text-gray-800"
+            }`}
           >
             {item}
           </span>
