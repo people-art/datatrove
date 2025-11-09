@@ -322,7 +322,7 @@ export const useOntology = (params: GenerateOntologyParams | undefined) => {
     enabled: !!params?.domain && params.domain.trim().length >= 3,
     queryKey: ['ontology', params],
     queryFn: async () => {
-      const { data } = await api.post('/benchmark/ontology/generate', params);
+      const { data } = await api.post('/api/v1/benchmark/ontology/generate', params);
       // 说明：如果后端已存在其它路径，请只改这里的路径；前端其它地方不感知。
       return data as Ontology;
     },

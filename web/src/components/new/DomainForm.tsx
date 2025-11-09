@@ -249,16 +249,6 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
         {/* Left: Form */}
         <div className="space-y-4">
           {/* Domain & Topic Section */}
-          {/* Ontology Section */}
-          <OntologyCard 
-            ontology={ontology}
-            isLoading={ontoLoading}
-            isError={ontoError}
-            onRetry={refetchOnto}
-            t={t}
-          />
-
-
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
             <header className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-medium">领域与主题</h2>
@@ -280,15 +270,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
             </div>
           </section>
 
-          {/* Languages & Time Section */}
           {/* Ontology Section */}
-          <OntologyCard 
+          <OntologyCard
             ontology={ontology}
             isLoading={ontoLoading}
             isError={ontoError}
             onRetry={refetchOnto}
             t={t}
           />
+
+          {/* Languages & Time Section */}
 
 
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
@@ -345,14 +336,6 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
           </section>
 
           {/* Quality & Scale Section */}
-          {/* Ontology Section */}
-          <OntologyCard 
-            ontology={ontology}
-            isLoading={ontoLoading}
-            isError={ontoError}
-            onRetry={refetchOnto}
-            t={t}
-          />
 
 
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
@@ -404,14 +387,6 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
           </section>
 
           {/* Email Section */}
-          {/* Ontology Section */}
-          <OntologyCard 
-            ontology={ontology}
-            isLoading={ontoLoading}
-            isError={ontoError}
-            onRetry={refetchOnto}
-            t={t}
-          />
 
 
           <section className="rounded-2xl border border-border/60 bg-card/70 p-5 space-y-3">
