@@ -65,7 +65,6 @@ interface DomainFormProps {
 }
 
 export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoading?: boolean }) {
-  const { t } = useI18n();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
