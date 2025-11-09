@@ -201,7 +201,15 @@ export const useConfirmEmailVerification = () => {
 export const useHealthCheck = () => {
   return useQuery({
     queryKey: ['health'],
-    queryFn: () => api.get('/health').then(r => r.data),
+    queryFn: async () => {
+      // Health check uses direct URL without API base path
+      const healthUrl = API_BASE.replace('/api/v1', '') + '/health';
+      const response = await fetch(healthUrl);
+      if (!response.ok) {
+        throw new Error(`Health check failed: ${response.status}`);
+      }
+      return { status: 'healthy' };
+    },
     refetchInterval: 30000, // Check every 30 seconds
   });
 };
@@ -318,15 +326,37 @@ export const useSystemStats = () => {
 // ---------- Ontology ----------
 
 export const useOntology = (params: GenerateOntologyParams | undefined) => {
+  const enabled = !!params?.domain && params.domain.trim().length >= 3;
+  console.log('useOntology enabled check:', {
+    params,
+    domain: params?.domain,
+    trimmedLength: params?.domain?.trim()?.length,
+    enabled
+  });
+
   return useQuery({
-    enabled: !!params?.domain && params.domain.trim().length >= 3,
+    enabled,
     queryKey: ['ontology', params],
     queryFn: async () => {
-      const { data } = await api.post('/benchmark/ontology/generate', params);
-      // 说明：如果后端已存在其它路径，请只改这里的路径；前端其它地方不感知。
-      return data as Ontology;
+      console.log('useOntology queryFn called with:', params);
+      try {
+        console.log('Making API call to /benchmark/ontology/generate');
+        const { data } = await api.post('/benchmark/ontology/generate', params);
+        console.log('API call successful, received data:', data);
+        return data as Ontology;
+      } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
+      }
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 2,
+    retryDelay: 1000,
+    onError: (error) => {
+      console.error('useOntology query error:', error);
+    },
+    onSuccess: (data) => {
+      console.log('useOntology query success:', data);
+    }
   });
 };
