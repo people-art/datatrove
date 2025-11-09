@@ -11,12 +11,12 @@ function getByPath(obj: any, path: string): any {
 
 export interface Translations {
   nav: {
-    features: string;
-    pricing: string;
-    docs: string;
+  features: string;
+  pricing: string;
+  docs: string;
     dashboard: string;
     signin: string;
-    createDataset: string;
+  createDataset: string;
   };
   home: {
     hero: {
@@ -27,7 +27,7 @@ export interface Translations {
       cta_secondary: string;
     };
     why: {
-      title: string;
+    title: string;
       ai_filtering_title: string;
       ai_filtering_desc: string;
       scale_title: string;
@@ -36,7 +36,7 @@ export interface Translations {
       privacy_desc: string;
     };
     workflow: {
-      title: string;
+    title: string;
       step1_title: string;
       step1_desc: string;
       step2_title: string;
@@ -64,9 +64,16 @@ export interface Translations {
   };
   new: {
     ontology: {
-      title: string;
+    title: string;
       generating: string;
       generated: string;
+      ready: string;
+      ready_to_generate: string;
+      enter_domain_first: string;
+      generate_button: string;
+      error_empty_domain: string;
+      error_domain_too_short: string;
+      error_generic: string;
       error_title: string;
       required: string;
       concepts: string;
@@ -92,12 +99,12 @@ export interface Translations {
 const translations: Record<Language, Translations> = {
   en: {
     nav: {
-      features: 'Features',
-      pricing: 'Pricing',
-      docs: 'Docs',
+    features: 'Features',
+    pricing: 'Pricing',
+    docs: 'Docs',
       dashboard: 'Dashboard',
       signin: 'Sign in',
-      createDataset: 'Create Dataset',
+    createDataset: 'Create Dataset',
     },
     home: {
       hero: {
@@ -145,11 +152,18 @@ const translations: Record<Language, Translations> = {
     },
     new: {
       ontology: {
-        title: 'Ontology (auto-generated)',
+        title: 'Data Ontology',
         generating: 'Generating…',
         generated: 'Generated',
-        error_title: 'Failed to generate ontology',
-        required: 'Please enter a domain and wait for the ontology to be generated.',
+        ready: 'Ready to generate',
+        ready_to_generate: 'Click the button below to generate data ontology for your domain.',
+        enter_domain_first: 'Please enter a domain name first.',
+        generate_button: 'Generate Ontology',
+        error_empty_domain: 'Please enter a domain name.',
+        error_domain_too_short: 'Domain name must be at least 3 characters.',
+        error_generic: 'Failed to generate ontology. Please try again.',
+        error_title: 'Generation Failed',
+        required: 'Please generate ontology before proceeding.',
         concepts: 'Core Concepts',
         entities: 'Key Entities',
         intents: 'User Intents',
@@ -171,12 +185,12 @@ const translations: Record<Language, Translations> = {
 
   zh: {
     nav: {
-      features: '功能特性',
-      pricing: '价格方案',
-      docs: '文档',
+    features: '功能特性',
+    pricing: '价格方案',
+    docs: '文档',
       dashboard: '控制台',
       signin: '登录',
-      createDataset: '创建数据集',
+    createDataset: '创建数据集',
     },
     home: {
       hero: {
@@ -224,11 +238,18 @@ const translations: Record<Language, Translations> = {
     },
     new: {
       ontology: {
-        title: '数据本体（自动生成）',
+        title: '数据本体',
         generating: '正在生成…',
         generated: '已生成',
-        error_title: '生成数据本体失败',
-        required: '请先输入领域名称，并等待生成数据本体。',
+        ready: '准备生成',
+        ready_to_generate: '点击下方按钮为您的领域生成数据本体。',
+        enter_domain_first: '请先输入领域名称。',
+        generate_button: '生成数据本体',
+        error_empty_domain: '请输入领域名称。',
+        error_domain_too_short: '领域名称至少需要3个字符。',
+        error_generic: '生成数据本体失败，请重试。',
+        error_title: '生成失败',
+        required: '请先生成数据本体再继续。',
         concepts: '核心概念',
         entities: '关键实体',
         intents: '用户意图',

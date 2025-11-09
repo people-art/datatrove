@@ -14,8 +14,7 @@ import { EmailField } from "@/components/ui/email-field";
 import { KeywordInput } from "./KeywordInput";
 import { PriceCard } from "./PriceCard";
 import { StickyFooterCta } from "./StickyFooterCta";
-import { useQuote, useCreateBenchmarkJob, useOntology } from "@/hooks/use-api";
-import { useDebouncedValue } from "@/hooks/use-debounce";
+import { useQuote, useCreateBenchmarkJob } from "@/hooks/use-api";
 import { benchmarkApi, emailApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { getErrorMessage, getErrorSuggestion, getTraceId } from "@/lib/fetcher";
@@ -86,12 +85,11 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
 
-  // Ontology hooks
+  // Ontology hooks - manual trigger only
   const { t, language } = useI18n();
-  const debouncedDomain = useDebouncedValue(formData.domain, 600);
-  const ontologyParams = debouncedDomain ? { domain: debouncedDomain, locale: language } : undefined;
-  const { data: ontology, isLoading: ontoLoading, isError: ontoError, refetch: refetchOnto } =
-    useOntology(ontologyParams);
+  const [ontology, setOntology] = useState<Ontology | null>(null);
+  const [ontoLoading, setOntoLoading] = useState(false);
+  const [ontoError, setOntoError] = useState<string | null>(null);
 
   // API hooks
   const quoteMutation = useQuote();
@@ -107,11 +105,38 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
     setError(null);
   };
 
+  // Manual Ontology generation
+  const generateOntology = async () => {
+    if (!formData.domain.trim()) {
+      setOntoError(t("new.ontology.error_empty_domain"));
+      return;
+    }
+
+    if (formData.domain.trim().length < 3) {
+      setOntoError(t("new.ontology.error_domain_too_short"));
+      return;
+    }
+
+    try {
+      setOntoLoading(true);
+      setOntoError(null);
+
+      const params = { domain: formData.domain.trim(), locale: language };
+      const { data } = await api.post('/benchmark/ontology/generate', params);
+
+      setOntology(data);
+    } catch (error: any) {
+      console.error('Ontology generation failed:', error);
+      setOntoError(error.response?.data?.error?.message || t("new.ontology.error_generic"));
+    } finally {
+      setOntoLoading(false);
+    }
+  };
+
   // Form validation
-  const ontologyValid = ontology && !ontoLoading && !ontoError;
   const timeRangeValid = new Date(formData.timeRange.end) > new Date(formData.timeRange.start) &&
                         (new Date(formData.timeRange.end).getTime() - new Date(formData.timeRange.start).getTime()) <= (5 * 365 * 24 * 60 * 60 * 1000); // 5 years
-  const isFormValid = formData.domain.trim() && ontologyValid && timeRangeValid && emailValid;
+  const isFormValid = formData.domain.trim() && timeRangeValid && emailValid;
 
   // Email validation state
   const [emailValidating, setEmailValidating] = useState(false);
@@ -276,7 +301,8 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
             ontology={ontology}
             isLoading={ontoLoading}
             isError={ontoError}
-            onRetry={refetchOnto}
+            onGenerate={generateOntology}
+            hasDomain={!!formData.domain.trim() && formData.domain.trim().length >= 3}
             t={t}
           />
 
@@ -502,11 +528,12 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
 }
 
 // Ontology Card Component
-function OntologyCard({ ontology, isLoading, isError, onRetry, t }: {
-  ontology?: Ontology;
+function OntologyCard({ ontology, isLoading, isError, onGenerate, hasDomain, t }: {
+  ontology?: Ontology | null;
   isLoading: boolean;
-  isError: boolean;
-  onRetry: () => void;
+  isError: boolean | string;
+  onGenerate: () => void;
+  hasDomain: boolean;
   t: (key: string) => string;
 }) {
   return (
@@ -514,18 +541,40 @@ function OntologyCard({ ontology, isLoading, isError, onRetry, t }: {
       <CardHeader className="flex items-center justify-between">
         <CardTitle className="text-sm font-medium">{t("new.ontology.title")}</CardTitle>
         <div className="text-xs text-muted-foreground">
-          {isLoading ? t("new.ontology.generating") : t("new.ontology.generated")}
+          {isLoading ? t("new.ontology.generating") :
+           ontology ? t("new.ontology.generated") :
+           t("new.ontology.ready")}
         </div>
       </CardHeader>
       <CardContent>
+        {/* Generate Button - only show when no ontology and not loading */}
+        {!ontology && !isLoading && (
+          <div className="text-center py-6">
+            <p className="text-sm text-muted-foreground mb-4">
+              {hasDomain ? t("new.ontology.ready_to_generate") : t("new.ontology.enter_domain_first")}
+            </p>
+            <Button
+              onClick={onGenerate}
+              disabled={!hasDomain || isLoading}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {t("new.ontology.generate_button")}
+            </Button>
+          </div>
+        )}
+
         {isLoading && <OntologySkeleton />}
-        {isError && (
+
+        {isError && typeof isError === 'string' && (
           <ErrorInline
             title={t("new.ontology.error_title")}
+            description={isError}
             actionLabel={t("common.retry")}
-            onAction={onRetry}
+            onAction={onGenerate}
           />
         )}
+
         {!isLoading && ontology && (
           <>
             <p className="text-sm leading-6 text-neutral-700 mb-4">{ontology.summary}</p>
