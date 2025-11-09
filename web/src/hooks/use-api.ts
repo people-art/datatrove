@@ -326,15 +326,44 @@ export const useSystemStats = () => {
 // ---------- Ontology ----------
 
 export const useOntology = (params: GenerateOntologyParams | undefined) => {
+  const enabled = !!params?.domain && params.domain.trim().length >= 3;
+
+  // Create stable query key using domain and locale strings
+  const queryKey = params ? ['ontology', params.domain, params.locale] : ['ontology'];
+
+  console.log('🎯 useOntology Hook:', {
+    params,
+    enabled,
+    domain: params?.domain,
+    domainLength: params?.domain?.length,
+    trimmedLength: params?.domain?.trim()?.length,
+    queryKey
+  });
+
   return useQuery({
-    enabled: !!params?.domain && params.domain.trim().length >= 3,
-    queryKey: ['ontology', params],
+    enabled,
+    queryKey,
     queryFn: async () => {
-      const { data } = await api.post('/benchmark/ontology/generate', params);
-      // 说明：如果后端已存在其它路径，请只改这里的路径；前端其它地方不感知。
-      return data as Ontology;
+      console.log('🚀 useOntology: Starting API call with params:', params);
+      try {
+        const startTime = Date.now();
+        const { data } = await api.post('/benchmark/ontology/generate', params);
+        const endTime = Date.now();
+        console.log('✅ useOntology: API call successful in', endTime - startTime, 'ms');
+        console.log('📦 useOntology: Response data keys:', Object.keys(data));
+        return data as Ontology;
+      } catch (error) {
+        console.error('❌ useOntology: API call failed:', error);
+        throw error;
+      }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes (reduced from 10)
+    staleTime: 5 * 60 * 1000,
     retry: 2,
+    onSuccess: (data) => {
+      console.log('🎉 useOntology: Query success, data received');
+    },
+    onError: (error) => {
+      console.error('💥 useOntology: Query error:', error);
+    }
   });
 };
