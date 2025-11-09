@@ -21,6 +21,7 @@ export interface ApiConfig extends AxiosRequestConfig<any> {
 
 // 创建 axios 实例
 export const api = axios.create({
+  baseURL: API_BASE,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

@@ -113,7 +113,7 @@ export const useQuote = () => {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: QuoteRequest) => api.post(`${API_BASE}/benchmark/quote`, body).then(r => r.data),
+    mutationFn: (body: QuoteRequest) => api.post('/benchmark/quote', body).then(r => r.data),
     onSuccess: (data: QuoteResponse) => {
       qc.setQueryData(['quote', data.quoteId], data);
     },
@@ -124,14 +124,14 @@ export const useQuote = () => {
 export const useCreateBenchmarkJob = () => {
   return useMutation({
     mutationFn: (body: BenchmarkJobCreateRequest) =>
-      api.post(`${API_BASE}/benchmark/jobs`, body).then(r => r.data),
+      api.post('/benchmark/jobs', body).then(r => r.data),
   });
 };
 
 export const useBenchmarkJob = (jobId?: string) => {
   return useQuery({
     queryKey: ['benchmark', jobId],
-    queryFn: () => api.get(`${API_BASE}/benchmark/jobs/${jobId}`).then(r => r.data),
+    queryFn: () => api.get(`/benchmark/jobs/${jobId}`).then(r => r.data),
     enabled: !!jobId,
     refetchInterval: 5000, // Poll every 5 seconds while active
   });
@@ -142,7 +142,7 @@ export const useCreateOrder = () => {
   return useMutation({
     mutationFn: ({ quoteId, jobId, email }: OrderCreateRequest) => {
       const idempotencyKey = getOrCreateIdemKey('order', `${quoteId}:${jobId}:${email}`);
-      return api.post(`${API_BASE}/orders`, { quoteId, jobId, email }, {
+      return api.post('/orders', { quoteId, jobId, email }, {
         headers: { 'Idempotency-Key': idempotencyKey }
       }).then(r => r.data);
     },
@@ -152,7 +152,7 @@ export const useCreateOrder = () => {
 export const useOrder = (orderId?: string) => {
   return useQuery({
     queryKey: ['order', orderId],
-    queryFn: () => api.get(`${API_BASE}/orders/${orderId}`).then(r => r.data),
+    queryFn: () => api.get(`/orders/${orderId}`).then(r => r.data),
     enabled: !!orderId,
     refetchInterval: 10000, // Poll every 10 seconds for order updates
   });
@@ -161,7 +161,7 @@ export const useOrder = (orderId?: string) => {
 export const useProduction = (orderId?: string) => {
   return useQuery({
     queryKey: ['production', orderId],
-    queryFn: () => api.get(`${API_BASE}/orders/${orderId}/production`).then(r => r.data),
+    queryFn: () => api.get(`/orders/${orderId}/production`).then(r => r.data),
     enabled: !!orderId,
     refetchInterval: 8000, // Poll every 8 seconds for production updates
   });
@@ -171,7 +171,7 @@ export const useProduction = (orderId?: string) => {
 export const useCreateCheckoutSession = () => {
   return useMutation({
     mutationFn: ({ jobId, plan }: { jobId: string; plan?: string }) =>
-      api.post(`${API_BASE}/checkout/session`, { jobId, plan }).then(r => r.data),
+      api.post('/checkout/session', { jobId, plan }).then(r => r.data),
   });
 };
 
@@ -179,21 +179,21 @@ export const useCreateCheckoutSession = () => {
 export const useEmailValidation = () => {
   return useMutation({
     mutationFn: (email: string) =>
-      api.post(`${API_BASE}/email/validate`, { email }).then(r => r.data),
+      api.post('/email/validate', { email }).then(r => r.data),
   });
 };
 
 export const useSendVerificationEmail = () => {
   return useMutation({
     mutationFn: (email: string) =>
-      api.post(`${API_BASE}/email/verify/send`, { email }).then(r => r.data),
+      api.post('/email/verify/send', { email }).then(r => r.data),
   });
 };
 
 export const useConfirmEmailVerification = () => {
   return useMutation({
     mutationFn: (token: string) =>
-      api.post(`${API_BASE}/email/verify/confirm`, { token }).then(r => r.data),
+      api.post('/email/verify/confirm', { token }).then(r => r.data),
   });
 };
 
@@ -201,7 +201,7 @@ export const useConfirmEmailVerification = () => {
 export const useHealthCheck = () => {
   return useQuery({
     queryKey: ['health'],
-    queryFn: () => api.get(`${API_BASE.replace('/api/v1', '')}/health`).then(r => r.data),
+    queryFn: () => api.get('/health').then(r => r.data),
     refetchInterval: 30000, // Check every 30 seconds
   });
 };
@@ -322,7 +322,7 @@ export const useOntology = (params: GenerateOntologyParams | undefined) => {
     enabled: !!params?.domain && params.domain.trim().length >= 3,
     queryKey: ['ontology', params],
     queryFn: async () => {
-      const { data } = await api.post('/api/v1/benchmark/ontology/generate', params);
+      const { data } = await api.post('/benchmark/ontology/generate', params);
       // 说明：如果后端已存在其它路径，请只改这里的路径；前端其它地方不感知。
       return data as Ontology;
     },
