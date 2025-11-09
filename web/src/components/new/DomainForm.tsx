@@ -87,10 +87,10 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   const [quoteLoading, setQuoteLoading] = useState(false);
 
   // Ontology hooks
-  const { t, locale } = useI18n();
+  const { t, language } = useI18n();
   const debouncedDomain = useDebouncedValue(formData.domain, 600);
   const { data: ontology, isLoading: ontoLoading, isError: ontoError, refetch: refetchOnto } =
-    useOntology(debouncedDomain ? { domain: debouncedDomain, locale } : undefined);
+    useOntology(debouncedDomain ? { domain: debouncedDomain, locale: language } : undefined);
 
   // API hooks
   const quoteMutation = useQuote();
