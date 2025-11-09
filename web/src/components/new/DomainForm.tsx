@@ -272,24 +272,6 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
                   onChange={(e) => updateFormData({ domain: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  <input
-                    type="text"
-                    placeholder="输入关键词，按回车添加..."
-                    className="w-full text-sm bg-transparent border-0 p-0 focus:outline-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        e.preventDefault();
-                        updateFormData({
-                          keywords: [...formData.keywords, e.currentTarget.value.trim()]
-                        });
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                  />
-                </div>
-              </div>
             </div>
           </section>
 
