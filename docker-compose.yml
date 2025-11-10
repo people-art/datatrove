@@ -104,9 +104,9 @@ services:
       - NODE_ENV=development
       - PORT=23000
     ports:
-      - "23000:23000"
+    - "23000:23000"
     depends_on:
-      - api
+    - api
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public
