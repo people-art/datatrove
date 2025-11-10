@@ -8,7 +8,7 @@ import dns.exception
 import smtplib
 import socket
 from datetime import datetime
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import structlog
@@ -73,7 +73,37 @@ class EmailValidationService:
             logger.error("SMTP validation error", domain=domain, error=str(e))
             return False
 
-    async def validate_email(self, email: str) -> Dict[str, any]:
+    async def validate_smtp_connection_async(self, domain: str) -> bool:
+        """Async version of SMTP connection validation."""
+        try:
+            # Get MX records asynchronously (simulate async)
+            answers = dns.resolver.resolve(domain, 'MX')
+            if not answers:
+                return False
+
+            # Get the highest priority MX server
+            mx_server = str(sorted(answers, key=lambda x: x.preference)[0].exchange).rstrip('.')
+
+            # Run SMTP connection in thread pool to avoid blocking
+            import asyncio
+            loop = asyncio.get_event_loop()
+            smtp_valid = await loop.run_in_executor(None, self._smtp_connect_sync, mx_server)
+            return smtp_valid
+
+        except Exception as e:
+            logger.error("Async SMTP validation error", domain=domain, error=str(e))
+            return False
+
+    def _smtp_connect_sync(self, mx_server: str) -> bool:
+        """Synchronous SMTP connection test."""
+        try:
+            server = smtplib.SMTP(mx_server, timeout=self.smtp_timeout)
+            server.quit()
+            return True
+        except Exception:
+            return False
+
+    async def validate_email(self, email: str) -> Dict[str, Any]:
         """Comprehensive email validation."""
         email = email.strip().lower()
 
@@ -96,7 +126,7 @@ class EmailValidationService:
             raise ValidationError("Invalid domain - no mail servers found")
 
         # Basic SMTP validation (optional, can be slow)
-        smtp_valid = self.validate_smtp_connection(domain)
+        smtp_valid = await self.validate_smtp_connection_async(domain)
         if not smtp_valid:
             logger.warning("SMTP connection failed, but allowing email", email=email, domain=domain)
 

@@ -39,7 +39,18 @@ export interface ProductionStatusResponse {
   error?: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18000/api';
+// Dynamic API base URL for different environments
+const getApiBaseUrl = () => {
+  // If we're in the browser, use the current hostname with port 18000
+  if (typeof window !== 'undefined') {
+    const currentHost = window.location.hostname;
+    return `http://${currentHost}:18000/api/v1`;
+  }
+  // Server-side or fallback
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18000/api/v1';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
