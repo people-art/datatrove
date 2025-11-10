@@ -76,9 +76,23 @@ api.interceptors.response.use(
   }
 );
 
+// API request type for creating benchmark jobs
+export interface CreateJobRequest {
+  domain: string;
+  keywords: string[];
+  languages: string[];
+  time_range: {
+    start: string;
+    end: string;
+  };
+  quality_tier: string;
+  estimated_scale?: string | null;
+  email: string;
+}
+
 // Benchmark APIs
 export const benchmarkApi = {
-  createJob: async (data: DomainFormData): Promise<{ jobId: string }> => {
+  createJob: async (data: CreateJobRequest): Promise<{ jobId: string }> => {
     const response = await api.post('/benchmark/jobs', data);
     return response.data;
   },
