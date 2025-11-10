@@ -41,23 +41,18 @@ export interface ProductionStatusResponse {
 
 // Dynamic API base URL for different environments
 const getApiBaseUrl = () => {
-  // For docker environments, use NEXT_PUBLIC_API_URL if set
-  if (typeof window === 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-
-  // In browser: try to use the same hostname with port 18000
+  // Always use external accessible URL in browser (client-side)
   if (typeof window !== 'undefined') {
     const currentHost = window.location.hostname;
     // If running on localhost, use localhost
     if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
       return 'http://localhost:18000/api/v1';
     }
-    // Otherwise, use the same hostname (for production deployments)
+    // Otherwise, use the same hostname with port 18000 (for production deployments)
     return `http://${currentHost}:18000/api/v1`;
   }
 
-  // Server-side fallback
+  // Server-side: use NEXT_PUBLIC_API_URL for docker internal network
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18000/api/v1';
 };
 
