@@ -142,10 +142,14 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
       console.log('About to make direct fetch call...');
 
       // Try direct fetch without axios
+      let timeoutId: NodeJS.Timeout | null = null;
       try {
         console.log('Making direct fetch call...');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        timeoutId = setTimeout(() => {
+          console.log('Request timed out, aborting...');
+          controller.abort();
+        }, 60000); // 60 second timeout
 
         const response = await fetch(`${API_BASE}/benchmark/ontology/generate`, {
           method: 'POST',
@@ -156,7 +160,11 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
           signal: controller.signal,
         });
 
-        clearTimeout(timeoutId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+          console.log('Timeout cleared successfully');
+        }
         console.log('Fetch response received:', response.status, response.statusText);
 
         if (!response.ok) {
@@ -175,13 +183,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
         console.error('Direct fetch failed:', fetchError.message);
         console.error('Error name:', fetchError.name);
         console.error('Error stack:', fetchError.stack);
+        // Clear timeout if it exists
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+          console.log('Timeout cleared in catch block');
+        }
       }
 
       // If we get here, all methods failed
       throw new Error('All API call methods failed');
-
-      setOntology(data);
-      console.log('Ontology state updated');
     } catch (error: any) {
       console.error('Ontology generation failed:', error);
       console.error('Error details:', {
