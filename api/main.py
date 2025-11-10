@@ -52,12 +52,21 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Set up CORS - Always allow configured origins
+    # Set up CORS - Allow specific origins with proper format
+    cors_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:23000",
+        "http://127.0.0.1:23000",
+        "http://54.159.47.120:23000",
+        "https://finedata.example.com"
+    ]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS or ["*"],
-        allow_credentials=True if settings.BACKEND_CORS_ORIGINS else False,
-        allow_methods=["*"],
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 
