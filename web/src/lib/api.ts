@@ -41,20 +41,10 @@ export interface ProductionStatusResponse {
 
 // Dynamic API base URL for different environments
 const getApiBaseUrl = () => {
-  // In development, use relative paths so Next.js rewrites can proxy to backend
-  if (process.env.NODE_ENV === 'development') {
-    return '/api';
-  }
-
-  // Always use external accessible URL in browser (client-side)
+  // Always use relative paths so Next.js rewrites can proxy to backend
+  // This ensures consistent behavior in both development and production
   if (typeof window !== 'undefined') {
-    const currentHost = window.location.hostname;
-    // If running on localhost, use localhost
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      return 'http://localhost:18000/api/v1';
-    }
-    // Otherwise, use the same hostname with port 18000 (for production deployments)
-    return `http://${currentHost}:18000/api/v1`;
+    return '/api';
   }
 
   // Server-side: use NEXT_PUBLIC_API_URL for docker internal network
