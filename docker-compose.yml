@@ -71,6 +71,8 @@ services:
       - HF_ORG_NAME=${HF_ORG_NAME:-}
       # Email (optional for development)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
+      # OpenAI (for ontology generation)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     ports:
       - "18000:8000"
     depends_on:
@@ -97,11 +99,12 @@ services:
       dockerfile: Dockerfile
     container_name: finedata-web
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:18000/api/v1
+      - NEXT_PUBLIC_API_URL=http://api:8000/api/v1
       - NEXT_TELEMETRY_DISABLED=1
       - NODE_ENV=development
       - PORT=23000
-    # Using host network mode, port mapping not needed
+    ports:
+      - "23000:23000"
     depends_on:
       - api
     volumes:
@@ -123,7 +126,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    network_mode: host
+    networks:
+      - finedata-network
     restart: unless-stopped
 
   # Celery worker for async tasks

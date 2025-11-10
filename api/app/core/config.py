@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
         "http://localhost:3000",  # Next.js dev server
         "http://127.0.0.1:3000",
+        "http://localhost:23000",  # Docker frontend
+        "http://127.0.0.1:23000",  # Docker frontend
         "http://54.159.47.120:23000",  # Current frontend deployment
         "https://finedata.example.com",  # Production frontend
     ]

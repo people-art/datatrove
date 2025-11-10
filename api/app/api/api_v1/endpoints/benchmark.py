@@ -12,6 +12,7 @@ from app.schemas import benchmark as schemas
 from app.db.dependencies import get_db
 from app.models.benchmark import BenchmarkJob, BenchmarkStatus
 from app.services.benchmark import BenchmarkService
+from app.services.llm import llm_service
 from app.services.pricing import PricingService
 from app.core.errors import (
     AppError,
@@ -157,60 +158,8 @@ async def generate_ontology(
         if len(request.domain.strip()) < 3:
             raise ValidationError("domain", request.domain, "Domain too short", "Domain must be at least 3 characters")
 
-        # For now, return mock ontology data
-        # In production, this would integrate with LLM services
-        domain_lower = request.domain.lower().strip()
-
-        # Mock ontology generation based on domain
-        if "artificial intelligence" in domain_lower or "ai" in domain_lower:
-            ontology = {
-                "summary": "Artificial Intelligence encompasses the development of computer systems that can perform tasks that typically require human intelligence, including learning, reasoning, problem-solving, perception, and language understanding.",
-                "concepts": ["Machine Learning", "Neural Networks", "Deep Learning", "Natural Language Processing", "Computer Vision", "Robotics", "Expert Systems"],
-                "entities": ["OpenAI", "Google DeepMind", "Tesla", "Anthropic", "Meta AI", "Microsoft Research", "IBM Watson"],
-                "intents": ["research development", "automation", "data analysis", "decision making", "content generation", "predictive modeling"],
-                "positive_keywords": ["artificial intelligence", "machine learning", "neural network", "deep learning", "AI model", "algorithm", "automation"],
-                "negative_keywords": ["manual", "human-only", "traditional", "static", "rule-based", "outdated"],
-                "languages_suggested": ["English", "Chinese", "Python", "research papers"],
-                "examples": [
-                    {"title": "Recent Advances in Large Language Models", "url": "https://arxiv.org/abs/2307.09288"},
-                    {"title": "Transformer Architecture Explained", "url": "https://arxiv.org/abs/1706.03762"},
-                    {"title": "GPT-4 Technical Report", "url": "https://cdn.openai.com/papers/gpt-4.pdf"}
-                ],
-                "raw": {"source": "mock", "confidence": 0.95}
-            }
-        elif "healthcare" in domain_lower or "medical" in domain_lower:
-            ontology = {
-                "summary": "Healthcare involves the prevention, diagnosis, and treatment of diseases, encompassing medical research, patient care, pharmaceuticals, and health policy.",
-                "concepts": ["Diagnosis", "Treatment", "Prevention", "Pharmaceuticals", "Medical Devices", "Health Policy", "Patient Care"],
-                "entities": ["WHO", "FDA", "Mayo Clinic", "Johns Hopkins", "Pfizer", "NIH", "CDC"],
-                "intents": ["disease prevention", "treatment optimization", "drug development", "health policy", "patient outcomes", "medical research"],
-                "positive_keywords": ["healthcare", "medical", "diagnosis", "treatment", "patient", "clinical", "pharmaceutical"],
-                "negative_keywords": ["unhealthy", "disease", "illness", "injury", "complication", "side effect"],
-                "languages_suggested": ["English", "Medical terminology", "Research papers"],
-                "examples": [
-                    {"title": "COVID-19 Vaccine Development", "url": "https://www.who.int/emergencies/diseases/novel-coronavirus-2019"},
-                    {"title": "Advances in Cancer Treatment", "url": "https://www.cancer.gov"},
-                    {"title": "Mental Health Research", "url": "https://www.nimh.nih.gov"}
-                ],
-                "raw": {"source": "mock", "confidence": 0.92}
-            }
-        else:
-            # Generic fallback ontology
-            ontology = {
-                "summary": f"{request.domain} represents a specialized domain requiring deep expertise and systematic knowledge organization.",
-                "concepts": ["Research", "Analysis", "Methodology", "Best Practices", "Innovation", "Standards"],
-                "entities": ["Industry Leaders", "Research Institutions", "Regulatory Bodies", "Professional Associations"],
-                "intents": ["knowledge acquisition", "problem solving", "decision making", "optimization", "innovation"],
-                "positive_keywords": [request.domain.lower(), "research", "analysis", "methodology", "best practices"],
-                "negative_keywords": ["outdated", "inefficient", "problematic", "obsolete"],
-                "languages_suggested": ["English", "Technical terminology"],
-                "examples": [
-                    {"title": f"Introduction to {request.domain}", "url": f"https://en.wikipedia.org/wiki/{request.domain.replace(' ', '_')}"},
-                    {"title": f"{request.domain} Best Practices", "url": None},
-                    {"title": f"Latest {request.domain} Developments", "url": None}
-                ],
-                "raw": {"source": "mock", "confidence": 0.85}
-            }
+        # Generate ontology using LLM service
+        ontology = await llm_service.generate_ontology(request.domain, request.locale)
 
         logger.info("Ontology generated", domain=request.domain, locale=request.locale)
 

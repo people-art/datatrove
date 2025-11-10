@@ -2,7 +2,17 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
 // API base URL
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18000/api/v1';
+const getApiBase = () => {
+  // If we're in the browser, use the current hostname with port 18000
+  if (typeof window !== 'undefined') {
+    const currentHost = window.location.hostname;
+    return `http://${currentHost}:18000/api/v1`;
+  }
+  // Server-side or fallback
+  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18000/api/v1';
+};
+
+export const API_BASE = getApiBase();
 
 export interface ApiError {
   error: {
@@ -23,6 +33,7 @@ export interface ApiConfig extends AxiosRequestConfig<any> {
 export const api = axios.create({
   baseURL: API_BASE,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

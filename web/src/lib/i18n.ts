@@ -343,46 +343,65 @@ const translations: Record<Language, any> = {
     "Enterprise and multi-run commitments can be discounted."
   ],
 
-  // Docs page
-  docs_title: "How FineData Works",
-  docs_subtitle: "From request to private dataset in four predictable steps.",
-  docs_flow: [
-    {
-      step: 1,
-      title: "Submit Requirements",
-      body: "Define your domain, keywords, languages, time range, and quality tier via the web console or API."
-    },
-    {
-      step: 2,
-      title: "Run Benchmark (1M pages)",
-      body: "We execute a local preview run using the exact same pipeline configuration and return metrics plus a sample dataset."
-    },
-    {
-      step: 3,
-      title: "Approve & Pay",
-      body: "Once you're satisfied with the preview, confirm the quote and complete payment via secure card checkout."
-    },
-    {
-      step: 4,
-      title: "Cluster Production & Delivery",
-      body: "A Slurm-based cluster run processes full Common Crawl segments. When finished, you receive a private Hugging Face URL via email."
-    }
-  ],
-  docs_api_title: "API Overview",
-  docs_api_items: [
-    "POST /benchmark/quote – Get an estimated price for your config.",
-    "POST /benchmark/jobs – Start a 1M-page benchmark job.",
-    "GET /benchmark/jobs/{id} – Poll benchmark status and metrics.",
-    "POST /orders – Create an order from a quote and job.",
-    "GET /orders/{id} – Track order and payment status.",
-    "GET /orders/{id}/production – View production pipeline progress.",
-    "POST /email/validate – Validate email format/MX/SMTP/disposable.",
-    "POST /checkout/session – Create payment session (Stripe compatible)."
-  ],
-  docs_notes: [
-    "All responses follow a unified error schema with code, message, suggestion, and timestamp.",
-    "Idempotency keys are supported on all create operations to keep retries safe.",
-    "Production runs are isolated per customer and delivered via private repositories."
+    // Ontology
+    "new.ontology.title": "Generate Ontology",
+    "new.ontology.generating": "Generating...",
+    "new.ontology.generated": "Generated",
+    "new.ontology.ready": "Ready",
+    "new.ontology.ready_to_generate": "Ready to generate ontology for your domain",
+    "new.ontology.enter_domain_first": "Enter a domain first",
+    "new.ontology.generate_button": "Generate Ontology",
+    "new.ontology.error_title": "Generation Failed",
+    "new.ontology.error_empty_domain": "Domain cannot be empty",
+    "new.ontology.error_domain_too_short": "Domain must be at least 3 characters",
+    "new.ontology.error_generic": "Failed to generate ontology. Please try again.",
+    "new.ontology.concepts": "Core Concepts",
+    "new.ontology.entities": "Key Entities",
+    "new.ontology.intents": "User Intents",
+    "new.ontology.positive_keywords": "Positive Keywords",
+    "new.ontology.negative_keywords": "Negative Keywords",
+    "new.ontology.examples": "Examples",
+
+    // Docs page
+    docs_title: "How FineData Works",
+    docs_subtitle: "From request to private dataset in four predictable steps.",
+    docs_flow: [
+      {
+        step: 1,
+        title: "Submit Requirements",
+        body: "Define your domain, keywords, languages, time range, and quality tier via the web console or API."
+      },
+      {
+        step: 2,
+        title: "Run Benchmark (1M pages)",
+        body: "We execute a local preview run using the exact same pipeline configuration and return metrics plus a sample dataset."
+      },
+      {
+        step: 3,
+        title: "Approve & Pay",
+        body: "Once you're satisfied with the preview, confirm the quote and complete payment via secure card checkout."
+      },
+      {
+        step: 4,
+        title: "Cluster Production & Delivery",
+        body: "A Slurm-based cluster run processes full Common Crawl segments. When finished, you receive a private Hugging Face URL via email."
+      }
+    ],
+    docs_api_title: "API Overview",
+    docs_api_items: [
+      "POST /benchmark/quote – Get an estimated price for your config.",
+      "POST /benchmark/jobs – Start a 1M-page benchmark job.",
+      "GET /benchmark/jobs/{id} – Poll benchmark status and metrics.",
+      "POST /orders – Create an order from a quote and job.",
+      "GET /orders/{id} – Track order and payment status.",
+      "GET /orders/{id}/production – View production pipeline progress.",
+      "POST /email/validate – Validate email format/MX/SMTP/disposable.",
+      "POST /checkout/session – Create payment session (Stripe compatible)."
+    ],
+    docs_notes: [
+      "All responses follow a unified error schema with code, message, suggestion, and timestamp.",
+      "Idempotency keys are supported on all create operations to keep retries safe.",
+      "Production runs are isolated per customer and delivered via private repositories."
     ],
 
     // Pricing page
@@ -661,6 +680,25 @@ const translations: Record<Language, any> = {
       '在支付前，你将基于 Benchmark 结果看到真实区间报价。',
       '长期合作与多批次任务可提供折扣与专属方案。'
     ],
+
+    // Ontology
+    "new.ontology.title": "生成数据本体",
+    "new.ontology.generating": "生成中...",
+    "new.ontology.generated": "已生成",
+    "new.ontology.ready": "准备就绪",
+    "new.ontology.ready_to_generate": "为您的领域生成数据本体",
+    "new.ontology.enter_domain_first": "请先输入领域",
+    "new.ontology.generate_button": "生成数据本体",
+    "new.ontology.error_title": "生成失败",
+    "new.ontology.error_empty_domain": "领域不能为空",
+    "new.ontology.error_domain_too_short": "领域至少需要3个字符",
+    "new.ontology.error_generic": "生成数据本体失败，请重试。",
+    "new.ontology.concepts": "核心概念",
+    "new.ontology.entities": "重要实体",
+    "new.ontology.intents": "用户意图",
+    "new.ontology.positive_keywords": "正向关键词",
+    "new.ontology.negative_keywords": "排除关键词",
+    "new.ontology.examples": "示例",
 
     // Docs page
     docs_title: 'FineData 工作原理',
