@@ -3,9 +3,10 @@ Benchmark job API endpoints
 """
 
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import structlog
 
 from app.schemas import benchmark as schemas
@@ -209,6 +210,71 @@ async def create_benchmark_job(
         raise HTTPException(status_code=500, detail="Failed to create benchmark job")
 
 
+@router.get("/jobs", response_model=List[schemas.BenchmarkJobResponse])
+async def get_benchmark_jobs(
+    db: AsyncSession = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
+) -> Any:
+    """
+    Get list of benchmark jobs.
+    """
+    try:
+        benchmark_service = BenchmarkService(db)
+
+        # Get jobs from database
+        stmt = select(BenchmarkJob).order_by(BenchmarkJob.created_at.desc()).limit(limit).offset(offset)
+        result = await db.execute(stmt)
+        jobs = result.scalars().all()
+
+        job_responses = []
+        for job in jobs:
+            # Convert to response schema
+            progress = None
+            if job.status in [BenchmarkStatus.RUNNING, BenchmarkStatus.READY]:
+                progress = schemas.BenchmarkProgress(
+                    pct=job.progress_pct,
+                    docs_read=job.docs_read,
+                    docs_kept=job.docs_kept,
+                    tokens=job.tokens,
+                    dedup_rate=job.dedup_rate,
+                )
+
+            metrics = None
+            if job.status == BenchmarkStatus.READY and all([
+                job.coverage is not None,
+                job.quality_pass_rate is not None,
+                job.pii_rate is not None,
+                job.toxicity_rate is not None,
+            ]):
+                metrics = schemas.BenchmarkMetrics(
+                    coverage=job.coverage,
+                    quality_pass_rate=job.quality_pass_rate,
+                    pii_rate=job.pii_rate,
+                    toxicity_rate=job.toxicity_rate,
+                    lang_dist=job.lang_dist or {},
+                    domain_dist=job.domain_dist or {},
+                )
+
+            job_responses.append(schemas.BenchmarkJobResponse(
+                id=job.id,
+                status=job.status.value,
+                domain=job.domain,
+                created_at=job.created_at.isoformat() if job.created_at else None,
+                progress=progress,
+                metrics=metrics,
+                sample_url=job.sample_url,
+                suggested_params=job.suggested_params,
+                error=job.error_message,
+            ))
+
+        return job_responses
+
+    except Exception as e:
+        logger.error("Failed to get benchmark jobs", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get benchmark jobs")
+
+
 @router.get("/jobs/{job_id}", response_model=schemas.BenchmarkJobResponse)
 async def get_benchmark_job(
     job_id: str,
@@ -254,6 +320,8 @@ async def get_benchmark_job(
         return schemas.BenchmarkJobResponse(
             id=job.id,
             status=job.status.value,
+            domain=job.domain,
+            created_at=job.created_at.isoformat() if job.created_at else None,
             progress=progress,
             metrics=metrics,
             sample_url=job.sample_url,

@@ -14,7 +14,7 @@ export default function NewDatasetPage() {
     setLoading(true);
     try {
       const response = await benchmarkApi.createJob(formData);
-      router.push(`/preview/${response.jobId}`);
+      router.push("/dashboard");
     } catch (error) {
       console.error('Failed to create benchmark job:', error);
       alert('Failed to create benchmark job. Please try again.');

@@ -33,14 +33,16 @@ class BenchmarkMetrics(BaseModel):
     quality_pass_rate: float
     pii_rate: float
     toxicity_rate: float
-    lang_dist: Dict[str, int]
-    domain_dist: Dict[str, int]
+    lang_dist: Dict[str, float]
+    domain_dist: Dict[str, float]
 
 
 class BenchmarkJobResponse(BaseModel):
     """Response for benchmark job status."""
     id: str
     status: str  # "queued", "running", "ready", "failed"
+    domain: Optional[str] = None
+    created_at: Optional[str] = None
     progress: Optional[BenchmarkProgress] = None
     metrics: Optional[BenchmarkMetrics] = None
     sample_url: Optional[str] = None

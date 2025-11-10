@@ -324,7 +324,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
         }
       }
 
-      router.push(`/preview/${result.jobId}`);
+      router.push("/dashboard");
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
       const suggestion = getErrorSuggestion(err);

@@ -216,20 +216,33 @@ export const useHealthCheck = () => {
 
 // Dashboard stats aggregation hook
 export const useDashboardStats = () => {
-  // Mock data for now - in real implementation, aggregate from multiple API endpoints
   return useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      // TODO: Aggregate from /benchmark/jobs and /orders endpoints
-      return {
-        activeTasks: 3,
-        runningTasks: 1,
-        completedTasks: 47,
-        failedTasks: 2,
-        avgCompletionTime: '2.5h'
+      // Get benchmark jobs and aggregate stats
+      const jobsResponse = await api.get('/benchmark/jobs?limit=100');
+      const jobs = jobsResponse.data || [];
+
+      const stats = {
+        activeTasks: jobs.length,
+        runningTasks: jobs.filter((job: any) => job.status === 'running').length,
+        completedTasks: jobs.filter((job: any) => job.status === 'ready').length,
+        failedTasks: jobs.filter((job: any) => job.status === 'failed').length,
+        avgCompletionTime: '2.5h' // TODO: Calculate from actual data
       };
+
+      return stats;
     },
     refetchInterval: 10000, // Refresh every 10 seconds
+  });
+};
+
+// Get all benchmark jobs
+export const useBenchmarkJobs = (limit: number = 50) => {
+  return useQuery({
+    queryKey: ['benchmark-jobs', limit],
+    queryFn: () => api.get(`/benchmark/jobs?limit=${limit}`).then(r => r.data),
+    refetchInterval: 5000, // Refresh every 5 seconds for active jobs
   });
 };
 

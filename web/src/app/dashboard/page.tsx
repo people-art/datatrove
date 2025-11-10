@@ -3,7 +3,7 @@
 import { GradientCard } from '@/components/ui/gradient-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useDashboardStats, useAuth } from '@/hooks/use-api';
+import { useDashboardStats, useBenchmarkJobs, useAuth } from '@/hooks/use-api';
 import {
   Activity,
   Clock,
@@ -56,6 +56,7 @@ const mockTasks = [
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
+  const { data: jobs, isLoading: jobsLoading } = useBenchmarkJobs(50);
   const { isAuthenticated, login } = useAuth();
 
   // Fallback stats while loading
@@ -196,35 +197,55 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {mockTasks.map((task) => (
-                <tr key={task.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 text-sm font-mono">{task.id}</td>
-                  <td className="px-4 py-3 text-sm capitalize">{task.type}</td>
-                  <td className="px-4 py-3">
-                    {getStatusBadge(task.status)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 bg-muted rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${task.progress}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-muted-foreground">{task.progress}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm">{task.domain}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {formatDate(task.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
+              {jobsLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                    Loading jobs...
                   </td>
                 </tr>
-              ))}
+              ) : jobs && jobs.length > 0 ? (
+                jobs.map((job: any) => (
+                  <tr key={job.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 text-sm font-mono">{job.id.slice(0, 16)}...</td>
+                    <td className="px-4 py-3 text-sm capitalize">benchmark</td>
+                    <td className="px-4 py-3">
+                      {getStatusBadge(job.status)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-muted rounded-full h-2">
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${job.progress?.pct || 0}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground">{job.progress?.pct || 0}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {job.domain || 'Unknown Domain'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {job.created_at ? formatDate(job.created_at) : 'Unknown'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(`/preview/${job.id}`, '_blank')}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                    No benchmark jobs found. Create your first benchmark job to get started.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
