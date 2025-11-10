@@ -2,6 +2,8 @@
 Benchmark job API endpoints
 """
 
+print("DEBUG: Loading benchmark.py module")
+
 import uuid
 from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException
@@ -182,6 +184,7 @@ async def create_benchmark_job(
     Create a new benchmark job for preview generation.
     """
     try:
+        logger.info("Creating benchmark job", domain=data.domain)
         job_id = str(uuid.uuid4())
 
         # Create benchmark job record
@@ -334,3 +337,4 @@ async def get_benchmark_job(
     except Exception as e:
         logger.error("Failed to get benchmark job", job_id=job_id, error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get benchmark job")
+

@@ -4,14 +4,16 @@ Database session management
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 
-# Create async engine
+# Create async engine with connection pooling
 engine = create_async_engine(
     settings.SQLALCHEMY_DATABASE_URI.replace("postgresql://", "postgresql+asyncpg://"),
-    poolclass=StaticPool,
+    pool_size=settings.DB_POOL_SIZE,  # Maximum number of connections in the pool
+    max_overflow=settings.DB_MAX_OVERFLOW,  # Maximum overflow connections
+    pool_recycle=settings.DB_POOL_RECYCLE,  # Recycle connections after this many seconds
+    pool_pre_ping=settings.DB_POOL_PRE_PING,  # Enable connection health checks
     echo=settings.DEBUG,
     future=True,
 )

@@ -42,6 +42,16 @@ const nextConfig: NextConfig = {
   // React Compiler (moved out of experimental in Next.js 15+)
   // reactCompiler: true, // Disabled for now due to compatibility issues
 
+  // API proxy for backend
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://api:8000/api/:path*',
+      },
+    ];
+  },
+
   // Headers for performance and security
   async headers() {
     return [

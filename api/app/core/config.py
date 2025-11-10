@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     DATABASE_URI: Optional[str] = None
 
+    # Database Connection Pool
+    DB_POOL_SIZE: int = 20  # Maximum number of connections in the pool
+    DB_MAX_OVERFLOW: int = 30  # Maximum number of connections that can be created beyond pool_size
+    DB_POOL_RECYCLE: int = 3600  # Recycle connections after this many seconds (1 hour)
+    DB_POOL_PRE_PING: bool = True  # Enable connection health checks
+
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         """Database connection string."""

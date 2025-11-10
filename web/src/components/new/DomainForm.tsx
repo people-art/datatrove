@@ -309,7 +309,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
         languages: formData.languages,
         time_range: formData.timeRange,
         quality_tier: formData.qualityTier,
-        estimated_scale: formData.estimatedScale ? parseInt(formData.estimatedScale) : undefined,
+        estimated_scale: formData.estimatedScale ? formData.estimatedScale.toString() : undefined,
         email: formData.email
       };
 

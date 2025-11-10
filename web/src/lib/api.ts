@@ -41,6 +41,11 @@ export interface ProductionStatusResponse {
 
 // Dynamic API base URL for different environments
 const getApiBaseUrl = () => {
+  // In development, use relative paths so Next.js rewrites can proxy to backend
+  if (process.env.NODE_ENV === 'development') {
+    return '/api';
+  }
+
   // Always use external accessible URL in browser (client-side)
   if (typeof window !== 'undefined') {
     const currentHost = window.location.hostname;

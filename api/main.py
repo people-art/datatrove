@@ -83,6 +83,8 @@ def create_application() -> FastAPI:
     # Include API router
     app.include_router(api_router, prefix=settings.API_V1_STR)
 
+    # Removed debug middleware that was consuming request body
+
     # Setup error handlers
     setup_error_handlers(app)
 
