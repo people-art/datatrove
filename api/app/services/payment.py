@@ -104,7 +104,26 @@ class PaymentService:
             logger.error("Order not found for payment intent", payment_intent_id=payment_intent_id)
             return
 
-        # Update order status
+        # Update order status to PAID
+        await self.order_service.update_order_status(
+            order.id,
+            OrderStatus.PAID
+        )
+
+        # Start production job immediately
+        await self.start_production_job(order.id, order.benchmark_job_id)
+
+        logger.info("Payment succeeded and production job started", order_id=order.id)
+
+    async def mock_payment_success(self, order_id: str) -> None:
+        """Mock payment success for development/testing."""
+        # Get order
+        order = await self.order_service.get_order_by_id(order_id)
+        if not order:
+            logger.error("Order not found", order_id=order_id)
+            return
+
+        # Update order status to PAID (mock payment)
         await self.order_service.update_order_status(
             order.id,
             OrderStatus.PAID
@@ -113,7 +132,7 @@ class PaymentService:
         # Start production job
         await self.start_production_job(order.id, order.benchmark_job_id)
 
-        logger.info("Payment succeeded", order_id=order.id)
+        logger.info("Mock payment succeeded and production job started", order_id=order_id)
 
     async def handle_payment_failure(self, payment_intent_id: str) -> None:
         """Handle failed payment."""
@@ -131,21 +150,29 @@ class PaymentService:
 
     async def start_production_job(self, order_id: str, benchmark_job_id: str) -> None:
         """Start the full production job on Slurm."""
-        # Update status to cluster queued
-        await self.order_service.update_order_status(
-            order_id,
-            OrderStatus.CLUSTER_QUEUED
+
+        # Get order details
+        order = await self.order_service.get_order_by_id(order_id)
+        if not order or not order.benchmark_job:
+            logger.error("Order or benchmark job not found", order_id=order_id, benchmark_job_id=benchmark_job_id)
+            await self.order_service.update_order_status(
+                order_id,
+                OrderStatus.FAILED,
+                error_message="Order or benchmark job not found"
+            )
+            return
+
+        # Start actual SLURM production job
+        await self.slurm_service.start_production_job(
+            order_id=order_id,
+            benchmark_job_id=benchmark_job_id,
+            domain=order.benchmark_job.domain,
+            keywords=order.benchmark_job.keywords,
+            languages=order.benchmark_job.languages,
+            time_range_start=order.benchmark_job.time_range_start,
+            time_range_end=order.benchmark_job.time_range_end,
+            quality_tier=order.benchmark_job.quality_tier,
         )
-
-        # TODO: Integrate with Slurm job submission
-        # This would typically:
-        # 1. Submit job to Slurm cluster
-        # 2. Monitor job progress
-        # 3. Upload results to Hugging Face
-        # 4. Send email notification
-
-        # For development, simulate the process
-        await self._simulate_production_completion(order_id, benchmark_job_id)
 
     async def _simulate_production_completion(self, order_id: str, benchmark_job_id: str) -> None:
         """Simulate production completion for development."""

@@ -140,6 +140,8 @@ class SlurmProductionService:
 #SBATCH --output=/home/ubuntu/datatrove/logs/production/%j.out
 #SBATCH --error=/home/ubuntu/datatrove/logs/production/%j.err
 #SBATCH --time=48:00:00
+#SBATCH --nodes={settings.SLURM_NUM_NODES}
+#SBATCH --ntasks-per-node=1
 #SBATCH --mem=32GB
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=hopper-cpu

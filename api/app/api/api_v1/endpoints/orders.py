@@ -10,6 +10,7 @@ import structlog
 from app.schemas import benchmark as schemas
 from app.db.dependencies import get_db
 from app.services.order import OrderService
+from app.services.payment import PaymentService
 from app.services.idempotency import IdempotencyService, generate_idempotency_key
 from app.core.errors import DuplicateResourceError, handle_business_error
 
@@ -133,3 +134,37 @@ async def get_order(
     except Exception as e:
         logger.error("Failed to get order", order_id=order_id, error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get order")
+
+
+@router.post("/{order_id}/mock-payment", response_model=schemas.OrderResponse)
+async def mock_payment_and_start_production(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Mock payment success and start production job.
+
+    This endpoint simulates payment completion and immediately starts the
+    SLURM production job for development/testing purposes.
+    """
+    try:
+        payment_service = PaymentService(db)
+
+        # Mock payment success and start production
+        await payment_service.mock_payment_success(order_id)
+
+        # Return updated order status
+        order_service = OrderService(db)
+        order_data = await order_service.get_order(order_id)
+
+        if not order_data:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        logger.info("Mock payment completed and production started", order_id=order_id)
+        return schemas.OrderResponse(**order_data)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to mock payment and start production", order_id=order_id, error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to mock payment and start production")

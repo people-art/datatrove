@@ -125,6 +125,8 @@ class Settings(BaseSettings):
     # Production settings
     MAX_DATASET_SIZE_GB: int = 100
     SLURM_CLUSTER_NAME: str = "production-cluster"
+    SLURM_NUM_NODES: int = 5  # Default number of EC2 t3.xlarge nodes
+    SLURM_NODE_TYPE: str = "t3.xlarge"  # EC2 instance type for SLURM nodes
 
     class Config:
         case_sensitive = True
