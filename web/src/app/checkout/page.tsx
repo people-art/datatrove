@@ -38,10 +38,18 @@ function CheckoutPageContent() {
       // Get job data to extract required information
       const jobData = await benchmarkApi.getJob(jobId!);
 
+      // Ensure we have at least 2 keywords (API requirement)
+      let keywords = jobData.keywords || [];
+      if (keywords.length < 2) {
+        // Add default keywords based on domain
+        const defaultKeywords = [`${jobData.domain}`, `${jobData.domain} technology`];
+        keywords = [...keywords, ...defaultKeywords.slice(0, 2 - keywords.length)];
+      }
+
       // Create quote first
       const quoteRequest = {
         domain: jobData.domain,
-        keywords: jobData.keywords,
+        keywords: keywords,
         languages: jobData.languages,
         startDate: jobData.time_range_start,
         endDate: jobData.time_range_end,
