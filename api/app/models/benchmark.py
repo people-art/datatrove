@@ -105,6 +105,10 @@ class Order(Base):
     stripe_payment_intent_id = Column(String, nullable=True, unique=True)
     stripe_client_secret = Column(String, nullable=True)
 
+    # SLURM cluster
+    cluster_name = Column(String, nullable=True)
+    slurm_job_id = Column(String, nullable=True)
+
     error_message = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -6,6 +6,7 @@ import os
 import subprocess
 import uuid
 import asyncio
+import time
 from typing import Dict, Any, Optional
 from pathlib import Path
 import structlog
@@ -17,11 +18,175 @@ from app.services.order import OrderService
 logger = structlog.get_logger(__name__)
 
 
+class SlurmClusterManager:
+    """Manages SLURM cluster lifecycle for production jobs."""
+
+    def __init__(self):
+        self.cluster_name = f"production-{uuid.uuid4().hex[:8]}"
+        self.region = settings.AWS_DEFAULT_REGION or "us-east-1"
+        self.created = False
+
+    async def create_cluster(self) -> bool:
+        """Create SLURM cluster on demand."""
+        try:
+            logger.info("Creating SLURM cluster", cluster_name=self.cluster_name)
+
+            # Copy cluster config template
+            config_path = Path("/app/finewebdata/config.yaml")
+            if not config_path.exists():
+                logger.error("Cluster config template not found", path=str(config_path))
+                return False
+
+            # Update cluster name in config
+            config_content = config_path.read_text()
+            updated_config = config_content.replace(
+                "finewebdata-slurm-cluster",
+                self.cluster_name
+            )
+
+            # Write updated config
+            temp_config = Path(f"/tmp/{self.cluster_name}-config.yaml")
+            temp_config.write_text(updated_config)
+
+            # Create cluster using AWS ParallelCluster
+            cmd = [
+                "pcluster", "create-cluster",
+                "--cluster-name", self.cluster_name,
+                "--cluster-configuration", str(temp_config),
+                "--region", self.region
+            ]
+
+            result = await self._run_command(cmd)
+            if result.returncode != 0:
+                logger.error("Failed to create cluster", error=result.stderr)
+                return False
+
+            # Wait for cluster creation
+            if await self._wait_for_cluster_ready():
+                self.created = True
+                logger.info("SLURM cluster created successfully", cluster_name=self.cluster_name)
+                return True
+            else:
+                logger.error("Cluster creation timed out")
+                return False
+
+        except Exception as e:
+            logger.error("Cluster creation failed", error=str(e))
+            return False
+
+    async def delete_cluster(self) -> bool:
+        """Delete SLURM cluster."""
+        if not self.created:
+            logger.info("Cluster not created, skipping deletion")
+            return True
+
+        try:
+            logger.info("Deleting SLURM cluster", cluster_name=self.cluster_name)
+
+            cmd = [
+                "pcluster", "delete-cluster",
+                "--cluster-name", self.cluster_name,
+                "--region", self.region
+            ]
+
+            result = await self._run_command(cmd)
+            if result.returncode != 0:
+                logger.error("Failed to delete cluster", error=result.stderr)
+                return False
+
+            # Wait for cluster deletion
+            if await self._wait_for_cluster_deleted():
+                logger.info("SLURM cluster deleted successfully", cluster_name=self.cluster_name)
+                return True
+            else:
+                logger.warning("Cluster deletion may not have completed")
+                return False
+
+        except Exception as e:
+            logger.error("Cluster deletion failed", error=str(e))
+            return False
+
+    async def _wait_for_cluster_ready(self, timeout: int = 1800) -> bool:
+        """Wait for cluster to be ready."""
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            try:
+                cmd = [
+                    "pcluster", "describe-cluster",
+                    "--cluster-name", self.cluster_name,
+                    "--region", self.region,
+                    "--query", "clusterStatus",
+                    "--output", "text"
+                ]
+
+                result = await self._run_command(cmd)
+                if result.returncode == 0 and result.stdout.strip() == "CREATE_COMPLETE":
+                    return True
+
+                await asyncio.sleep(30)  # Check every 30 seconds
+
+            except Exception as e:
+                logger.warning("Failed to check cluster status", error=str(e))
+                await asyncio.sleep(30)
+
+        return False
+
+    async def _wait_for_cluster_deleted(self, timeout: int = 900) -> bool:
+        """Wait for cluster to be deleted."""
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            try:
+                cmd = [
+                    "pcluster", "describe-cluster",
+                    "--cluster-name", self.cluster_name,
+                    "--region", self.region,
+                    "--query", "clusterStatus",
+                    "--output", "text"
+                ]
+
+                result = await self._run_command(cmd)
+                if result.returncode != 0:  # Cluster doesn't exist anymore
+                    return True
+
+                status = result.stdout.strip()
+                if status == "DELETE_COMPLETE":
+                    return True
+
+                await asyncio.sleep(30)
+
+            except Exception as e:
+                logger.warning("Failed to check cluster deletion status", error=str(e))
+                await asyncio.sleep(30)
+
+        return False
+
+    async def _run_command(self, cmd: list) -> subprocess.CompletedProcess:
+        """Run shell command asynchronously."""
+        cmd_str = ' '.join(cmd)
+        process = await asyncio.create_subprocess_shell(
+            cmd_str,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd="/app"
+        )
+
+        stdout, stderr = await process.communicate()
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=process.returncode,
+            stdout=stdout.decode(),
+            stderr=stderr.decode()
+        )
+
+
 class SlurmProductionService:
     """Service for managing Slurm-based production data processing jobs."""
 
     def __init__(self, order_service: OrderService):
         self.order_service = order_service
+        self.cluster_manager = None  # Will be initialized per job
 
     async def start_production_job(
         self,
@@ -36,12 +201,23 @@ class SlurmProductionService:
     ) -> str:
         """Start a full production data processing job on Slurm cluster."""
 
+        # Initialize cluster manager for this job
+        self.cluster_manager = SlurmClusterManager()
+
         try:
             # Update order status to cluster queued
             await self.order_service.update_order_status(
                 order_id,
-                OrderStatus.CLUSTER_QUEUED
+                OrderStatus.CLUSTER_QUEUED,
+                cluster_name=self.cluster_manager.cluster_name
             )
+
+            logger.info("Creating SLURM cluster for production job", order_id=order_id)
+
+            # Create SLURM cluster on demand
+            cluster_created = await self.cluster_manager.create_cluster()
+            if not cluster_created:
+                raise Exception("Failed to create SLURM cluster")
 
             # Generate unique job identifier
             job_suffix = str(uuid.uuid4())[:8]
@@ -59,6 +235,7 @@ class SlurmProductionService:
                 'quality_tier': quality_tier,
                 'order_id': order_id,
                 'benchmark_job_id': benchmark_job_id,
+                'cluster_name': self.cluster_manager.cluster_name,
             }
 
             # Submit Slurm job
@@ -68,14 +245,16 @@ class SlurmProductionService:
             await self.order_service.update_order_status(
                 order_id,
                 OrderStatus.RUNNING,
-                slurm_job_id=slurm_job_id
+                slurm_job_id=slurm_job_id,
+                cluster_name=self.cluster_manager.cluster_name
             )
 
             logger.info(
                 "Production job submitted to Slurm",
                 order_id=order_id,
                 slurm_job_id=slurm_job_id,
-                job_name=job_name
+                job_name=job_name,
+                cluster_name=self.cluster_manager.cluster_name
             )
 
             return slurm_job_id
@@ -86,6 +265,10 @@ class SlurmProductionService:
                 order_id=order_id,
                 error=str(e)
             )
+
+            # Cleanup cluster if it was created
+            if self.cluster_manager and self.cluster_manager.created:
+                await self.cluster_manager.delete_cluster()
 
             # Update order status to failed
             await self.order_service.update_order_status(
@@ -173,6 +356,7 @@ python finewebdata/finewebdata.py \\
 # Check if processing succeeded
 if [ $? -eq 0 ]; then
     echo "Production processing completed successfully"
+
     # Trigger delivery workflow
     python -c "
 import asyncio
@@ -188,8 +372,20 @@ async def deliver():
 
 asyncio.run(deliver())
 "
+
+    # Cleanup SLURM cluster after successful delivery
+    echo "Cleaning up SLURM cluster: {job_params['cluster_name']}"
+    pcluster delete-cluster --cluster-name {job_params['cluster_name']} --region us-east-1
+
+    # Wait for cluster deletion (optional, job will complete regardless)
+    echo "Waiting for cluster cleanup..."
+    sleep 60
+
 else
     echo "Production processing failed"
+    # Still cleanup cluster even on failure
+    echo "Cleaning up SLURM cluster due to failure: {job_params['cluster_name']}"
+    pcluster delete-cluster --cluster-name {job_params['cluster_name']} --region us-east-1 || echo "Cluster cleanup failed"
     exit 1
 fi
 """
