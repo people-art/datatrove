@@ -13,9 +13,9 @@ Scheduling:
     - Name: compute-queue
       ComputeResources:
         - Name: compute
-          InstanceType: t3.medium
+          InstanceType: t3.xlarge
           MinCount: 1
-          MaxCount: 2
+          MaxCount: 5
       Networking:
         SubnetIds:
           - subnet-081031c727748fcc3

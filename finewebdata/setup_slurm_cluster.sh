@@ -24,9 +24,9 @@ AVAILABILITY_ZONE="${REGION}b"    # Availability Zone
 SSH_KEY_NAME="AWS-Keys"        # Your EC2 SSH key pair name
 CLUSTER_NAME="finewebdata-slurm-cluster"   # Cluster name for FineWeb-Data
 HEAD_INSTANCE_TYPE="t3.medium"    # Head node instance type
-COMPUTE_INSTANCE_TYPE="t3.medium" # Compute node instance type
+COMPUTE_INSTANCE_TYPE="t3.xlarge" # Compute node instance type
 MIN_COMPUTE_NODES=1              # Min compute nodes (static)
-MAX_COMPUTE_NODES=2              # Max compute nodes (static + dynamic)
+MAX_COMPUTE_NODES=5              # Max compute nodes (static + dynamic)
 CONFIG_FILE="config.yaml"         # Cluster config file name
 
 # Parse command line arguments
