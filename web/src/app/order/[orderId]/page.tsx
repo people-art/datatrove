@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -36,10 +36,13 @@ const STATUS_CONFIG = {
 export default function OrderPage({ params }: OrderPageProps) {
   const router = useRouter();
 
+  // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
+  const { orderId } = React.use(params);
+
   // Poll order status
   const { data: order, isLoading, error, refetch } = useQuery({
-    queryKey: ['order', params.orderId],
-    queryFn: () => orderApi.getOrder(params.orderId),
+    queryKey: ['order', orderId],
+    queryFn: () => orderApi.getOrder(orderId),
     refetchInterval: (query) => {
       // Stop polling when delivered or failed
       const data = query.state.data;
@@ -52,7 +55,7 @@ export default function OrderPage({ params }: OrderPageProps) {
   });
 
   // Poll production status
-  const { data: production } = useProduction(params.orderId);
+  const { data: production } = useProduction(orderId);
 
   const getStatusIcon = (status: string) => {
     const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.draft;
@@ -113,7 +116,7 @@ export default function OrderPage({ params }: OrderPageProps) {
                   Slurm Production
                 </span>
               </div>
-              <p className="text-gray-600">Order #{params.orderId}</p>
+              <p className="text-gray-600">Order #{orderId}</p>
             </div>
           </div>
           <div className="text-right">
@@ -324,7 +327,7 @@ export default function OrderPage({ params }: OrderPageProps) {
                       </div>
                       <a
                         href={order.delivery.invoice_url}
-                        download={`invoice-${params.orderId}.pdf`}
+                        download={`invoice-${orderId}.pdf`}
                       >
                         <Button variant="outline">
                           <Download className="h-4 w-4 mr-2" />
