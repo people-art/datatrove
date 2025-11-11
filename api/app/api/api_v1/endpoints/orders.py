@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+import json
 
 from app.schemas import benchmark as schemas
 from app.db.dependencies import get_db
@@ -31,6 +32,7 @@ async def create_order(
     Uses idempotency to prevent duplicate orders.
     """
     try:
+        import json
         idempotency_service = IdempotencyService(db)
         order_service = OrderService(db)
 
@@ -53,9 +55,8 @@ async def create_order(
 
         if cached_response:
             # Return cached response for duplicate request
-            import json
             cached_data = json.loads(cached_response)
-            logger.info("Returning cached order response", order_id=cached_data["orderId"])
+            logger.info("Returning cached order response", order_id=cached_data.get("orderId", "unknown"))
             return schemas.OrderCreateResponse(**cached_data)
 
         # Create order with quote and benchmark job binding

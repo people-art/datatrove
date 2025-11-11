@@ -181,7 +181,14 @@ class OrderService:
         payment_intent = await payment_service.create_payment_intent_for_quote(quote_id)
 
         # Create order record
-        order_id = f"order_{quote_id.split('_')[1]}"  # Use quote ID suffix for order ID
+        # Extract suffix from quote_id, handle different formats gracefully
+        if '_' in quote_id:
+            order_suffix = quote_id.split('_')[1]
+        else:
+            # Fallback for non-standard quote_id formats
+            order_suffix = quote_id.replace('q_', '').replace('quote_', '')[:16]
+
+        order_id = f"order_{order_suffix}"
 
         # For now, create a placeholder order - in production this would be more sophisticated
         order = Order(
