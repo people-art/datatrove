@@ -139,6 +139,11 @@ export const orderApi = {
     const response = await api.get(`/orders/${orderId}/production`);
     return response.data;
   },
+
+  mockPaymentAndStartProduction: async (orderId: string): Promise<Order> => {
+    const response = await api.post(`/orders/${orderId}/mock-payment`);
+    return response.data;
+  },
 };
 
 // Email APIs

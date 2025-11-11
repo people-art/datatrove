@@ -102,11 +102,8 @@ function CheckoutPageContent() {
     setProcessing(true);
 
     try {
-      // In a real implementation, this would use Stripe Elements
-      // For development, we'll simulate the payment process
-
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // For development, call mock payment API to trigger production
+      await orderApi.mockPaymentAndStartProduction(orderId);
 
       // Redirect to order page
       navigation.push(`/order/${orderId}`);
