@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -22,10 +22,13 @@ interface PreviewPageProps {
 export default function PreviewPage({ params }: PreviewPageProps) {
   const router = useRouter();
 
+  // Unwrap params Promise (Next.js 15)
+  const { jobId } = React.use(params);
+
   // Poll benchmark job status
   const { data: job, isLoading, error } = useQuery({
-    queryKey: ['benchmark-job', params.jobId],
-    queryFn: () => benchmarkApi.getJob(params.jobId),
+    queryKey: ['benchmark-job', jobId],
+    queryFn: () => benchmarkApi.getJob(jobId),
     refetchInterval: (query) => {
       // Stop polling when job is ready or failed
       const data = query.state.data;
@@ -41,7 +44,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
     if (!job?.sample_url) return;
 
     try {
-      await downloadFile(job.sample_url, `benchmark-sample-${params.jobId}.jsonl.gz`);
+      await downloadFile(job.sample_url, `benchmark-sample-${jobId}.jsonl.gz`);
     } catch (error) {
       console.error('Download failed:', error);
       alert('Failed to download sample. Please try again.');
@@ -49,7 +52,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
   };
 
   const handleConfirmOrder = () => {
-    router.push(`/checkout?jobId=${params.jobId}`);
+    router.push(`/checkout?jobId=${jobId}`);
   };
 
   if (isLoading) {
@@ -117,7 +120,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
             </div>
 
             <div className="text-right text-sm text-foreground/50">
-              <div>Job ID: {params.jobId.slice(0, 8)}...</div>
+              <div>Job ID: {jobId.slice(0, 8)}...</div>
               <div className="text-xs">
                 Created {new Date(job.created_at).toLocaleDateString()}
               </div>
@@ -132,7 +135,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
             <ProgressHeader
               status={job.status}
               progress={job.progress?.pct || 0}
-              jobId={params.jobId}
+              jobId={jobId}
             />
 
             {/* Metrics Grid */}
