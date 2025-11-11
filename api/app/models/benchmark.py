@@ -105,6 +105,7 @@ class Order(Base):
     # Stripe payment
     stripe_payment_intent_id = Column(String, nullable=True, unique=True)
     stripe_client_secret = Column(String, nullable=True)
+    email = Column(String, nullable=True)  # Customer email
 
     # SLURM cluster
     cluster_name = Column(String, nullable=True)

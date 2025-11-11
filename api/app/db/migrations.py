@@ -18,9 +18,11 @@ async def run_migrations(db: AsyncSession) -> None:
             "name": "add_slurm_fields_to_orders",
             "sql_statements": [
                 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS quote_id VARCHAR(255)",
+                "ALTER TABLE orders ADD COLUMN IF NOT EXISTS email VARCHAR(255)",
                 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS cluster_name VARCHAR(255)",
                 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS slurm_job_id VARCHAR(255)",
                 "CREATE INDEX IF NOT EXISTS idx_orders_quote_id ON orders(quote_id)",
+                "CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(email)",
                 "CREATE INDEX IF NOT EXISTS idx_orders_cluster_name ON orders(cluster_name)",
                 "CREATE INDEX IF NOT EXISTS idx_orders_slurm_job_id ON orders(slurm_job_id)"
             ],
