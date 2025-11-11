@@ -21,15 +21,13 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add SLURM cluster fields to orders table (added in v2.0.0)
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS cluster_name VARCHAR(255);
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS slurm_job_id VARCHAR(255);
-
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_idempotency_keys_expires_at ON idempotency_keys(expires_at);
 CREATE INDEX IF NOT EXISTS idx_idempotency_keys_user_id ON idempotency_keys(user_id);
-CREATE INDEX IF NOT EXISTS idx_orders_cluster_name ON orders(cluster_name);
-CREATE INDEX IF NOT EXISTS idx_orders_slurm_job_id ON orders(slurm_job_id);
+
+-- Add SLURM cluster fields to orders table (added in v2.0.0)
+-- Note: These ALTER statements will be executed after tables are created by the application
+-- They are safe to run multiple times due to IF NOT EXISTS clauses
 
 -- Clean up expired idempotency keys periodically (optional)
 -- This can be run as a scheduled job

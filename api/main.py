@@ -13,8 +13,9 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.error_handlers import setup_error_handlers
 # from app.middleware.idempotency import IdempotencyMiddleware, idempotency_response_middleware
-from app.db.session import engine
+from app.db.session import engine, async_session_factory
 from app.db.base import Base
+from app.db.migrations import run_migrations
 
 # Setup structured logging
 setup_logging()
@@ -33,6 +34,12 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     logger.info("Database tables created/verified")
+
+    # Run database migrations
+    async with async_session_factory() as db:
+        await run_migrations(db)
+
+    logger.info("Database migrations completed")
 
     yield
 
