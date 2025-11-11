@@ -614,7 +614,7 @@ function OntologyCard({ ontology, isLoading, isError, onGenerate, hasDomain, t }
   hasDomain: boolean;
   t: (key: string) => string;
 }) {
-  console.log('OntologyCard render:', { ontology: !!ontology, isLoading, isError, hasDomain });
+  //console.log('OntologyCard render:', { ontology: !!ontology, isLoading, isError, hasDomain });
 
   return (
     <Card className="rounded-2xl border border-border/60 bg-card/70">
