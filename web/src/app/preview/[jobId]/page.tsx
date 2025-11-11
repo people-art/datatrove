@@ -22,8 +22,8 @@ interface PreviewPageProps {
 export default function PreviewPage({ params }: PreviewPageProps) {
   const router = useRouter();
 
-  // In 'use client' components, params is synchronous in Next.js 15
-  const jobId = params.jobId;
+  // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
+  const { jobId } = React.use(params);
 
   // Poll benchmark job status
   const { data: job, isLoading, error } = useQuery({
