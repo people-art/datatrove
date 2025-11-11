@@ -80,6 +80,7 @@ class Order(Base):
 
     id = Column(String, primary_key=True, index=True)
     benchmark_job_id = Column(String, ForeignKey("benchmark_jobs.id"), nullable=False)
+    quote_id = Column(String, nullable=True)  # Reference to quote used for pricing
 
     status = Column(Enum(OrderStatus), default=OrderStatus.DRAFT)
 
