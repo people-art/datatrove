@@ -243,23 +243,23 @@ export default function PreviewPage({ params }: PreviewPageProps) {
 
                     <div className="flex justify-between">
                       <span className="text-foreground/70">Keywords:</span>
-                      <span className="font-medium">{job.keywords.length}</span>
+                      <span className="font-medium">{job.keywords?.length || 0}</span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-foreground/70">Languages:</span>
-                      <span className="font-medium">{job.languages.join(', ')}</span>
+                      <span className="font-medium">{job.languages?.join(', ') || 'N/A'}</span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-foreground/70">Quality:</span>
-                      <span className="font-medium capitalize">{job.quality_tier}</span>
+                      <span className="font-medium capitalize">{job.quality_tier || 'N/A'}</span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-foreground/70">Time Range:</span>
                       <span className="font-medium text-xs">
-                        {job.time_range_start} to {job.time_range_end}
+                        {job.time_range_start || 'N/A'} to {job.time_range_end || 'N/A'}
                       </span>
                     </div>
                   </div>

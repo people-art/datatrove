@@ -42,6 +42,13 @@ class BenchmarkJobResponse(BaseModel):
     id: str
     status: str  # "queued", "running", "ready", "failed"
     domain: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    languages: Optional[List[str]] = None
+    time_range_start: Optional[str] = None
+    time_range_end: Optional[str] = None
+    quality_tier: Optional[str] = None
+    email: Optional[str] = None
+    estimated_scale: Optional[str] = None
     created_at: Optional[str] = None
     progress: Optional[BenchmarkProgress] = None
     metrics: Optional[BenchmarkMetrics] = None
