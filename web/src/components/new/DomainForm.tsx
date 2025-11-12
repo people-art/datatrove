@@ -230,16 +230,16 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
 
     try {
       setEmailValidating(true);
-      // Temporarily disable email validation for testing
+      const result = await emailApi.validateEmail(email);
       setEmailValidation({
-        isValid: true,
-        checks: { format: true, mx_records: true, smtp_connection: true, disposable_domain: true }
+        isValid: result.isValid,
+        checks: result.checks
       });
-      setEmailValid(true); // Set emailValid state for form validation
+      setEmailValid(result.isValid);
     } catch (error) {
       console.error('Email validation failed:', error);
       setEmailValidation(null);
-      setEmailValid(false); // Reset emailValid on error
+      setEmailValid(false);
     } finally {
       setEmailValidating(false);
     }
