@@ -7,9 +7,11 @@ import subprocess
 import uuid
 import asyncio
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
 import structlog
+import boto3
+import yaml
 
 from app.core.config import settings
 from app.models.benchmark import OrderStatus
@@ -24,35 +26,246 @@ class SlurmClusterManager:
     def __init__(self):
         self.cluster_name = f"production-{uuid.uuid4().hex[:8]}"
         self.region = settings.AWS_DEFAULT_REGION or "us-east-1"
+        self.vpc_cidr = "10.0.0.0/16"
+        self.subnet_cidr = "10.0.1.0/24"
+        self.availability_zone = f"{self.region}b"
         self.created = False
 
+        # AWS clients
+        self.ec2 = boto3.client('ec2', region_name=self.region)
+        self.efs = boto3.client('efs', region_name=self.region)
+
+    async def _ensure_parallelcluster(self) -> bool:
+        """Ensure AWS ParallelCluster is installed."""
+        try:
+            result = await self._run_command(['pcluster', 'version'])
+            if result.returncode == 0:
+                logger.info("AWS ParallelCluster already installed")
+                return True
+        except Exception:
+            pass
+
+        logger.info("Installing AWS ParallelCluster...")
+        try:
+            # Try pip3 first, then pip
+            result = await self._run_command([
+                'pip3', 'install', '--user', 'aws-parallelcluster'
+            ])
+            if result.returncode != 0:
+                result = await self._run_command([
+                    'pip', 'install', 'aws-parallelcluster'
+                ])
+
+            if result.returncode == 0:
+                logger.info("AWS ParallelCluster installed successfully")
+                return True
+            else:
+                logger.error("Failed to install AWS ParallelCluster", error=result.stderr)
+                return False
+        except Exception as e:
+            logger.error("ParallelCluster installation failed", error=str(e))
+            return False
+
+    async def _ensure_vpc_and_subnet(self) -> Tuple[str, str]:
+        """Ensure VPC and subnet exist, return (vpc_id, subnet_id)."""
+        # Check for existing VPC
+        vpc_response = self.ec2.describe_vpcs(
+            Filters=[{'Name': 'cidr-block', 'Values': [self.vpc_cidr]}]
+        )
+
+        if vpc_response['Vpcs']:
+            vpc_id = vpc_response['Vpcs'][0]['VpcId']
+            logger.info("Using existing VPC", vpc_id=vpc_id)
+        else:
+            # Create new VPC
+            vpc_response = self.ec2.create_vpc(CidrBlock=self.vpc_cidr)
+            vpc_id = vpc_response['Vpc']['VpcId']
+
+            # Enable DNS hostnames and support
+            self.ec2.modify_vpc_attribute(
+                VpcId=vpc_id,
+                EnableDnsHostnames={'Value': True}
+            )
+            self.ec2.modify_vpc_attribute(
+                VpcId=vpc_id,
+                EnableDnsSupport={'Value': True}
+            )
+            logger.info("Created new VPC", vpc_id=vpc_id)
+
+        # Check for existing subnet
+        subnet_response = self.ec2.describe_subnets(
+            Filters=[
+                {'Name': 'vpc-id', 'Values': [vpc_id]},
+                {'Name': 'cidr-block', 'Values': [self.subnet_cidr]}
+            ]
+        )
+
+        if subnet_response['Subnets']:
+            subnet_id = subnet_response['Subnets'][0]['SubnetId']
+            logger.info("Using existing subnet", subnet_id=subnet_id)
+        else:
+            # Create new subnet
+            subnet_response = self.ec2.create_subnet(
+                VpcId=vpc_id,
+                CidrBlock=self.subnet_cidr,
+                AvailabilityZone=self.availability_zone
+            )
+            subnet_id = subnet_response['Subnet']['SubnetId']
+
+            # Enable auto-assign public IP
+            self.ec2.modify_subnet_attribute(
+                SubnetId=subnet_id,
+                MapPublicIpOnLaunch={'Value': True}
+            )
+            logger.info("Created new subnet", subnet_id=subnet_id)
+
+        return vpc_id, subnet_id
+
+    async def _ensure_internet_gateway_and_routes(self, vpc_id: str, subnet_id: str):
+        """Ensure internet gateway and routing are configured."""
+        # Check for existing IGW
+        igw_response = self.ec2.describe_internet_gateways(
+            Filters=[{'Name': 'attachment.vpc-id', 'Values': [vpc_id]}]
+        )
+
+        if igw_response['InternetGateways']:
+            igw_id = igw_response['InternetGateways'][0]['InternetGatewayId']
+            logger.info("Using existing IGW", igw_id=igw_id)
+        else:
+            # Create and attach IGW
+            igw_response = self.ec2.create_internet_gateway()
+            igw_id = igw_response['InternetGateway']['InternetGatewayId']
+
+            self.ec2.attach_internet_gateway(
+                VpcId=vpc_id,
+                InternetGatewayId=igw_id
+            )
+            logger.info("Created and attached IGW", igw_id=igw_id)
+
+        # Configure route table
+        route_table_response = self.ec2.describe_route_tables(
+            Filters=[{'Name': 'vpc-id', 'Values': [vpc_id]}]
+        )
+        route_table_id = route_table_response['RouteTables'][0]['RouteTableId']
+
+        # Check if default route exists
+        existing_routes = route_table_response['RouteTables'][0]['Routes']
+        has_default_route = any(
+            route.get('GatewayId') == igw_id and
+            route.get('DestinationCidrBlock') == '0.0.0.0/0'
+            for route in existing_routes
+        )
+
+        if not has_default_route:
+            self.ec2.create_route(
+                RouteTableId=route_table_id,
+                DestinationCidrBlock='0.0.0.0/0',
+                GatewayId=igw_id
+            )
+            logger.info("Added default route to route table")
+
+    async def _generate_cluster_config(self, subnet_id: str) -> str:
+        """Generate cluster configuration file, return path."""
+        config = {
+            'Region': self.region,
+            'ClusterName': self.cluster_name,
+            'Image': {'Os': 'alinux2'},
+            'HeadNode': {
+                'InstanceType': 't3.medium',
+                'Networking': {'SubnetId': subnet_id},
+                'Ssh': {'KeyName': 'AWS-Keys'}
+            },
+            'Scheduling': {
+                'Scheduler': 'slurm',
+                'SlurmQueues': [{
+                    'Name': 'compute-queue',
+                    'ComputeResources': [{
+                        'Name': 'compute',
+                        'InstanceType': 't3.xlarge',
+                        'MinCount': 1,
+                        'MaxCount': settings.SLURM_NUM_NODES
+                    }],
+                    'Networking': {'SubnetIds': [subnet_id]}
+                }]
+            },
+            'Tags': [
+                {'Key': 'Project', 'Value': 'fineweb-data'},
+                {'Key': 'Environment', 'Value': 'production'},
+                {'Key': 'ClusterName', 'Value': self.cluster_name}
+            ]
+        }
+
+        config_path = f"/tmp/{self.cluster_name}-config.yaml"
+        with open(config_path, 'w') as f:
+            yaml.dump(config, f, default_flow_style=False)
+
+        logger.info("Generated cluster config", config_path=config_path)
+        return config_path
+
+    async def _cluster_exists(self) -> bool:
+        """Check if cluster already exists."""
+        try:
+            cmd = [
+                "pcluster", "describe-cluster",
+                "--cluster-name", self.cluster_name,
+                "--region", self.region,
+                "--query", "clusterStatus",
+                "--output", "text"
+            ]
+            result = await self._run_command(cmd)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    async def _cluster_ready(self) -> bool:
+        """Check if cluster is in CREATE_COMPLETE status."""
+        try:
+            cmd = [
+                "pcluster", "describe-cluster",
+                "--cluster-name", self.cluster_name,
+                "--region", self.region,
+                "--query", "clusterStatus",
+                "--output", "text"
+            ]
+            result = await self._run_command(cmd)
+            status = result.stdout.strip()
+            return status == "CREATE_COMPLETE"
+        except Exception:
+            return False
+
     async def create_cluster(self) -> bool:
-        """Create SLURM cluster on demand."""
+        """Create SLURM cluster on demand with full infrastructure."""
         try:
             logger.info("Creating SLURM cluster", cluster_name=self.cluster_name)
 
-            # Copy cluster config template
-            config_path = Path("/app/finewebdata/config.yaml")
-            if not config_path.exists():
-                logger.error("Cluster config template not found", path=str(config_path))
+            # 1. Ensure AWS ParallelCluster is installed
+            if not await self._ensure_parallelcluster():
                 return False
 
-            # Update cluster name in config
-            config_content = config_path.read_text()
-            updated_config = config_content.replace(
-                "finewebdata-slurm-cluster",
-                self.cluster_name
-            )
+            # 2. Ensure VPC and subnet exist
+            vpc_id, subnet_id = await self._ensure_vpc_and_subnet()
 
-            # Write updated config
-            temp_config = Path(f"/tmp/{self.cluster_name}-config.yaml")
-            temp_config.write_text(updated_config)
+            # 3. Ensure internet gateway and routes
+            await self._ensure_internet_gateway_and_routes(vpc_id, subnet_id)
 
-            # Create cluster using AWS ParallelCluster
+            # 4. Generate cluster configuration
+            config_path = await self._generate_cluster_config(subnet_id)
+
+            # 5. Check if cluster already exists
+            if await self._cluster_exists():
+                if await self._cluster_ready():
+                    logger.info("Cluster already exists and ready")
+                    self.created = True
+                    return True
+                else:
+                    logger.warning("Cluster exists but not in ready state")
+                    return False
+
+            # 6. Create cluster using AWS ParallelCluster
             cmd = [
                 "pcluster", "create-cluster",
                 "--cluster-name", self.cluster_name,
-                "--cluster-configuration", str(temp_config),
+                "--cluster-configuration", config_path,
                 "--region", self.region
             ]
 
@@ -61,7 +274,7 @@ class SlurmClusterManager:
                 logger.error("Failed to create cluster", error=result.stderr)
                 return False
 
-            # Wait for cluster creation
+            # 7. Wait for cluster creation to complete
             if await self._wait_for_cluster_ready():
                 self.created = True
                 logger.info("SLURM cluster created successfully", cluster_name=self.cluster_name)
