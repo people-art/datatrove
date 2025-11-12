@@ -211,7 +211,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   // Form validation
   const timeRangeValid = new Date(formData.timeRange.end) > new Date(formData.timeRange.start) &&
                         (new Date(formData.timeRange.end).getTime() - new Date(formData.timeRange.start).getTime()) <= (5 * 365 * 24 * 60 * 60 * 1000); // 5 years
-  const isFormValid = formData.domain.trim() && timeRangeValid && emailValid;
+  const isFormValid = formData.domain.trim() && timeRangeValid;
 
   // Email validation state
   const [emailValidating, setEmailValidating] = useState(false);
