@@ -81,6 +81,7 @@ function CheckoutPageContent() {
         email: jobData.email
       }, idempotencyKey);
 
+      console.log('Order created:', orderData);
       setClientSecret(orderData.clientSecret);
       setOrderId(orderData.orderId);
 
@@ -102,6 +103,7 @@ function CheckoutPageContent() {
     setProcessing(true);
 
     try {
+      console.log('Starting payment with orderId:', orderId);
       // For development, call mock payment API to trigger production
       await orderApi.mockPaymentAndStartProduction(orderId);
 

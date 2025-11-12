@@ -39,6 +39,9 @@ const nextConfig: NextConfig = {
     scrollRestoration: true,
   },
 
+  // Allow cross-origin requests from development
+  allowedDevOrigins: ['54.159.47.120'],
+
   // React Compiler (moved out of experimental in Next.js 15+)
   // reactCompiler: true, // Disabled for now due to compatibility issues
 

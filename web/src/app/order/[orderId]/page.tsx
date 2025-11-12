@@ -38,6 +38,7 @@ export default function OrderPage({ params }: OrderPageProps) {
 
   // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
   const { orderId } = React.use(params);
+  console.log('Order page loaded with orderId:', orderId);
 
   // Poll order status
   const { data: order, isLoading, error, refetch } = useQuery({
