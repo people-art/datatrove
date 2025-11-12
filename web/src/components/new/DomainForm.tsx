@@ -87,25 +87,45 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
 
   const { t, language } = useI18n();
 
-  // Ontology hooks - using the centralized hook
-  const ontologyParams = formData.domain.trim().length >= 3 ? {
-    domain: formData.domain.trim(),
-    locale: language
-  } : undefined;
+  // Ontology hooks - manual trigger only (preserve original behavior)
+  const [ontology, setOntology] = useState<Ontology | null>(null);
+  const [ontoLoading, setOntoLoading] = useState(false);
+  const [ontoError, setOntoError] = useState<string | null>(null);
 
-  const {
-    data: ontology,
-    isLoading: ontoLoading,
-    error: ontoErrorData,
-    refetch: refetchOntology
-  } = useOntology(ontologyParams);
-
-  // Convert error to string for compatibility
-  const ontoError = ontoErrorData ? getErrorMessage(ontoErrorData) : null;
+  // Use useOntology hook for manual triggering
+  const [triggerOntology, setTriggerOntology] = useState<GenerateOntologyParams | null>(null);
+  const { data: ontologyData, isLoading: hookLoading, error: hookError } = useOntology(triggerOntology || undefined);
 
   // API hooks
   const quoteMutation = useQuote();
   const createJobMutation = useCreateBenchmarkJob();
+
+  // Handle ontology data from hook
+  useEffect(() => {
+    if (ontologyData) {
+      setOntology(ontologyData);
+      setOntoLoading(false);
+      setOntoError(null);
+      setTriggerOntology(null); // Reset trigger
+    }
+  }, [ontologyData]);
+
+  // Handle ontology error from hook
+  useEffect(() => {
+    if (hookError) {
+      setOntoError(getErrorMessage(hookError));
+      setOntoLoading(false);
+      setTriggerOntology(null); // Reset trigger
+    }
+  }, [hookError]);
+
+  // Handle ontology loading from hook
+  useEffect(() => {
+    if (hookLoading) {
+      setOntoLoading(true);
+      setOntoError(null);
+    }
+  }, [hookLoading]);
 
 
   useEffect(() => {
@@ -127,26 +147,37 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
     setError(null);
   };
 
-  // Manual Ontology generation - now using the centralized hook
+  // Manual Ontology generation - preserve original behavior
   const generateOntology = async () => {
     console.log('generateOntology called with domain:', formData.domain, 'language:', language);
 
     if (!formData.domain.trim()) {
       console.log('Domain is empty');
+      setOntoError(t("new.ontology.error_empty_domain"));
       return;
     }
 
     if (formData.domain.trim().length < 3) {
       console.log('Domain too short');
+      setOntoError(t("new.ontology.error_domain_too_short"));
       return;
     }
 
     try {
-      console.log('Triggering ontology refetch...');
-      await refetchOntology();
-      console.log('Ontology refetch completed successfully');
+      console.log('Triggering ontology generation...');
+      setOntoError(null);
+
+      const params = {
+        domain: formData.domain.trim(),
+        locale: language
+      };
+
+      // Trigger the useOntology hook
+      setTriggerOntology(params);
+
     } catch (error: any) {
       console.error('Ontology generation failed:', error);
+      setOntoError(t("new.ontology.error_generic"));
     }
   };
 
