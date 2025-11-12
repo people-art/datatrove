@@ -1,4 +1,5 @@
 Region: us-east-1
+ClusterName: finewebdata-slurm-cluster
 Image:
   Os: alinux2
 HeadNode:

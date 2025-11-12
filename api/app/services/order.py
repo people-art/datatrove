@@ -249,3 +249,59 @@ class OrderService:
             "logsUrl": None,       # Would point to Slurm logs
             "error": order.error_message if order.status == OrderStatus.FAILED else None
         }
+
+    def get_order_by_id_sync(self, db_session, order_id: str) -> Optional[Order]:
+        """Get order by ID synchronously (for Celery tasks)."""
+        stmt = select(Order).where(Order.id == order_id)
+        result = db_session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    def update_order_status_sync(
+        self,
+        db_session,
+        order_id: str,
+        status: OrderStatus,
+        slurm_job_id: Optional[str] = None,
+        cluster_name: Optional[str] = None,
+        error_message: Optional[str] = None
+    ) -> None:
+        """Update order status synchronously (for Celery tasks)."""
+        stmt = select(Order).where(Order.id == order_id)
+        result = db_session.execute(stmt)
+        order = result.scalar_one_or_none()
+
+        if order:
+            order.status = status
+            if slurm_job_id:
+                order.slurm_job_id = slurm_job_id
+            if cluster_name:
+                order.cluster_name = cluster_name
+            if error_message:
+                order.error_message = error_message
+
+            db_session.commit()
+
+            # Add timeline event
+            self._add_timeline_event_sync(
+                db_session, order_id, "status_change",
+                f"Order status changed from {order.status} to {status}",
+                {"slurm_job_id": slurm_job_id, "cluster_name": cluster_name}
+            )
+
+    def _add_timeline_event_sync(
+        self,
+        db_session,
+        order_id: str,
+        event_type: str,
+        description: str,
+        event_metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Add timeline event synchronously."""
+        timeline_event = OrderTimelineEvent(
+            order_id=order_id,
+            event_type=event_type,
+            description=description,
+            event_metadata=event_metadata or {}
+        )
+        db_session.add(timeline_event)
+        db_session.commit()

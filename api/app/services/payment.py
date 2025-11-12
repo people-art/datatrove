@@ -129,8 +129,13 @@ class PaymentService:
             OrderStatus.PAID
         )
 
-        # Start production job
-        await self.start_production_job(order.id, order.benchmark_job_id)
+        # Start production job via Celery task to avoid nested async issues
+        from app.worker import celery_app
+        from app.tasks.production import production_task
+
+        # Queue the production task to Celery
+        production_task.delay(order.id)
+        logger.info("Production task queued to Celery", order_id=order.id)
 
         logger.info("Mock payment succeeded and production job started", order_id=order_id)
 

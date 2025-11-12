@@ -239,8 +239,7 @@ class SlurmProductionService:
             }
 
             # Submit Slurm job
-            # Temporarily skip job submission for testing
-            slurm_job_id = f"mock-job-{uuid.uuid4().hex[:8]}"  # await self._submit_slurm_job(job_params)
+            slurm_job_id = await self._submit_slurm_job(job_params)
 
             # Update order with Slurm job ID
             await self.order_service.update_order_status(
@@ -350,7 +349,7 @@ python finewebdata/finewebdata.py \\
     --time-range-end {job_params['time_range_end']} \\
     --quality-tier {job_params['quality_tier']} \\
     --output-bucket finedata-production \\
-    --cluster-name {settings.SLURM_CLUSTER_NAME} \\
+    --cluster-name {job_params['cluster_name']} \\
     --use-llm-scoring \\
     --gpu
 

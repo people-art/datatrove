@@ -154,6 +154,8 @@ async def mock_payment_and_start_production(
         # Mock payment success and start production
         await payment_service.mock_payment_success(order_id)
 
+        logger.info("Mock payment completed and production started", order_id=order_id)
+
         # Return updated order status
         order_service = OrderService(db)
         order_data = await order_service.get_order(order_id)
@@ -161,7 +163,6 @@ async def mock_payment_and_start_production(
         if not order_data:
             raise HTTPException(status_code=404, detail="Order not found")
 
-        logger.info("Mock payment completed and production started", order_id=order_id)
         return schemas.OrderResponse(**order_data)
 
     except HTTPException:
