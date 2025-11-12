@@ -1,9 +1,10 @@
 "use client";
 
+import { useMemo } from 'react';
 import { GradientCard } from '@/components/ui/gradient-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useDashboardStats, useBenchmarkJobs, useAuth } from '@/hooks/use-api';
+import { useDashboardStats, useBenchmarkJobs, useOrders, useAuth } from '@/hooks/use-api';
 import {
   Activity,
   Clock,
@@ -57,6 +58,7 @@ const mockTasks = [
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
   const { data: jobs, isLoading: jobsLoading } = useBenchmarkJobs(50);
+  const { data: orders, isLoading: ordersLoading } = useOrders(50);
   const { isAuthenticated, login } = useAuth();
 
   // Fallback stats while loading
@@ -67,20 +69,6 @@ export default function DashboardPage() {
     failedTasks: 0,
     avgCompletionTime: '0h'
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="text-center py-16">
-        <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-        <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-          Please sign in to view your dataset processing tasks and system status.
-        </p>
-        <Button onClick={login} size="lg">
-          Sign In to Continue
-        </Button>
-      </div>
-    );
-  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -119,6 +107,49 @@ export default function DashboardPage() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
+
+  // Combine and sort tasks from both benchmark jobs and orders
+  const allTasks = useMemo(() => {
+    const benchmarkTasks = (jobs || []).map((job: any) => ({
+      id: job.id,
+      type: 'benchmark' as const,
+      status: job.status,
+      domain: job.domain,
+      createdAt: job.created_at,
+      progress: job.progress?.pct || 0,
+      estimatedTokens: null,
+      error: job.error
+    }));
+
+    const productionTasks = (orders || []).map((order: any) => ({
+      id: order.id,
+      type: 'production' as const,
+      status: order.status,
+      domain: order.domain,
+      createdAt: order.created_at,
+      progress: order.progress ? Math.round((order.progress.deduped_docs / Math.max(order.progress.fetched_docs, 1)) * 100) : 0,
+      estimatedTokens: order.progress?.final_tokens || null,
+      error: order.error
+    }));
+
+    // Combine and sort by creation date (newest first)
+    return [...benchmarkTasks, ...productionTasks]
+      .sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+  }, [jobs, orders]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="text-center py-16">
+        <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+        <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+          Please sign in to view your dataset processing tasks and system status.
+        </p>
+        <Button onClick={login} size="lg">
+          Sign In to Continue
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -197,42 +228,48 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {jobsLoading ? (
+              {jobsLoading || ordersLoading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    Loading jobs...
+                    Loading tasks...
                   </td>
                 </tr>
-              ) : jobs && jobs.length > 0 ? (
-                jobs.map((job: any) => (
-                  <tr key={job.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 text-sm font-mono">{job.id.slice(0, 16)}...</td>
-                    <td className="px-4 py-3 text-sm capitalize">benchmark</td>
+              ) : allTasks && allTasks.length > 0 ? (
+                allTasks.map((task) => (
+                  <tr key={`${task.type}-${task.id}`} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 text-sm font-mono">{task.id.slice(0, 16)}...</td>
+                    <td className="px-4 py-3 text-sm capitalize">{task.type}</td>
                     <td className="px-4 py-3">
-                      {getStatusBadge(job.status)}
+                      {getStatusBadge(task.status)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-muted rounded-full h-2">
                           <div
                             className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${job.progress?.pct || 0}%` }}
+                            style={{ width: `${task.progress}%` }}
                           />
                         </div>
-                        <span className="text-sm text-muted-foreground">{job.progress?.pct || 0}%</span>
+                        <span className="text-sm text-muted-foreground">{task.progress}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {job.domain || 'Unknown Domain'}
+                      {task.domain || 'Unknown Domain'}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {job.created_at ? formatDate(job.created_at) : 'Unknown'}
+                      {task.createdAt ? formatDate(task.createdAt) : 'Unknown'}
                     </td>
                     <td className="px-4 py-3">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(`/preview/${job.id}`, '_blank')}
+                        onClick={() => {
+                          if (task.type === 'benchmark') {
+                            window.open(`/preview/${task.id}`, '_blank');
+                          } else {
+                            window.open(`/order/${task.id}`, '_blank');
+                          }
+                        }}
                       >
                         View
                       </Button>
@@ -242,7 +279,7 @@ export default function DashboardPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    No benchmark jobs found. Create your first benchmark job to get started.
+                    No tasks found. Create your first benchmark job to get started.
                   </td>
                 </tr>
               )}

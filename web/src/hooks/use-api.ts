@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, API_BASE } from '@/lib/fetcher';
 import { getOrCreateIdemKey } from '@/lib/idempotency';
@@ -24,7 +24,7 @@ export interface Ontology {
   negative_keywords?: string[];       // 建议的排除词（黑名单）
   languages_suggested?: string[];     // 建议语言（如未在表单勾选）
   examples?: Array<{title: string; url?: string}>; // 示例页面或内容标题
-  raw?: Record<string, any>;          // 原始LLM返回（调试/导出）
+  raw?: Record<string, unknown>;          // 原始LLM返回（调试/导出）
 }
 
 type GenerateOntologyParams = {
@@ -46,7 +46,7 @@ export interface BenchmarkJobCreateRequest {
   languages: string[];
   time_range: { start: string; end: string };
   quality_tier: string;
-  estimated_scale?: any;
+  estimated_scale?: string | number;
   email: string;
 }
 
@@ -69,7 +69,7 @@ export interface BenchmarkJobResponse {
     domain_dist: Record<string, number>;
   };
   sample_url?: string;
-  suggested_params?: any;
+  suggested_params?: Record<string, unknown>;
   error?: string;
 }
 
@@ -89,8 +89,8 @@ export interface OrderResponse {
   id: string;
   status: string;
   timeline: Array<{ timestamp: string; label: string }>;
-  live?: any;
-  delivery?: any;
+  live?: Record<string, number>;
+  delivery?: Record<string, string | null>;
   error?: string;
 }
 
@@ -98,6 +98,20 @@ export interface ProductionStatusResponse {
   status: string;
   estCompleteAt?: string;
   logsUrl?: string;
+  error?: string;
+}
+
+export interface OrderListResponse {
+  id: string;
+  status: string;
+  domain?: string;
+  created_at?: string;
+  progress?: {
+    fetched_docs: number;
+    filtered_docs: number;
+    deduped_docs: number;
+    final_tokens: number;
+  };
   error?: string;
 }
 
@@ -155,6 +169,14 @@ export const useOrder = (orderId?: string) => {
     queryFn: () => api.get(`/orders/${orderId}`).then(r => r.data),
     enabled: !!orderId,
     refetchInterval: 10000, // Poll every 10 seconds for order updates
+  });
+};
+
+export const useOrders = (limit: number = 50) => {
+  return useQuery({
+    queryKey: ['orders', limit],
+    queryFn: () => api.get(`/orders?limit=${limit}`).then(r => r.data),
+    refetchInterval: 5000, // Refresh every 5 seconds for active orders
   });
 };
 
@@ -219,15 +241,23 @@ export const useDashboardStats = () => {
   return useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      // Get benchmark jobs and aggregate stats
-      const jobsResponse = await api.get('/benchmark/jobs?limit=100');
+      // Get benchmark jobs and orders, then aggregate stats
+      const [jobsResponse, ordersResponse] = await Promise.all([
+        api.get('/benchmark/jobs?limit=100'),
+        api.get('/orders?limit=100')
+      ]);
+
       const jobs = jobsResponse.data || [];
+      const orders = ordersResponse.data || [];
 
       const stats = {
-        activeTasks: jobs.length,
-        runningTasks: jobs.filter((job: any) => job.status === 'running').length,
-        completedTasks: jobs.filter((job: any) => job.status === 'ready').length,
-        failedTasks: jobs.filter((job: any) => job.status === 'failed').length,
+        activeTasks: jobs.length + orders.length,
+        runningTasks: jobs.filter((job: BenchmarkJobResponse) => job.status === 'running').length +
+                     orders.filter((order: OrderListResponse) => ['running', 'cluster_queued', 'finalizing'].includes(order.status)).length,
+        completedTasks: jobs.filter((job: BenchmarkJobResponse) => job.status === 'ready').length +
+                       orders.filter((order: OrderListResponse) => order.status === 'delivered').length,
+        failedTasks: jobs.filter((job: BenchmarkJobResponse) => job.status === 'failed').length +
+                    orders.filter((order: OrderListResponse) => order.status === 'failed').length,
         avgCompletionTime: '2.5h' // TODO: Calculate from actual data
       };
 
@@ -249,16 +279,14 @@ export const useBenchmarkJobs = (limit: number = 50) => {
 // Simple auth hook (mock implementation)
 export const useAuth = () => {
   // Mock auth state - in real app, this would integrate with your auth system
-  // Use useState with initial value false to avoid hydration mismatch
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Use useEffect to check localStorage only on client side after hydration
-  useEffect(() => {
+  // Use useState with lazy initial state to avoid hydration mismatch
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Check if we're on the client side
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('fd_demo_user') === 'true';
-      setIsAuthenticated(stored);
+      return localStorage.getItem('fd_demo_user') === 'true';
     }
-  }, []);
+    return false;
+  });
 
   return {
     isAuthenticated,

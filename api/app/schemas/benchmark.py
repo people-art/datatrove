@@ -101,6 +101,16 @@ class OrderResponse(BaseModel):
     slurm_job_id: Optional[str] = None  # SLURM job ID
 
 
+class OrderListResponse(BaseModel):
+    """Order list response for dashboard."""
+    id: str
+    status: str
+    domain: Optional[str] = None  # From associated benchmark job
+    created_at: Optional[str] = None
+    progress: Optional[Dict[str, int]] = None  # Live production stats
+    error: Optional[str] = None
+
+
 class BenchmarkJobCreateResponse(BaseModel):
     """Response for benchmark job creation."""
     jobId: str

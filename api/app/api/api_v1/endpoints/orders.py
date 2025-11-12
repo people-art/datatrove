@@ -2,7 +2,7 @@
 Order management API endpoints
 """
 
-from typing import Any
+from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -18,6 +18,57 @@ from app.core.errors import DuplicateResourceError, handle_business_error
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
+
+
+@router.get("", response_model=List[schemas.OrderListResponse])
+async def get_orders(
+    db: AsyncSession = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
+) -> Any:
+    """
+    Get list of orders for dashboard display.
+    """
+    try:
+        from app.models.benchmark import Order, BenchmarkJob
+        from sqlalchemy.orm import selectinload
+
+        # Get orders with associated benchmark jobs
+        stmt = (
+            select(Order)
+            .options(selectinload(Order.benchmark_job))
+            .order_by(Order.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await db.execute(stmt)
+        orders = result.scalars().all()
+
+        order_responses = []
+        for order in orders:
+            progress = None
+            if order.status in ['running', 'cluster_queued', 'finalizing']:
+                progress = {
+                    'fetched_docs': order.fetched_docs or 0,
+                    'filtered_docs': order.filtered_docs or 0,
+                    'deduped_docs': order.deduped_docs or 0,
+                    'final_tokens': order.final_tokens or 0,
+                }
+
+            order_responses.append(schemas.OrderListResponse(
+                id=order.id,
+                status=order.status.value,
+                domain=order.benchmark_job.domain if order.benchmark_job else None,
+                created_at=order.created_at.isoformat() if order.created_at else None,
+                progress=progress,
+                error=order.error_message,
+            ))
+
+        return order_responses
+
+    except Exception as e:
+        logger.error("Failed to get orders", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get orders")
 
 
 @router.post("", response_model=schemas.OrderCreateResponse)
