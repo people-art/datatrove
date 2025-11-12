@@ -222,7 +222,7 @@ function CheckoutPageContent() {
 
                 <Button
                   onClick={handlePayment}
-                  disabled={!agreedToTerms || processing}
+                  disabled={!agreedToTerms || processing || !orderId || loading}
                   className="w-full"
                   size="lg"
                 >
