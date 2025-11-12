@@ -14,10 +14,10 @@ import { EmailField } from "@/components/ui/email-field";
 import { KeywordInput } from "./KeywordInput";
 import { PriceCard } from "./PriceCard";
 import { StickyFooterCta } from "./StickyFooterCta";
-import { useQuote, useCreateBenchmarkJob } from "@/hooks/use-api";
+import { useQuote, useCreateBenchmarkJob, useOntology } from "@/hooks/use-api";
 import { benchmarkApi, emailApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import { getErrorMessage, getErrorSuggestion, getTraceId, api, API_BASE } from "@/lib/fetcher";
+import { getErrorMessage } from "@/lib/fetcher";
 import { debounce } from "@/lib/utils";
 import type { QuoteData, DomainFormData } from "@/types";
 import type { Ontology } from "@/hooks/use-api";
@@ -85,11 +85,23 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
 
-  // Ontology hooks - manual trigger only
   const { t, language } = useI18n();
-  const [ontology, setOntology] = useState<Ontology | null>(null);
-  const [ontoLoading, setOntoLoading] = useState(false);
-  const [ontoError, setOntoError] = useState<string | null>(null);
+
+  // Ontology hooks - using the centralized hook
+  const ontologyParams = formData.domain.trim().length >= 3 ? {
+    domain: formData.domain.trim(),
+    locale: language
+  } : undefined;
+
+  const {
+    data: ontology,
+    isLoading: ontoLoading,
+    error: ontoErrorData,
+    refetch: refetchOntology
+  } = useOntology(ontologyParams);
+
+  // Convert error to string for compatibility
+  const ontoError = ontoErrorData ? getErrorMessage(ontoErrorData) : null;
 
   // API hooks
   const quoteMutation = useQuote();
@@ -115,96 +127,26 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
     setError(null);
   };
 
-  // Manual Ontology generation
+  // Manual Ontology generation - now using the centralized hook
   const generateOntology = async () => {
     console.log('generateOntology called with domain:', formData.domain, 'language:', language);
 
     if (!formData.domain.trim()) {
       console.log('Domain is empty');
-      setOntoError(t("new.ontology.error_empty_domain"));
       return;
     }
 
     if (formData.domain.trim().length < 3) {
       console.log('Domain too short');
-      setOntoError(t("new.ontology.error_domain_too_short"));
       return;
     }
 
     try {
-      console.log('Starting ontology generation...');
-      setOntoLoading(true);
-      setOntoError(null);
-
-      const params = { domain: formData.domain.trim(), locale: language };
-      console.log('Making API call with params:', params);
-
-      console.log('About to make direct fetch call...');
-
-      // Try direct fetch without axios
-      let timeoutId: NodeJS.Timeout | null = null;
-      try {
-        console.log('Making direct fetch call...');
-        const controller = new AbortController();
-        timeoutId = setTimeout(() => {
-          console.log('Request timed out, aborting...');
-          controller.abort();
-        }, 60000); // 60 second timeout
-
-        const response = await fetch(`${API_BASE}/benchmark/ontology/generate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(params),
-          signal: controller.signal,
-        });
-
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-          console.log('Timeout cleared successfully');
-        }
-        console.log('Fetch response received:', response.status, response.statusText);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Fetch failed with status:', response.status, errorText);
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log('Fetch API call successful, received data keys:', Object.keys(data));
-
-        setOntology(data);
-        console.log('Ontology state updated successfully');
-        return;
-      } catch (fetchError: any) {
-        console.error('Direct fetch failed:', fetchError.message);
-        console.error('Error name:', fetchError.name);
-        console.error('Error stack:', fetchError.stack);
-        // Clear timeout if it exists
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-          console.log('Timeout cleared in catch block');
-        }
-      }
-
-      // If we get here, all methods failed
-      throw new Error('All API call methods failed');
+      console.log('Triggering ontology refetch...');
+      await refetchOntology();
+      console.log('Ontology refetch completed successfully');
     } catch (error: any) {
       console.error('Ontology generation failed:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.status,
-        data: error.response?.data
-      });
-      setOntoError(error.response?.data?.error?.message || t("new.ontology.error_generic"));
-    } finally {
-      setOntoLoading(false);
-      console.log('Ontology loading finished');
     }
   };
 
