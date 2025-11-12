@@ -15,9 +15,9 @@ import { useProduction } from '@/hooks/use-api';
 import type { Order } from '@/types';
 
 interface OrderPageProps {
-  params: {
+  params: Promise<{
     orderId: string;
-  };
+  }>;
 }
 
 const STATUS_CONFIG = {
@@ -37,7 +37,8 @@ export default function OrderPage({ params }: OrderPageProps) {
   const router = useRouter();
 
   // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
-  const { orderId } = React.use(params);
+  const resolvedParams = React.use(params);
+  const { orderId } = resolvedParams;
   console.log('Order page loaded with orderId:', orderId);
 
   // Poll order status

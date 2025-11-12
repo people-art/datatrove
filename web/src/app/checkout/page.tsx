@@ -100,6 +100,11 @@ function CheckoutPageContent() {
       return;
     }
 
+    if (!orderId) {
+      alert('Order not ready yet. Please wait for checkout to initialize.');
+      return;
+    }
+
     setProcessing(true);
 
     try {
@@ -107,6 +112,7 @@ function CheckoutPageContent() {
       // For development, call mock payment API to trigger production
       await orderApi.mockPaymentAndStartProduction(orderId);
 
+      console.log('Payment successful, redirecting to:', `/order/${orderId}`);
       // Redirect to order page
       navigation.push(`/order/${orderId}`);
 
