@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, API_BASE } from '@/lib/fetcher';
 import { getOrCreateIdemKey } from '@/lib/idempotency';
@@ -279,14 +279,14 @@ export const useBenchmarkJobs = (limit: number = 50) => {
 // Simple auth hook (mock implementation)
 export const useAuth = () => {
   // Mock auth state - in real app, this would integrate with your auth system
-  // Use useState with lazy initial state to avoid hydration mismatch
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Check if we're on the client side
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('fd_demo_user') === 'true';
-    }
-    return false;
-  });
+  // Start with false on both server and client to avoid hydration mismatch
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Load auth state on client side only
+  useEffect(() => {
+    const stored = localStorage.getItem('fd_demo_user') === 'true';
+    setIsAuthenticated(stored);
+  }, []);
 
   return {
     isAuthenticated,
