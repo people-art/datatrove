@@ -48,6 +48,12 @@ const nextConfig: NextConfig = {
   // API proxy for backend
   async rewrites() {
     return [
+      // Health check goes to root path
+      {
+        source: '/api/health',
+        destination: 'http://54.159.47.120:18000/health',
+      },
+      // Other API routes go to /api/v1/
       {
         source: '/api/:path*',
         destination: 'http://54.159.47.120:18000/api/v1/:path*',

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, API_BASE } from '@/lib/fetcher';
+import { api } from '@/lib/fetcher';
 import { getOrCreateIdemKey } from '@/lib/idempotency';
 
 // Types
@@ -224,13 +224,9 @@ export const useHealthCheck = () => {
   return useQuery({
     queryKey: ['health'],
     queryFn: async () => {
-      // Health check uses direct URL without API base path
-      const healthUrl = API_BASE.replace('/api/v1', '') + '/health';
-      const response = await fetch(healthUrl);
-      if (!response.ok) {
-        throw new Error(`Health check failed: ${response.status}`);
-      }
-      return { status: 'healthy' };
+      // Use the API instance for health check - it will handle proxying correctly
+      const response = await api.get('/health');
+      return response.data;
     },
     refetchInterval: 30000, // Check every 30 seconds
   });
@@ -304,19 +300,20 @@ export const useAuth = () => {
 
 // System stats hook for homepage
 export const useSystemStats = () => {
-  // Load tracked job and order IDs from localStorage
-  const loadLocalJobsAndOrders = () => {
-    if (typeof window === 'undefined') return { jobIds: [], orderIds: [] };
+  // Load tracked job and order IDs from localStorage - use state to avoid hydration mismatch
+  const [trackedData, setTrackedData] = useState({ jobIds: [], orderIds: [] });
+
+  useEffect(() => {
     try {
       const jobs = JSON.parse(localStorage.getItem('tracked_jobs') || '[]');
       const orders = JSON.parse(localStorage.getItem('tracked_orders') || '[]');
-      return { jobIds: jobs, orderIds: orders };
+      setTrackedData({ jobIds: jobs, orderIds: orders });
     } catch {
-      return { jobIds: [], orderIds: [] };
+      setTrackedData({ jobIds: [], orderIds: [] });
     }
-  };
+  }, []);
 
-  const { jobIds, orderIds } = loadLocalJobsAndOrders();
+  const { jobIds, orderIds } = trackedData;
 
   const jobsQuery = useQuery({
     queryKey: ["stats", "jobs", jobIds],
