@@ -141,7 +141,9 @@ export const orderApi = {
   },
 
   mockPaymentAndStartProduction: async (orderId: string): Promise<Order> => {
-    const response = await api.post(`/orders/${orderId}/mock-payment`);
+    const response = await api.post(`/orders/${orderId}/mock-payment`, {}, {
+      timeout: 10000, // 10 second timeout for mock payment
+    });
     return response.data;
   },
 };
