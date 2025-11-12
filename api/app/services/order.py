@@ -107,6 +107,8 @@ class OrderService:
             "live": live_stats,
             "delivery": delivery_info,
             "error": order.error_message,
+            "cluster_name": order.cluster_name,
+            "slurm_job_id": order.slurm_job_id,
         }
 
     async def update_order_status(

@@ -97,6 +97,8 @@ class OrderResponse(BaseModel):
     live: Optional[Dict[str, int]] = None  # Production stats when running
     delivery: Optional[Dict[str, Optional[str]]] = None  # Delivery URLs
     error: Optional[str] = None
+    cluster_name: Optional[str] = None  # SLURM cluster name
+    slurm_job_id: Optional[str] = None  # SLURM job ID
 
 
 class BenchmarkJobCreateResponse(BaseModel):
