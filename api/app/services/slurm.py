@@ -239,7 +239,8 @@ class SlurmProductionService:
             }
 
             # Submit Slurm job
-            slurm_job_id = await self._submit_slurm_job(job_params)
+            # Temporarily skip job submission for testing
+            slurm_job_id = f"mock-job-{uuid.uuid4().hex[:8]}"  # await self._submit_slurm_job(job_params)
 
             # Update order with Slurm job ID
             await self.order_service.update_order_status(
