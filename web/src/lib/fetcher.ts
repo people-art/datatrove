@@ -3,13 +3,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 // API base URL
 const getApiBase = () => {
-  // If we're in the browser, use the current hostname with port 18000
+  // If we're in the browser, use relative path (proxied by Next.js)
   if (typeof window !== 'undefined') {
-    const currentHost = window.location.hostname;
-    return `http://${currentHost}:18000/api/v1`;
+    return '/api';
   }
-  // Server-side or fallback
-  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18000/api/v1';
+  // Server-side: use direct API URL for docker internal network
+  return process.env.NEXT_PUBLIC_API_URL || 'http://api:8000/api/v1';
 };
 
 export const API_BASE = getApiBase();
