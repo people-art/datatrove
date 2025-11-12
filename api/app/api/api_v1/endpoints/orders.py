@@ -5,6 +5,7 @@ Order management API endpoints
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import structlog
 import json
 
