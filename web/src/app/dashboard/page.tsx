@@ -78,8 +78,32 @@ export default function DashboardPage() {
     avgCompletionTime: '2.5h' // Placeholder
   } : displayStats;
 
-  // Display benchmark jobs
-  const allTasks = jobs || [];
+  // Combine jobs and orders for display
+  const allTasks = [
+    ...(jobs || []).map((job: any) => ({
+      ...job,
+      type: 'benchmark',
+      // Ensure consistent data structure
+      domain: job.domain,
+      created_at: job.created_at,
+      progress: job.progress,
+      status: job.status,
+      id: job.id
+    })),
+    ...(systemStats?.orders || []).map((order: any) => ({
+      ...order,
+      type: 'production',
+      domain: 'Production Dataset', // Orders don't have domain, use generic
+      created_at: order.timeline?.[0]?.timestamp || null,
+      progress: order.live ? {
+        pct: order.live.fetched > 0 ? Math.round((order.live.deduped / order.live.fetched) * 100) : 0
+      } : null,
+      status: order.status,
+      id: order.id
+    }))
+  ].filter((task, index, self) =>
+    index === self.findIndex(t => t.id === task.id)
+  );
 
   if (!isAuthenticated) {
     return (
@@ -210,42 +234,47 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {jobsLoading ? (
+              {jobsLoading || systemStats?.loading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                     Loading tasks...
                   </td>
                 </tr>
               ) : allTasks && allTasks.length > 0 ? (
-                allTasks.map((job: any) => (
-                  <tr key={job.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 text-sm font-mono">{job.id.slice(0, 16)}...</td>
-                    <td className="px-4 py-3 text-sm capitalize">benchmark</td>
+                allTasks.map((task: any) => (
+                  <tr key={task.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 text-sm font-mono">{task.id.slice(0, 16)}...</td>
+                    <td className="px-4 py-3 text-sm capitalize">{task.type}</td>
                     <td className="px-4 py-3">
-                      {getStatusBadge(job.status)}
+                      {getStatusBadge(task.status)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-muted rounded-full h-2">
                           <div
                             className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${job.progress?.pct || 0}%` }}
+                            style={{ width: `${task.progress?.pct || 0}%` }}
                           />
                         </div>
-                        <span className="text-sm text-muted-foreground">{job.progress?.pct || 0}%</span>
+                        <span className="text-sm text-muted-foreground">{task.progress?.pct || 0}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {job.domain || 'Unknown Domain'}
+                      {task.domain || 'Unknown Domain'}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {job.created_at ? formatDate(job.created_at) : 'Unknown'}
+                      {task.created_at ? formatDate(task.created_at) : 'Unknown'}
                     </td>
                     <td className="px-4 py-3">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(`/preview/${job.id}`, '_blank')}
+                        onClick={() => window.open(
+                          task.type === 'benchmark'
+                            ? `/preview/${task.id}`
+                            : `/order/${task.id}`,
+                          '_blank'
+                        )}
                       >
                         View
                       </Button>

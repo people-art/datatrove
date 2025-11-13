@@ -332,6 +332,8 @@ export const useSystemStats = () => {
       completedBenchmarks,
       activeOrders,
       totalTasks: jobs.length + orders.length,
+      jobs, // Added to return raw job data
+      orders, // Added to return raw order data
     };
   }, [jobsQuery.data, ordersQuery.data, jobsQuery.isLoading, ordersQuery.isLoading]);
 };
