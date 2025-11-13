@@ -284,26 +284,7 @@ function CheckoutPageContent() {
                   <p className="text-sm">Coming soon in production</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Button
-                    onClick={async () => {
-                      console.log('Testing API connection...');
-                      try {
-                        const testResponse = await fetch('/api/benchmark/jobs?limit=1');
-                        console.log('Test response status:', testResponse.status);
-                        alert(`API test: ${testResponse.status}`);
-                      } catch (error) {
-                        console.error('API test failed:', error);
-                        alert(`API test failed: ${error.message}`);
-                      }
-                    }}
-                    variant="outline"
-                    className="w-full"
-                    size="sm"
-                  >
-                    Test API Connection
-                  </Button>
-                  <Button
+                <Button
                     onClick={handlePayment}
                     disabled={!agreedToTerms || processing || !orderId || loading}
                     className="w-full"
