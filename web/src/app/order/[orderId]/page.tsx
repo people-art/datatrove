@@ -35,7 +35,7 @@ const STATUS_CONFIG = {
 
 export default function OrderPage({ params }: OrderPageProps) {
   const router = useRouter();
-  const orderId = (params as any).orderId || '';
+  const { orderId } = use(params);
 
   console.log('Order page loaded with orderId:', orderId);
 

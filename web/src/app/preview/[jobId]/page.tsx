@@ -14,14 +14,14 @@ import { benchmarkApi, downloadFile } from '@/lib/api';
 import type { BenchmarkJob } from '@/types';
 
 interface PreviewPageProps {
-  params: {
+  params: Promise<{
     jobId: string;
-  };
+  }>;
 }
 
 export default function PreviewPage({ params }: PreviewPageProps) {
   const router = useRouter();
-  const jobId = (params as any).jobId || '';
+  const { jobId } = use(params);
 
   // Poll benchmark job status
   const { data: job, isLoading, error } = useQuery({
