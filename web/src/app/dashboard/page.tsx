@@ -4,6 +4,7 @@ import { GradientCard } from '@/components/ui/gradient-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useDashboardStats, useBenchmarkJobs, useSystemStats, useAuth } from '@/hooks/use-api';
+import { useI18n } from '@/lib/i18n';
 import {
   Activity,
   Clock,
@@ -55,6 +56,7 @@ const mockTasks = [
 ];
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const { data: stats, isLoading } = useDashboardStats();
   const { data: jobs, isLoading: jobsLoading } = useBenchmarkJobs(50);
   const systemStats = useSystemStats();
@@ -108,7 +110,7 @@ export default function DashboardPage() {
   if (!isAuthenticated) {
     return (
       <div className="text-center py-16">
-        <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-4">{t('dashboard')}</h1>
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
           Please sign in to view your dataset processing tasks and system status.
         </p>
@@ -160,7 +162,7 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-2">{t('dashboard')}</h1>
         <p className="text-foreground/70">
           Monitor your dataset processing tasks and system status.
         </p>
@@ -219,7 +221,7 @@ export default function DashboardPage() {
 
       {/* Tasks Table */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Recent Tasks</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('recentTasks')}</h2>
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted/50">

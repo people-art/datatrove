@@ -61,6 +61,7 @@ export interface Translations {
   docs: string;
   createDataset: string;
   dashboard: string;
+  recentTasks: string;
   heroTitle: string;
   heroSubtitle: string;
   getStarted: string;
@@ -215,6 +216,7 @@ const translations: Record<Language, any> = {
     docs: 'Docs',
     createDataset: 'Create Dataset',
     dashboard: 'Dashboard',
+    recentTasks: 'Recent Tasks',
     heroTitle: 'Custom Domain Datasets. Powered by AI.',
     heroSubtitle: 'Generate high-quality, domain-specific datasets from billions of web pages—ready for training specialized AI models, research, and analytics.',
     getStarted: 'Get Started',
@@ -464,6 +466,7 @@ const translations: Record<Language, any> = {
     docs: '文档',
     createDataset: '创建数据集',
     dashboard: '控制台',
+    recentTasks: '最近任务',
     heroTitle: '定制领域数据集。由 AI 驱动。',
     heroSubtitle: '从数十亿网页中生成高质量、特定领域的训练数据集——为专业 AI 模型、研究和分析做好准备。',
     getStarted: '开始使用',
