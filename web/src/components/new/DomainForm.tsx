@@ -609,7 +609,7 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
 function OntologyCard({ ontology, isLoading, isError, onGenerate, hasDomain, t }: {
   ontology?: Ontology | null;
   isLoading: boolean;
-  isError: boolean | string;
+  isError: boolean | string | null;
   onGenerate: () => void;
   hasDomain: boolean;
   t: (key: string) => string;
@@ -648,8 +648,7 @@ function OntologyCard({ ontology, isLoading, isError, onGenerate, hasDomain, t }
 
         {isError && typeof isError === 'string' && (
           <ErrorInline
-            title={t("new.ontology.error_title")}
-            description={isError}
+            title={isError}
             actionLabel={t("common.retry")}
             onAction={onGenerate}
           />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -21,14 +21,13 @@ interface PreviewPageProps {
 
 export default function PreviewPage({ params }: PreviewPageProps) {
   const router = useRouter();
-
-  // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
-  const { jobId } = React.use(params);
+  const jobId = (params as any).jobId || '';
 
   // Poll benchmark job status
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['benchmark-job', jobId],
     queryFn: () => benchmarkApi.getJob(jobId),
+    enabled: !!jobId, // Only run query when jobId is available
     refetchInterval: (query) => {
       // Stop polling when job is ready or failed
       const data = query.state.data;

@@ -57,7 +57,7 @@ const mockTasks = [
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
   const { data: jobs, isLoading: jobsLoading } = useBenchmarkJobs(50);
-  const { data: systemStats } = useSystemStats();
+  const systemStats = useSystemStats();
   const { isAuthenticated, login } = useAuth();
 
   // Fallback stats while loading
@@ -78,41 +78,8 @@ export default function DashboardPage() {
     avgCompletionTime: '2.5h' // Placeholder
   } : displayStats;
 
-  // Combine jobs and orders for display
-  const allTasks = [
-    ...(jobs || []).map(job => ({
-      ...job,
-      type: 'benchmark',
-      domain: job.domain,
-      created_at: job.created_at,
-      progress: job.progress,
-      status: job.status,
-      id: job.id
-    })),
-    ...(systemStats?.jobs || []).map(job => ({
-      ...job,
-      type: 'benchmark',
-      domain: job.domain,
-      created_at: job.created_at,
-      progress: job.progress,
-      status: job.status,
-      id: job.id
-    })),
-    ...(systemStats?.orders || []).map(order => ({
-      ...order,
-      type: 'production',
-      domain: 'Production Dataset', // Orders don't have domain, use generic
-      created_at: order.timeline?.[0]?.timestamp || null,
-      progress: order.live ? {
-        pct: order.live.fetched > 0 ? Math.round((order.live.deduped / order.live.fetched) * 100) : 0
-      } : null,
-      status: order.status,
-      id: order.id
-    }))
-  ].filter((task, index, self) =>
-    // Remove duplicates based on id
-    index === self.findIndex(t => t.id === task.id)
-  );
+  // Display benchmark jobs
+  const allTasks = jobs || [];
 
   if (!isAuthenticated) {
     return (
@@ -250,48 +217,38 @@ export default function DashboardPage() {
                   </td>
                 </tr>
               ) : allTasks && allTasks.length > 0 ? (
-                allTasks.map((task: any) => (
-                  <tr key={task.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 text-sm font-mono">{task.id.slice(0, 16)}...</td>
-                    <td className="px-4 py-3 text-sm capitalize">{task.type}</td>
+                allTasks.map((job: any) => (
+                  <tr key={job.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 text-sm font-mono">{job.id.slice(0, 16)}...</td>
+                    <td className="px-4 py-3 text-sm capitalize">benchmark</td>
                     <td className="px-4 py-3">
-                      {getStatusBadge(task.status)}
+                      {getStatusBadge(job.status)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-muted rounded-full h-2">
                           <div
                             className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${task.progress?.pct || 0}%` }}
+                            style={{ width: `${job.progress?.pct || 0}%` }}
                           />
                         </div>
-                        <span className="text-sm text-muted-foreground">{task.progress?.pct || 0}%</span>
+                        <span className="text-sm text-muted-foreground">{job.progress?.pct || 0}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {task.domain || 'Unknown Domain'}
+                      {job.domain || 'Unknown Domain'}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {task.created_at ? formatDate(task.created_at) : 'Unknown'}
+                      {job.created_at ? formatDate(job.created_at) : 'Unknown'}
                     </td>
                     <td className="px-4 py-3">
-                      {task.type === 'benchmark' ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(`/preview/${task.id}`, '_blank')}
-                        >
-                          View
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(`/order/${task.id}`, '_blank')}
-                        >
-                          View
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(`/preview/${job.id}`, '_blank')}
+                      >
+                        View
+                      </Button>
                     </td>
                   </tr>
                 ))

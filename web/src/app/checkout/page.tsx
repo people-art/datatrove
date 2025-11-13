@@ -171,12 +171,13 @@ function CheckoutPageContent() {
 
     } catch (error) {
       console.error('Payment failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error details:', {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
+        message: errorMessage,
+        name: error instanceof Error ? error.name : 'Unknown',
+        stack: error instanceof Error ? error.stack : undefined
       });
-      alert(`Payment failed: ${error.message}`);
+      alert(`Payment failed: ${errorMessage}`);
     } finally {
       setProcessing(false);
     }
@@ -284,7 +285,8 @@ function CheckoutPageContent() {
                   <p className="text-sm">Coming soon in production</p>
                 </div>
 
-                <Button
+                <div className="space-y-2">
+                  <Button
                     onClick={handlePayment}
                     disabled={!agreedToTerms || processing || !orderId || loading}
                     className="w-full"

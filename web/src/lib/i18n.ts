@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type Language = 'en' | 'zh';
 
@@ -403,95 +403,6 @@ const translations: Record<Language, any> = {
       "Idempotency keys are supported on all create operations to keep retries safe.",
       "Production runs are isolated per customer and delivered via private repositories."
     ],
-
-    // Pricing page
-    pricing_title: '清晰透明的定价方式',
-    pricing_subtitle: '按照真实工作量和数据质量计费，没有绑定合同，没有隐藏费用。',
-    pricing_cards: [
-      {
-        name: '预览 Benchmark',
-        price: '免费',
-        unit: '',
-        desc: '本地 100 万页基准运行，先看效果再决策。',
-        items: [
-          '自定义领域与关键词',
-          '端到端流水线模拟',
-          '质量与覆盖率报告',
-          '可下载样本数据集',
-        ],
-      },
-      {
-        name: '标准生产版',
-        price: '50 美元起',
-        unit: '每百万 tokens',
-        desc: '适用于绝大多数微调与 RAG 场景的高性价比方案。',
-        items: [
-          '基于 Common Crawl 的数据源',
-          '多阶段质量与隐私过滤',
-          'Minhash 去重与统计报告',
-          'Hugging Face 私有仓交付',
-        ],
-      },
-      {
-        name: '高端定制版',
-        price: '定制报价',
-        unit: '',
-        desc: '面向金融、医疗、政企等高敏感场景的严选数据。',
-        items: [
-          '更严格的过滤与 LLM 打分',
-          '可选专家审核与黑白名单',
-          '支持自定义本体与合规策略',
-          'SLA、专属支持与治理方案',
-        ],
-      },
-    ],
-    pricing_notes: [
-      '最终价格由领域难度、时间范围、目标规模、质量档位等综合计算。',
-      '在支付前，你将基于 Benchmark 结果看到真实区间报价。',
-      '长期合作与多批次任务可提供折扣与专属方案。',
-    ],
-
-    // Docs page
-    docs_title: 'FineData 工作原理',
-    docs_subtitle: '从需求提交到私有数据集交付，仅需四个可预测步骤。',
-    docs_flow: [
-      {
-        step: 1,
-        title: '提交数据需求',
-        body: '通过控制台或 API 配置领域、关键词、语言、时间范围和质量档位。',
-      },
-      {
-        step: 2,
-        title: '运行 100 万页 Benchmark',
-        body: '使用真实流水线在本地环境运行预览任务，返回质量指标和可下载样本。',
-      },
-      {
-        step: 3,
-        title: '确认方案并支付',
-        body: '确认预览效果与报价后，通过安全银行卡支付完成下单。',
-      },
-      {
-        step: 4,
-        title: '集群生产与私有交付',
-        body: '在 Slurm 集群上执行全量生产，完成后通过邮件发送 Hugging Face 私有仓库链接。',
-      },
-    ],
-    docs_api_title: 'API 概览',
-    docs_api_items: [
-      'POST /benchmark/quote —— 根据配置生成价格预估。',
-      'POST /benchmark/jobs —— 创建 100 万页 Benchmark 任务。',
-      'GET /benchmark/jobs/{id} —— 轮询任务状态与质量指标。',
-      'POST /orders —— 基于 quote 和 job 创建订单（支持幂等键）。',
-      'GET /orders/{id} —— 查询订单与支付状态。',
-      'GET /orders/{id}/production —— 查看生产流水线进度。',
-      'POST /email/validate —— 校验邮箱格式/MX/SMTP/一次性域名。',
-      'POST /checkout/session —— 创建支付会话（兼容 Stripe）。',
-    ],
-    docs_notes: [
-      '所有错误均使用统一结构：错误码、信息、建议和时间戳，便于排查。',
-      '所有创建类接口建议携带幂等键，确保网络重试是安全的。',
-      '生产任务彼此隔离，交付通过私有仓库或安全存储完成。',
-    ],
   },
 
   zh: {
@@ -701,7 +612,6 @@ const translations: Record<Language, any> = {
     "new.ontology.examples": "示例",
 
     // Docs page
-    docs_title: 'FineData 工作原理',
     docs_subtitle: '从需求提交到私有数据集交付，仅需四个可预测步骤。',
     docs_flow: [
       {
@@ -760,7 +670,7 @@ export const useI18n = () => {
   return context;
 };
 
-export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const I18nProvider = ({ children }: { children: React.ReactNode }): React.JSX.Element => {
   const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
@@ -791,9 +701,5 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return key; // Final fallback to show the key for debugging
   };
 
-  return (
-    <I18nContext.Provider value={{ language, setLanguage, t }}>
-      {children}
-    </I18nContext.Provider>
-  );
+  return React.createElement(I18nContext.Provider, { value: { language, setLanguage, t } }, children);
 };

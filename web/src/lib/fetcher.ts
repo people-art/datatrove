@@ -41,7 +41,7 @@ export const api = axios.create({
 
 // 请求拦截器
 api.interceptors.request.use(
-  (config: ApiConfig) => {
+  (config: any) => {
     // 添加请求 ID
     config.headers['X-Request-ID'] = uuidv4();
 
@@ -59,7 +59,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
-    const config = error.config as ApiConfig;
+    const config = error.config as any;
 
     // 网络错误重试逻辑
     if (!error.response && config && !config._retry) {

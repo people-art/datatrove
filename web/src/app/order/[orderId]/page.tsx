@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -35,16 +35,15 @@ const STATUS_CONFIG = {
 
 export default function OrderPage({ params }: OrderPageProps) {
   const router = useRouter();
+  const orderId = (params as any).orderId || '';
 
-  // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
-  const resolvedParams = React.use(params);
-  const { orderId } = resolvedParams;
   console.log('Order page loaded with orderId:', orderId);
 
   // Poll order status
   const { data: order, isLoading, error, refetch } = useQuery({
     queryKey: ['order', orderId],
     queryFn: () => orderApi.getOrder(orderId),
+    enabled: !!orderId, // Only run query when orderId is available
     refetchInterval: (query) => {
       // Stop polling when delivered or failed
       const data = query.state.data;
