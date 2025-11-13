@@ -11,10 +11,10 @@ import { orderApi, benchmarkApi } from '@/lib/api';
 import type { QuoteData } from '@/types';
 
 function CheckoutPageContent() {
-  const router = useSearchParams();
-  const navigation = useRouter();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
-  const jobId = router.get('jobId');
+  const jobId = searchParams.get('jobId');
 
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [clientSecret, setClientSecret] = useState<string>('');
@@ -25,7 +25,7 @@ function CheckoutPageContent() {
 
   useEffect(() => {
     if (!jobId) {
-      navigation.push('/new');
+      router.push('/new');
       return;
     }
 
@@ -89,7 +89,7 @@ function CheckoutPageContent() {
     } catch (error) {
       console.error('Failed to initialize checkout:', error);
       alert('Failed to initialize checkout. Please try again.');
-      navigation.push('/new');
+      router.push('/new');
     } finally {
       setLoading(false);
     }
@@ -167,7 +167,7 @@ function CheckoutPageContent() {
 
       console.log('Payment successful, redirecting to:', `/order/${orderId}`);
       // Redirect to order page
-      navigation.push(`/order/${orderId}`);
+      router.push(`/order/${orderId}`);
 
     } catch (error) {
       console.error('Payment failed:', error);
