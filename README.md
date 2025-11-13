@@ -1,19 +1,28 @@
-# DataTrove + FineWeb-Data
+# FineData: AI-Powered Dataset Creation Platform
 
-## 🚀 Enhanced DataTrove with FineWeb-Data
+## 🚀 Enterprise-Grade Dataset Processing Platform
 
-This is a **fork of [HuggingFace DataTrove](https://github.com/huggingface/datatrove)** with significant enhancements focused on **FineWeb-Data** - a universal domain-specific dataset processing pipeline.
+FineData is a comprehensive **AI-powered dataset creation and processing platform** that combines advanced web crawling, intelligent filtering, and distributed computing to produce high-quality, domain-specific datasets for machine learning applications.
 
-### 🎯 Key Enhancement: FineWeb-Data
+### 🎯 Core Features
 
-**FineWeb-Data** is a revolutionary approach to creating high-quality, domain-specific datasets from web crawl data. Unlike traditional keyword-based filtering, FineWeb-Data uses **LLM-powered ontology generation** to dynamically create comprehensive knowledge systems for any domain.
+#### 🤖 Intelligent Dataset Creation
+- **Smart Ontology Generation**: AI-powered knowledge system creation for any domain
+- **Multi-Layer Content Filtering**: Advanced filtering based on semantic understanding
+- **Quality Assurance**: Built-in benchmarking and validation systems
+- **Domain Flexibility**: Works with any subject area (education, healthcare, finance, AI, etc.)
 
-#### Core Features:
-- **🤖 Dynamic Ontology Generation**: Uses GPT-4 to automatically build structured knowledge systems for any domain (education, healthcare, AI, finance, environment, etc.)
-- **🎯 Domain-Specific Processing**: Intelligent content filtering based on multi-layered ontological keywords
-- **⚡ Production-Ready Pipelines**: Seamlessly integrates with existing DataTrove infrastructure
-- **📊 Benchmarking Suite**: Built-in quality assessment and domain detection validation
-- **🌐 Universal Coverage**: Works with any domain - just specify the topic and let the LLM do the rest
+#### 🖥️ Modern Web Interface
+- **Intuitive Dashboard**: Real-time monitoring of all processing tasks
+- **Guided Workflow**: Step-by-step dataset creation process
+- **Interactive Preview**: Sample data review before full processing
+- **Multi-language Support**: English and Chinese interface options
+
+#### ⚡ Production-Ready Infrastructure
+- **Distributed Processing**: Seamless Slurm cluster integration
+- **Scalable Architecture**: Handle billions of web pages efficiently
+- **Cloud Storage**: S3 and HuggingFace Hub integration
+- **Docker Deployment**: One-command setup with Docker Compose
 
 ---
 
@@ -24,6 +33,59 @@ DataTrove is a library to process, filter and deduplicate text data at a very la
 DataTrove processing pipelines are platform-agnostic, running out of the box locally or on a slurm cluster. Its (relatively) low memory usage and multiple step design makes it ideal for large workloads, such as to process an LLM's training data.
 
 Local, remote and other file systems are supported through [fsspec](https://filesystem-spec.readthedocs.io/en/latest/).
+
+## 🖥️ Web Interface & Complete Workflow
+
+FineData provides a modern web interface for the complete dataset creation workflow:
+
+### 📋 Complete Dataset Creation Process
+
+1. **📝 Configure Dataset Requirements**
+   - Domain selection and keyword specification
+   - Time range and quality tier configuration
+   - Email notifications setup
+
+2. **⚡ Run Benchmark Preview**
+   - Local processing of 1M pages sample
+   - Quality metrics and sample data generation
+   - Cost estimation and timeline preview
+
+3. **👁️ Review & Confirm**
+   - Interactive preview of filtered content
+   - Quality metrics analysis
+   - Download sample dataset
+
+4. **💳 Order & Payment**
+   - Secure payment processing
+   - Order creation with idempotency
+   - Email confirmations
+
+5. **🏭 Production Processing**
+   - Slurm cluster distributed processing
+   - Real-time progress monitoring
+   - Automatic quality validation
+
+6. **📦 Delivery & Publishing**
+   - Private HuggingFace repository delivery
+   - Dataset card generation
+   - Invoice and receipt delivery
+
+### 🎛️ Dashboard Features
+
+- **📊 Real-time Statistics**: Active tasks, completion rates, processing metrics
+- **📋 Task Management**: View all benchmark and production jobs
+- **🔍 Detailed Monitoring**: Individual task progress and logs
+- **📈 Performance Analytics**: Processing throughput and quality metrics
+- **🌐 Multi-language**: English/Chinese interface support
+
+### 🔌 API Integration
+
+FineData provides REST APIs for all major operations:
+- `POST /api/v1/benchmark/jobs` - Create benchmark job
+- `GET /api/v1/benchmark/jobs/{id}` - Get job status
+- `POST /api/v1/orders` - Create production order
+- `POST /api/v1/orders/{id}/mock-payment` - Process payment
+- `GET /api/v1/orders/{id}/production` - Monitor production
 
 ## Table of contents
 
@@ -125,18 +187,72 @@ FineWeb-Data extends DataTrove with:
 
 ---
 
-## Installation
+## 🚀 Quick Start
+
+### Docker Deployment (Recommended)
+
+FineData is designed for easy deployment using Docker Compose:
 
 ```bash
-pip install datatrove[FLAVOUR]
+# Clone the repository
+git clone <repository-url>
+cd datatrove
+
+# Start all services
+./docker-start.sh
+
+# Access the web interface
+# Web UI: http://localhost:3000
+# API: http://localhost:8000
 ```
-Available flavours (combine them with `,` i.e. `[processing,s3]`):
-- `all` installs everything: `pip install datatrove[all]`
-- `io` dependencies to read `warc/arc/wet` files and arrow/parquet formats: `pip install datatrove[io]`
-- `processing` dependencies for text extraction, filtering and tokenization: `pip install datatrove[processing]`
-- `s3` s3 support: `pip install datatrove[s3]`
-- `cli` for command line tools: `pip install datatrove[cli]`
-- `ray` for distributed compute engine: `pip install datatrove[ray]`
+
+### Manual Installation
+
+For development or advanced deployment scenarios:
+
+#### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL
+- Redis
+- Docker (optional, for Slurm cluster)
+
+#### Backend Setup
+```bash
+# Install Python dependencies
+pip install -e ".[all]"
+
+# Set up environment variables
+cp env.example .env
+# Edit .env with your configuration
+
+# Initialize database
+./init-db.sh
+
+# Start the backend API
+uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+#### Frontend Setup
+```bash
+cd web
+
+# Install Node.js dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+#### Production Deployment
+```bash
+# Build and start with Docker Compose
+docker-compose up -d
+
+# Or build manually
+npm run build
+npm start
+```
 
 ## Quickstart examples
 You can check the following [examples](examples):
@@ -583,26 +699,98 @@ pipeline = [
 ```
 
 You could also inherit from [`BaseExtractor`](src/datatrove/pipeline/extractors/base.py), [`BaseFilter`](src/datatrove/pipeline/filters/base_filter.py), [`BaseReader`/`BaseDiskReader`](src/datatrove/pipeline/readers/base.py), or [`DiskWriter`](src/datatrove/pipeline/writers/disk_base.py).
-## Contributing
+## 🤝 Contributing
+
+We welcome contributions to FineData! Here's how to get started:
+
+### Development Setup
 
 ```bash
-git clone git@github.com:huggingface/datatrove.git && cd datatrove
+# Clone the repository
+git clone <repository-url>
+cd datatrove
+
+# Start development environment
+./docker-start.sh
+
+# Or manual setup
 pip install -e ".[dev]"
+cd web && npm install
 ```
 
-Install pre-commit code style hooks:
-```bash
-pre-commit install
-```
+### Development Workflow
 
-Run the tests:
-```bash
-pytest -sv ./tests/
-```
+1. **Backend Development**:
+   ```bash
+   # Run backend tests
+   python -m pytest tests/ -v
 
-## Citation
+   # Run with auto-reload
+   uvicorn api.main:app --reload
+   ```
+
+2. **Frontend Development**:
+   ```bash
+   cd web
+   npm run dev  # Development server
+   npm run build  # Production build
+   npm run lint  # Code linting
+   ```
+
+3. **Code Quality**:
+   ```bash
+   # Run all quality checks
+   make quality
+
+   # Format code
+   make style
+
+   # Run tests
+   make test
+   ```
+
+### Architecture Overview
+
+FineData consists of several key components:
+
+- **Web Frontend**: Next.js React application (`web/`)
+- **API Backend**: FastAPI application (`api/`)
+- **Data Processing**: Enhanced DataTrove pipelines (`finewebdata/`)
+- **Infrastructure**: Docker Compose setup with PostgreSQL, Redis, and Worker services
+
+### Adding New Features
+
+1. **API Changes**: Add endpoints in `api/main.py` with proper Pydantic models
+2. **Frontend Changes**: Add components in `web/src/` with TypeScript types
+3. **Database Changes**: Update SQL schema in `init-db.sql`
+4. **Testing**: Add comprehensive tests for new functionality
+
+### Pull Request Guidelines
+
+- Follow existing code style and patterns
+- Add tests for new functionality
+- Update documentation as needed
+- Ensure all CI checks pass
+
+## 📄 License & Citation
+
+FineData is built on top of the excellent [DataTrove](https://github.com/huggingface/datatrove) library by HuggingFace.
+
+### License
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+
+### Citation
+
+If you use FineData in your research, please cite both FineData and the original DataTrove:
 
 ```bibtex
+@misc{finedata2024,
+  title={FineData: AI-Powered Dataset Creation Platform},
+  author={FineData Team},
+  year={2024},
+  url={https://github.com/your-org/finedata}
+}
+
 @misc{penedo2024datatrove,
   author = {Penedo, Guilherme and Kydlíček, Hynek and Cappelli, Alessandro and Sasko, Mario and Wolf, Thomas},
   title = {DataTrove: large scale data processing},
@@ -612,3 +800,14 @@ pytest -sv ./tests/
   url = {https://github.com/huggingface/datatrove}
 }
 ```
+
+### Acknowledgments
+
+- **DataTrove**: The foundation library for large-scale data processing
+- **HuggingFace**: For the ecosystem and inspiration
+- **OpenAI**: For GPT-4 API used in ontology generation
+- **FastAPI & Next.js**: For excellent developer experience
+
+---
+
+**FineData** - Making dataset creation accessible, reliable, and intelligent. 🚀
