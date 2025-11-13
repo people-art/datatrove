@@ -67,7 +67,6 @@ export interface Translations {
   signInButton: string;
   activeTasks: string;
   running: string;
-  completed: string;
   avgCompletion: string;
   taskId: string;
   taskType: string;
@@ -211,7 +210,6 @@ const translations: Record<Language, any> = {
     signInButton: 'Sign In to Continue',
     activeTasks: 'Active Tasks',
     running: 'Running',
-    completed: 'Completed',
     avgCompletion: 'Avg. Completion',
     taskId: 'ID',
     taskType: 'Type',
@@ -368,7 +366,6 @@ const translations: Record<Language, any> = {
     signInButton: '登录继续',
     activeTasks: '活跃任务',
     running: '运行中',
-    completed: '已完成',
     avgCompletion: '平均完成时间',
     taskId: 'ID',
     taskType: '类型',
