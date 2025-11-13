@@ -3,7 +3,7 @@
 import { GradientCard } from '@/components/ui/gradient-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useDashboardStats, useBenchmarkJobs, useAuth } from '@/hooks/use-api';
+import { useDashboardStats, useBenchmarkJobs, useSystemStats, useAuth } from '@/hooks/use-api';
 import {
   Activity,
   Clock,
@@ -57,6 +57,7 @@ const mockTasks = [
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
   const { data: jobs, isLoading: jobsLoading } = useBenchmarkJobs(50);
+  const { data: systemStats } = useSystemStats();
   const { isAuthenticated, login } = useAuth();
 
   // Fallback stats while loading
@@ -67,6 +68,51 @@ export default function DashboardPage() {
     failedTasks: 0,
     avgCompletionTime: '0h'
   };
+
+  // Use system stats if available
+  const systemDisplayStats = systemStats ? {
+    activeTasks: systemStats.totalTasks,
+    runningTasks: systemStats.activeBenchmarks + systemStats.activeOrders,
+    completedTasks: systemStats.completedBenchmarks,
+    failedTasks: 0, // TODO: Add failed tasks count
+    avgCompletionTime: '2.5h' // Placeholder
+  } : displayStats;
+
+  // Combine jobs and orders for display
+  const allTasks = [
+    ...(jobs || []).map(job => ({
+      ...job,
+      type: 'benchmark',
+      domain: job.domain,
+      created_at: job.created_at,
+      progress: job.progress,
+      status: job.status,
+      id: job.id
+    })),
+    ...(systemStats?.jobs || []).map(job => ({
+      ...job,
+      type: 'benchmark',
+      domain: job.domain,
+      created_at: job.created_at,
+      progress: job.progress,
+      status: job.status,
+      id: job.id
+    })),
+    ...(systemStats?.orders || []).map(order => ({
+      ...order,
+      type: 'production',
+      domain: 'Production Dataset', // Orders don't have domain, use generic
+      created_at: order.timeline?.[0]?.timestamp || null,
+      progress: order.live ? {
+        pct: order.live.fetched > 0 ? Math.round((order.live.deduped / order.live.fetched) * 100) : 0
+      } : null,
+      status: order.status,
+      id: order.id
+    }))
+  ].filter((task, index, self) =>
+    // Remove duplicates based on id
+    index === self.findIndex(t => t.id === task.id)
+  );
 
   if (!isAuthenticated) {
     return (
@@ -135,7 +181,7 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-primary">{displayStats.activeTasks}</p>
+                <p className="text-2xl font-bold text-primary">{systemDisplayStats.activeTasks}</p>
                 <p className="text-sm text-foreground/70">Active Tasks</p>
               </div>
               <Database className="h-8 w-8 text-primary/70" />
@@ -147,7 +193,7 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-blue-600">{displayStats.runningTasks}</p>
+                <p className="text-2xl font-bold text-blue-600">{systemDisplayStats.runningTasks}</p>
                 <p className="text-sm text-foreground/70">Running</p>
               </div>
               <Activity className="h-8 w-8 text-blue-600/70" />
@@ -159,7 +205,7 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-green-600">{displayStats.completedTasks}</p>
+                <p className="text-2xl font-bold text-green-600">{systemDisplayStats.completedTasks}</p>
                 <p className="text-sm text-foreground/70">Completed</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600/70" />
@@ -171,7 +217,7 @@ export default function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-amber-600">{displayStats.avgCompletionTime}</p>
+                <p className="text-2xl font-bold text-amber-600">{systemDisplayStats.avgCompletionTime}</p>
                 <p className="text-sm text-foreground/70">Avg. Completion</p>
               </div>
               <Clock className="h-8 w-8 text-amber-600/70" />
@@ -200,49 +246,59 @@ export default function DashboardPage() {
               {jobsLoading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    Loading jobs...
+                    Loading tasks...
                   </td>
                 </tr>
-              ) : jobs && jobs.length > 0 ? (
-                jobs.map((job: any) => (
-                  <tr key={job.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 text-sm font-mono">{job.id.slice(0, 16)}...</td>
-                    <td className="px-4 py-3 text-sm capitalize">benchmark</td>
+              ) : allTasks && allTasks.length > 0 ? (
+                allTasks.map((task: any) => (
+                  <tr key={task.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 text-sm font-mono">{task.id.slice(0, 16)}...</td>
+                    <td className="px-4 py-3 text-sm capitalize">{task.type}</td>
                     <td className="px-4 py-3">
-                      {getStatusBadge(job.status)}
+                      {getStatusBadge(task.status)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-muted rounded-full h-2">
                           <div
                             className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${job.progress?.pct || 0}%` }}
+                            style={{ width: `${task.progress?.pct || 0}%` }}
                           />
                         </div>
-                        <span className="text-sm text-muted-foreground">{job.progress?.pct || 0}%</span>
+                        <span className="text-sm text-muted-foreground">{task.progress?.pct || 0}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {job.domain || 'Unknown Domain'}
+                      {task.domain || 'Unknown Domain'}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {job.created_at ? formatDate(job.created_at) : 'Unknown'}
+                      {task.created_at ? formatDate(task.created_at) : 'Unknown'}
                     </td>
                     <td className="px-4 py-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(`/preview/${job.id}`, '_blank')}
-                      >
-                        View
-                      </Button>
+                      {task.type === 'benchmark' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(`/preview/${task.id}`, '_blank')}
+                        >
+                          View
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(`/order/${task.id}`, '_blank')}
+                        >
+                          View
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    No benchmark jobs found. Create your first benchmark job to get started.
+                    No tasks found. Create your first benchmark job to get started.
                   </td>
                 </tr>
               )}

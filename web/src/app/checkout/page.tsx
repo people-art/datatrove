@@ -13,6 +13,7 @@ import type { QuoteData } from '@/types';
 function CheckoutPageContent() {
   const router = useSearchParams();
   const navigation = useRouter();
+
   const jobId = router.get('jobId');
 
   const [quote, setQuote] = useState<QuoteData | null>(null);
@@ -95,6 +96,12 @@ function CheckoutPageContent() {
   };
 
   const handlePayment = async () => {
+    console.log('handlePayment called');
+    console.log('agreedToTerms:', agreedToTerms);
+    console.log('orderId:', orderId);
+    console.log('clientSecret:', clientSecret);
+    console.log('quote:', !!quote);
+
     if (!agreedToTerms) {
       alert('Please agree to the terms and conditions');
       return;
@@ -109,8 +116,54 @@ function CheckoutPageContent() {
 
     try {
       console.log('Starting payment with orderId:', orderId);
-      // For development, call mock payment API to trigger production
-      await orderApi.mockPaymentAndStartProduction(orderId);
+      console.log('OrderId exists:', !!orderId);
+      console.log('OrderId length:', orderId?.length);
+      console.log('Using local mockPaymentAndStartProduction function');
+
+      if (!orderId || orderId.trim() === '') {
+        throw new Error('Order ID is empty or invalid');
+      }
+
+      // Test basic connectivity first
+      console.log('Testing API connectivity...');
+      try {
+        const testResponse = await fetch('/api/orders');
+        console.log('API connectivity test response:', testResponse.status);
+      } catch (connectError) {
+        console.warn('API connectivity test failed:', connectError);
+        // Continue anyway, might still work
+      }
+
+      const apiUrl = `/api/orders/${orderId}/mock-payment`;
+      console.log('Making request to:', apiUrl);
+
+      // Use local fallback function - NEVER use orderApi.mockPaymentAndStartProduction
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response statusText:', response.statusText);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        throw new Error(`Payment failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Payment successful, result:', result);
+
+      // Track the order ID for system stats
+      if (typeof window !== 'undefined') {
+        const trackedOrders = JSON.parse(localStorage.getItem('tracked_orders') || '[]');
+        if (!trackedOrders.includes(orderId)) {
+          trackedOrders.push(orderId);
+          localStorage.setItem('tracked_orders', JSON.stringify(trackedOrders));
+        }
+      }
 
       console.log('Payment successful, redirecting to:', `/order/${orderId}`);
       // Redirect to order page
@@ -118,7 +171,12 @@ function CheckoutPageContent() {
 
     } catch (error) {
       console.error('Payment failed:', error);
-      alert('Payment failed. Please try again.');
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+      alert(`Payment failed: ${error.message}`);
     } finally {
       setProcessing(false);
     }
@@ -226,23 +284,43 @@ function CheckoutPageContent() {
                   <p className="text-sm">Coming soon in production</p>
                 </div>
 
-                <Button
-                  onClick={handlePayment}
-                  disabled={!agreedToTerms || processing || !orderId || loading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {processing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Complete Payment - ${quote.total.toFixed(2)}
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={async () => {
+                      console.log('Testing API connection...');
+                      try {
+                        const testResponse = await fetch('/api/benchmark/jobs?limit=1');
+                        console.log('Test response status:', testResponse.status);
+                        alert(`API test: ${testResponse.status}`);
+                      } catch (error) {
+                        console.error('API test failed:', error);
+                        alert(`API test failed: ${error.message}`);
+                      }
+                    }}
+                    variant="outline"
+                    className="w-full"
+                    size="sm"
+                  >
+                    Test API Connection
+                  </Button>
+                  <Button
+                    onClick={handlePayment}
+                    disabled={!agreedToTerms || processing || !orderId || loading}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Complete Payment - ${quote.total.toFixed(2)}
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
