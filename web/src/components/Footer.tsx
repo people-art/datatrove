@@ -9,9 +9,9 @@ export function Footer() {
 
   const footerLinks = {
     product: [
-      { href: "/features", label: t('features') },
-      { href: "/pricing", label: t('pricing') },
-      { href: "/docs", label: t('docs') },
+      { href: "/features", label: t('nav.features') },
+      { href: "/pricing", label: t('nav.pricing') },
+      { href: "/docs", label: t('nav.docs') },
     ],
     company: [
       { href: "/about", label: "About" },
