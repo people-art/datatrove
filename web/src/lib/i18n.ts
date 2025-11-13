@@ -62,6 +62,26 @@ export interface Translations {
   createDataset: string;
   dashboard: string;
   recentTasks: string;
+  dashboardSubtitle: string;
+  signInMessage: string;
+  signInButton: string;
+  activeTasks: string;
+  running: string;
+  completed: string;
+  avgCompletion: string;
+  taskId: string;
+  taskType: string;
+  taskStatus: string;
+  taskProgress: string;
+  taskDomain: string;
+  taskCreated: string;
+  taskActions: string;
+  loadingTasks: string;
+  noTasksFound: string;
+  createFirstTask: string;
+  activityChart: string;
+  activityChartDesc: string;
+  activityChartNote: string;
   heroTitle: string;
   heroSubtitle: string;
   getStarted: string;
@@ -113,37 +133,6 @@ export interface Translations {
   terms: string;
   contact: string;
 
-  // Features page
-  features_title: string;
-  features_subtitle: string;
-  features_blocks: Array<{
-    title: string;
-    body: string;
-  }>;
-
-  // Pricing page
-  pricing_title: string;
-  pricing_subtitle: string;
-  pricing_cards: Array<{
-    name: string;
-    price: string;
-    unit: string;
-    desc: string;
-    items: string[];
-  }>;
-  pricing_notes: string[];
-
-  // Docs page
-  docs_title: string;
-  docs_subtitle: string;
-  docs_flow: Array<{
-    step: number;
-    title: string;
-    body: string;
-  }>;
-  docs_api_title: string;
-  docs_api_items: string[];
-  docs_notes: string[];
 }
 
 // Tool function: get value by dot path from nested object
@@ -217,6 +206,26 @@ const translations: Record<Language, any> = {
     createDataset: 'Create Dataset',
     dashboard: 'Dashboard',
     recentTasks: 'Recent Tasks',
+    dashboardSubtitle: 'Monitor your dataset processing tasks and system status.',
+    signInMessage: 'Please sign in to view your dataset processing tasks and system status.',
+    signInButton: 'Sign In to Continue',
+    activeTasks: 'Active Tasks',
+    running: 'Running',
+    completed: 'Completed',
+    avgCompletion: 'Avg. Completion',
+    taskId: 'ID',
+    taskType: 'Type',
+    taskStatus: 'Status',
+    taskProgress: 'Progress',
+    taskDomain: 'Domain',
+    taskCreated: 'Created',
+    taskActions: 'Actions',
+    loadingTasks: 'Loading tasks...',
+    noTasksFound: 'No tasks found.',
+    createFirstTask: 'Create your first benchmark job to get started.',
+    activityChart: '24h Activity',
+    activityChartDesc: 'Activity chart will be implemented',
+    activityChartNote: 'Shows task creation and completion trends',
     heroTitle: 'Custom Domain Datasets. Powered by AI.',
     heroSubtitle: 'Generate high-quality, domain-specific datasets from billions of web pages—ready for training specialized AI models, research, and analytics.',
     getStarted: 'Get Started',
@@ -269,81 +278,8 @@ const translations: Record<Language, any> = {
   contact: 'Contact',
 
   // Features page
-  features_title: "Why FineData",
-  features_subtitle: "Purpose-built for AI teams, researchers, and enterprises that demand clean, controllable, and scalable training data.",
-  features_blocks: [
-    {
-      title: "AI-Powered Filtering",
-      body: "Ontology-driven keyword expansion, LLM-assisted scoring, and multi-stage quality filters ensure your dataset matches your exact domain and intent."
-    },
-    {
-      title: "Massive Web-Scale Coverage",
-      body: "Leverage Common Crawl and battle-tested pipelines to process billions of pages with deterministic, reproducible configurations."
-    },
-    {
-      title: "Enterprise-Grade Privacy",
-      body: "PII detection, HIPAA-ready patterns for medical content, and strict sanitization keep your datasets safe and compliant."
-    },
-    {
-      title: "Custom Domains in Days",
-      body: "Support any niche domain: finance, medical, robotics, law, education, energy, security, and internal ontologies."
-    },
-    {
-      title: "Transparent Metrics",
-      body: "Every run ships with coverage, dedup ratio, language mix, toxicity and PII rates, plus domain relevance reports."
-    },
-    {
-      title: "Private Delivery on Hugging Face",
-      body: "Datasets are delivered as private Hugging Face repositories or S3 buckets with fine-grained access control."
-    }
-  ],
 
   // Pricing page
-  pricing_title: "Simple, Transparent Pricing",
-  pricing_subtitle: "Pay for high-quality, domain-specific data — no lock-in, no hidden fees.",
-  pricing_cards: [
-    {
-      name: "Preview Benchmark",
-      price: "Free",
-      unit: "",
-      desc: "1M-page local benchmark to validate quality before you commit.",
-      items: [
-        "Custom domain & keywords",
-        "End-to-end pipeline simulation",
-        "Quality and coverage report",
-        "Sample dataset download"
-      ]
-    },
-    {
-      name: "Standard Production",
-      price: "From $50",
-      unit: "per million tokens",
-      desc: "Balanced quality for most fine-tuning and RAG workloads.",
-      items: [
-        "Common Crawl based sourcing",
-        "Multi-stage quality & PII filters",
-        "Minhash deduplication",
-        "Private Hugging Face delivery"
-      ]
-    },
-    {
-      name: "Premium Curated",
-      price: "Custom",
-      unit: "",
-      desc: "For regulated industries and mission-critical models.",
-      items: [
-        "Stricter filters and LLM scoring",
-        "Domain expert review options",
-        "Custom ontologies & constraints",
-        "SLA, support, and governance"
-      ]
-    }
-  ],
-  pricing_notes: [
-    "Final pricing is computed from your quote: domain complexity, time range, target size, and quality tier.",
-    "You always see an estimated range before payment, based on the benchmark run.",
-    "Enterprise and multi-run commitments can be discounted."
-  ],
 
     // Ontology
     "new.ontology.title": "Generate Ontology",
@@ -365,46 +301,6 @@ const translations: Record<Language, any> = {
     "new.ontology.examples": "Examples",
 
     // Docs page
-    docs_title: "How FineData Works",
-    docs_subtitle: "From request to private dataset in four predictable steps.",
-    docs_flow: [
-      {
-        step: 1,
-        title: "Submit Requirements",
-        body: "Define your domain, keywords, languages, time range, and quality tier via the web console or API."
-      },
-      {
-        step: 2,
-        title: "Run Benchmark (1M pages)",
-        body: "We execute a local preview run using the exact same pipeline configuration and return metrics plus a sample dataset."
-      },
-      {
-        step: 3,
-        title: "Approve & Pay",
-        body: "Once you're satisfied with the preview, confirm the quote and complete payment via secure card checkout."
-      },
-      {
-        step: 4,
-        title: "Cluster Production & Delivery",
-        body: "A Slurm-based cluster run processes full Common Crawl segments. When finished, you receive a private Hugging Face URL via email."
-      }
-    ],
-    docs_api_title: "API Overview",
-    docs_api_items: [
-      "POST /benchmark/quote – Get an estimated price for your config.",
-      "POST /benchmark/jobs – Start a 1M-page benchmark job.",
-      "GET /benchmark/jobs/{id} – Poll benchmark status and metrics.",
-      "POST /orders – Create an order from a quote and job.",
-      "GET /orders/{id} – Track order and payment status.",
-      "GET /orders/{id}/production – View production pipeline progress.",
-      "POST /email/validate – Validate email format/MX/SMTP/disposable.",
-      "POST /checkout/session – Create payment session (Stripe compatible)."
-    ],
-    docs_notes: [
-      "All responses follow a unified error schema with code, message, suggestion, and timestamp.",
-      "Idempotency keys are supported on all create operations to keep retries safe.",
-      "Production runs are isolated per customer and delivered via private repositories."
-    ],
   },
 
   zh: {
@@ -467,6 +363,26 @@ const translations: Record<Language, any> = {
     createDataset: '创建数据集',
     dashboard: '控制台',
     recentTasks: '最近任务',
+    dashboardSubtitle: '监控您的数据集处理任务和系统状态。',
+    signInMessage: '请登录以查看您的数据集处理任务和系统状态。',
+    signInButton: '登录继续',
+    activeTasks: '活跃任务',
+    running: '运行中',
+    completed: '已完成',
+    avgCompletion: '平均完成时间',
+    taskId: 'ID',
+    taskType: '类型',
+    taskStatus: '状态',
+    taskProgress: '进度',
+    taskDomain: '领域',
+    taskCreated: '创建时间',
+    taskActions: '操作',
+    loadingTasks: '正在加载任务...',
+    noTasksFound: '未找到任务。',
+    createFirstTask: '创建您的第一个基准测试任务以开始使用。',
+    activityChart: '24小时活动',
+    activityChartDesc: '活动图表即将实现',
+    activityChartNote: '显示任务创建和完成趋势',
     heroTitle: '定制领域数据集。由 AI 驱动。',
     heroSubtitle: '从数十亿网页中生成高质量、特定领域的训练数据集——为专业 AI 模型、研究和分析做好准备。',
     getStarted: '开始使用',
