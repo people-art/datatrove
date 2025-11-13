@@ -35,8 +35,10 @@ const STATUS_CONFIG = {
 
 export default function OrderPage({ params }: OrderPageProps) {
   const router = useRouter();
-  const { orderId } = use(params);
 
+  // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
+  const resolvedParams = React.use(params);
+  const { orderId } = resolvedParams;
   console.log('Order page loaded with orderId:', orderId);
 
   // Poll order status
