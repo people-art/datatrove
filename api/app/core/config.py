@@ -97,6 +97,7 @@ class Settings(BaseSettings):
 
     # Hugging Face
     HF_TOKEN: str = ""
+    HF_USERNAME: str = ""  # For dataset uploads
     HF_ORG_NAME: Optional[str] = None
 
     # Email (SendGrid)
@@ -106,6 +107,12 @@ class Settings(BaseSettings):
 
     # OpenAI (for ontology generation)
     OPENAI_API_KEY: str = ""
+
+    # Moonshot AI (alternative LLM provider)
+    MOONSHOT_API_KEY: str = ""
+
+    # Frontend API URL (for Next.js)
+    NEXT_PUBLIC_API_URL: str = "http://localhost:8000/api/v1"
 
     # Celery
     CELERY_BROKER_URL: Optional[str] = None
@@ -127,6 +134,13 @@ class Settings(BaseSettings):
     SLURM_CLUSTER_NAME: str = "production-cluster"
     SLURM_NUM_NODES: int = 5  # Default number of EC2 t3.xlarge nodes
     SLURM_NODE_TYPE: str = "t3.xlarge"  # EC2 instance type for SLURM nodes
+
+    # FineWebData Integration
+    FINEDATA_SLURM_CONFIG_PATH: str = "/home/ubuntu/datatrove/finewebdata/config.yaml"
+    FINEDATA_SLURM_SETUP_SCRIPT: str = "/home/ubuntu/datatrove/finewebdata/setup_slurm_cluster.sh"
+    FINEDATA_HF_UPLOAD_SCRIPT: str = "/home/ubuntu/datatrove/finewebdata/publish_to_hf.sh"
+    FINEDATA_BENCHMARK_SAMPLE_SIZE: int = 1000000
+    FINEDATA_PRODUCTION_TIMEOUT_HOURS: int = 48
 
     class Config:
         case_sensitive = True
