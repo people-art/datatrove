@@ -112,10 +112,10 @@ export default function DashboardPage() {
       <div className="text-center py-16">
         <h1 className="text-3xl font-bold mb-4">{t('dashboard')}</h1>
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-          Please sign in to view your dataset processing tasks and system status.
+          {t('signInMessage')}
         </p>
         <Button onClick={login} size="lg">
-          Sign In to Continue
+          {t('signInButton')}
         </Button>
       </div>
     );
@@ -164,7 +164,7 @@ export default function DashboardPage() {
       <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">{t('dashboard')}</h1>
         <p className="text-foreground/70">
-          Monitor your dataset processing tasks and system status.
+          {t('dashboardSubtitle')}
         </p>
       </div>
 
@@ -175,7 +175,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-primary">{systemDisplayStats.activeTasks}</p>
-                <p className="text-sm text-foreground/70">Active Tasks</p>
+                <p className="text-sm text-foreground/70">{t('activeTasks')}</p>
               </div>
               <Database className="h-8 w-8 text-primary/70" />
             </div>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-blue-600">{systemDisplayStats.runningTasks}</p>
-                <p className="text-sm text-foreground/70">Running</p>
+                <p className="text-sm text-foreground/70">{t('running')}</p>
               </div>
               <Activity className="h-8 w-8 text-blue-600/70" />
             </div>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-green-600">{systemDisplayStats.completedTasks}</p>
-                <p className="text-sm text-foreground/70">Completed</p>
+                <p className="text-sm text-foreground/70">{t('completed')}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600/70" />
             </div>
@@ -211,7 +211,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-amber-600">{systemDisplayStats.avgCompletionTime}</p>
-                <p className="text-sm text-foreground/70">Avg. Completion</p>
+                <p className="text-sm text-foreground/70">{t('avgCompletion')}</p>
               </div>
               <Clock className="h-8 w-8 text-amber-600/70" />
             </div>
@@ -226,20 +226,20 @@ export default function DashboardPage() {
           <table className="w-full">
             <thead className="bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">ID</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Type</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Progress</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Domain</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Created</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskId')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskType')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskStatus')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskProgress')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskDomain')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskCreated')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {jobsLoading || systemStats?.loading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    Loading tasks...
+{t('loadingTasks')}
                   </td>
                 </tr>
               ) : allTasks && allTasks.length > 0 ? (
@@ -286,7 +286,7 @@ export default function DashboardPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    No tasks found. Create your first benchmark job to get started.
+                    {t('noTasksFound')} {t('createFirstTask')}
                   </td>
                 </tr>
               )}
@@ -297,13 +297,13 @@ export default function DashboardPage() {
 
       {/* Activity Chart Placeholder */}
       <div>
-        <h2 className="text-xl font-semibold mb-6">24h Activity</h2>
+        <h2 className="text-xl font-semibold mb-6">{t('activityChart')}</h2>
         <GradientCard>
           <div className="p-8 text-center">
             <TrendingUp className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-500">Activity chart will be implemented</p>
+            <p className="text-slate-500">{t('activityChartDesc')}</p>
             <p className="text-sm text-slate-400 mt-1">
-              Shows task creation and completion trends
+              {t('activityChartNote')}
             </p>
           </div>
         </GradientCard>
