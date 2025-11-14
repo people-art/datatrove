@@ -3,11 +3,13 @@ Benchmark task for processing dataset preview
 """
 
 import asyncio
+import os
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.worker import celery_app
 from app.db.dependencies import get_db
 from app.services.benchmark import BenchmarkService
+from app.services.finewebdata_service import FineWebDataService, BenchmarkConfig
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
@@ -64,93 +66,236 @@ def benchmark_task(self, job_id: str):
     logger.info("Starting benchmark task", job_id=job_id, task_id=self.request.id)
 
     try:
-        # Run the benchmark processing
-        # In production, this would integrate with the actual finewebdata pipeline
-        # For now, we'll simulate processing with mock data
+        # Get benchmark job configuration
+        job_config = get_job_config(job_id)
+        if not job_config:
+            raise Exception(f"Benchmark job not found: {job_id}")
 
-        # Simulate processing time (10-30 seconds)
-        import time
-        import random
-        processing_time = random.randint(10, 30)
-        time.sleep(processing_time)
+        # Create benchmark config
+        benchmark_config = BenchmarkConfig(
+            job_id=job_id,
+            domain=job_config["domain"],
+            keywords=job_config["keywords"],
+            languages=job_config["languages"],
+            time_range_start=job_config["time_range_start"],
+            time_range_end=job_config["time_range_end"],
+            quality_tier=job_config["quality_tier"],
+            estimated_scale=job_config.get("estimated_scale")
+        )
 
-        # Mock benchmark results
-        mock_metrics = {
-            "coverage": 0.85,
-            "quality_pass_rate": 0.92,
-            "pii_rate": 0.02,
-            "toxicity_rate": 0.01,
-            "lang_dist": {"en": 637500, "es": 127500, "fr": 42500, "de": 25500, "other": 17000},
-            "domain_dist": {"technology": 340000, "science": 212500, "general": 170000, "business": 85000, "other": 42500}
-        }
+        # Run benchmark pipeline using FineWebData service
+        finewebdata_service = FineWebDataService()
+        result = await finewebdata_service.run_benchmark_pipeline(benchmark_config)
 
-        mock_progress = {
-            "pct": 100,
-            "docs_read": 1000000,
-            "docs_kept": 850000,
-            "tokens": 85000000,
-            "dedup_rate": 0.15
+        # Convert BenchmarkResult to dict for database operations
+        result_dict = {
+            "docs_read": result.docs_read,
+            "docs_kept": result.docs_kept,
+            "tokens": result.tokens,
+            "dedup_rate": result.dedup_rate,
+            "coverage": result.coverage,
+            "quality_pass_rate": result.quality_pass_rate,
+            "pii_rate": result.pii_rate,
+            "toxicity_rate": result.toxicity_rate,
+            "lang_dist": result.lang_dist,
+            "domain_dist": result.domain_dist,
+            "sample_url": result.sample_url,
+            "suggested_params": result.suggested_params,
         }
 
         # Update job status in database
-        # Run async database update in event loop
-        try:
-            # Try to get existing event loop first (for Celery worker compatibility)
-            try:
-                loop = asyncio.get_running_loop()
-                # If there's already a running loop, create a new thread to run the async operation
-                import threading
-                result = None
-                exception = None
+        await update_job_status_with_result(job_id, result_dict)
 
-                def run_async():
-                    nonlocal result, exception
-                    new_loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(new_loop)
-                    try:
-                        result = new_loop.run_until_complete(_update_job_status(
-                            job_id=job_id,
-                            mock_progress=mock_progress,
-                            mock_metrics=mock_metrics
-                        ))
-                    except Exception as e:
-                        exception = e
-                    finally:
-                        new_loop.close()
+        # Upload benchmark sample to S3 if not already uploaded by pipeline
+        if not result.sample_url or "storage.example.com" in result.sample_url:
+            sample_url = await upload_benchmark_sample_to_s3(job_id, result_dict)
+            if sample_url:
+                await update_sample_url(job_id, sample_url)
 
-                thread = threading.Thread(target=run_async)
-                thread.start()
-                thread.join()
-
-                if exception:
-                    raise exception
-
-            except RuntimeError:
-                # No running loop, create new one
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(_update_job_status(
-                        job_id=job_id,
-                        mock_progress=mock_progress,
-                        mock_metrics=mock_metrics
-                    ))
-                finally:
-                    loop.close()
-        except Exception as db_error:
-            logger.error("Failed to update job status in database", job_id=job_id, error=str(db_error))
-            # Continue with task completion even if DB update fails
-
-        logger.info("Benchmark task completed", job_id=job_id, metrics=mock_metrics)
+        logger.info("Benchmark task completed successfully", job_id=job_id)
 
         return {
             "status": "completed",
-            "metrics": mock_metrics,
-            "progress": mock_progress,
-            "sample_url": f"https://storage.example.com/samples/{job_id}_sample.jsonl.gz"
+            "metrics": {
+                "coverage": result.coverage,
+                "quality_pass_rate": result.quality_pass_rate,
+                "pii_rate": result.pii_rate,
+                "toxicity_rate": result.toxicity_rate,
+                "lang_dist": result.lang_dist,
+                "domain_dist": result.domain_dist,
+            },
+            "progress": {
+                "pct": 100,
+                "docs_read": result.docs_read,
+                "docs_kept": result.docs_kept,
+                "tokens": result.tokens,
+                "dedup_rate": result.dedup_rate
+            },
+            "sample_url": result.sample_url
         }
 
     except Exception as e:
         logger.error("Benchmark task failed", job_id=job_id, error=str(e))
+
         # Update job status to failed
+        try:
+            await update_job_status_failed(job_id, str(e))
+        except Exception as db_error:
+            logger.error("Failed to update job status to failed", job_id=job_id, error=str(db_error))
+
+        # Retry with exponential backoff
         raise self.retry(countdown=60, max_retries=3, exc=e)
+
+
+def get_job_config(job_id: str) -> dict:
+    """Get benchmark job configuration from database"""
+    from app.db.session import session_factory
+    from app.models.benchmark import BenchmarkJob
+    from sqlalchemy import select
+
+    with session_factory() as db:
+        stmt = select(BenchmarkJob).where(BenchmarkJob.id == job_id)
+        result = db.execute(stmt)
+        job = result.scalar_one_or_none()
+
+        if not job:
+            return None
+
+        return {
+            "domain": job.domain,
+            "keywords": job.keywords,
+            "languages": job.languages,
+            "time_range_start": job.time_range_start,
+            "time_range_end": job.time_range_end,
+            "quality_tier": job.quality_tier,
+            "estimated_scale": job.estimated_scale,
+        }
+
+
+async def update_job_status_with_result(job_id: str, result):
+    """Update job status with benchmark results"""
+    from app.db.session import async_session_factory
+    from app.services.benchmark import BenchmarkService
+    from app.models.benchmark import BenchmarkStatus
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            async with async_session_factory() as db:
+                benchmark_service = BenchmarkService(db)
+                await benchmark_service.update_job_status(
+                    job_id=job_id,
+                    status=BenchmarkStatus.READY,
+                    progress_pct=100.0,
+                    docs_read=result.docs_read,
+                    docs_kept=result.docs_kept,
+                    tokens=result.tokens,
+                    dedup_rate=result.dedup_rate,
+                    coverage=result.coverage,
+                    quality_pass_rate=result.quality_pass_rate,
+                    pii_rate=result.pii_rate,
+                    toxicity_rate=result.toxicity_rate,
+                    lang_dist=result.lang_dist,
+                    domain_dist=result.domain_dist,
+                    sample_url=result.sample_url,
+                    suggested_params=result.suggested_params,
+                )
+            return  # Success, exit retry loop
+        except Exception as e:
+            if attempt == max_retries - 1:  # Last attempt
+                raise e
+            # Wait before retrying
+            await asyncio.sleep(1 * (attempt + 1))  # Exponential backoff: 1s, 2s, 3s
+
+
+async def update_job_status_failed(job_id: str, error_message: str):
+    """Update job status to failed"""
+    from app.db.session import async_session_factory
+    from app.services.benchmark import BenchmarkService
+    from app.models.benchmark import BenchmarkStatus
+
+    try:
+        async with async_session_factory() as db:
+            benchmark_service = BenchmarkService(db)
+            await benchmark_service.update_job_status(
+                job_id=job_id,
+                status=BenchmarkStatus.FAILED,
+                error_message=error_message,
+            )
+    except Exception as e:
+        logger.error("Failed to update job status to failed", job_id=job_id, error=str(e))
+        raise
+
+
+async def upload_benchmark_sample_to_s3(job_id: str, result) -> str:
+    """
+    Upload benchmark sample data to S3.
+
+    Args:
+        job_id: Benchmark job ID
+        result: Benchmark result object
+
+    Returns:
+        str: S3 URL of uploaded sample
+    """
+    import boto3
+    from app.core.config import settings
+
+    try:
+        # Find sample file generated by finewebdata pipeline
+        sample_file_path = None
+
+        # Look for sample file in expected locations
+        possible_paths = [
+            f"/home/ubuntu/datatrove/logs/benchmark/{job_id}_sample.jsonl.gz",
+            f"/home/ubuntu/datatrove/finewebdata/logs/benchmark/{job_id}_sample.jsonl.gz",
+            f"/tmp/finedata-samples/{job_id}_sample.jsonl.gz"
+        ]
+
+        for path in possible_paths:
+            if os.path.exists(path):
+                sample_file_path = path
+                break
+
+        if not sample_file_path:
+            logger.warning("Benchmark sample file not found", job_id=job_id, searched_paths=possible_paths)
+            return None
+
+        # Upload to S3
+        s3_client = boto3.client('s3')
+        s3_key = f"benchmark-samples/{job_id}/sample.jsonl.gz"
+
+        with open(sample_file_path, 'rb') as f:
+            s3_client.upload_fileobj(f, settings.S3_BUCKET_SAMPLES, s3_key)
+
+        s3_url = f"https://s3.amazonaws.com/{settings.S3_BUCKET_SAMPLES}/{s3_key}"
+        logger.info("Benchmark sample uploaded to S3", job_id=job_id, s3_url=s3_url)
+
+        return s3_url
+
+    except Exception as e:
+        logger.error("Failed to upload benchmark sample to S3", job_id=job_id, error=str(e))
+        return None
+
+
+async def update_sample_url(job_id: str, sample_url: str):
+    """
+    Update the sample URL for a benchmark job.
+
+    Args:
+        job_id: Benchmark job ID
+        sample_url: New sample URL
+    """
+    from app.db.session import async_session_factory
+    from app.services.benchmark import BenchmarkService
+
+    try:
+        async with async_session_factory() as db:
+            benchmark_service = BenchmarkService(db)
+            await benchmark_service.update_job_status(
+                job_id=job_id,
+                sample_url=sample_url,
+            )
+        logger.info("Sample URL updated", job_id=job_id, sample_url=sample_url)
+    except Exception as e:
+        logger.error("Failed to update sample URL", job_id=job_id, error=str(e))
