@@ -71,13 +71,13 @@ services:
       - HF_ORG_NAME=${HF_ORG_NAME:-}
       # Email (optional for development)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
-      # SMTP (alternative to SendGrid)
-      - SMTP_SERVER=${SMTP_SERVER:-}
-      - SMTP_PORT=587
+      # SMTP (alternative to SendGrid) - Gmail defaults for development
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USERNAME=${SMTP_USERNAME:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - FROM_EMAIL=finedata.ai
-      - FROM_NAME=FineData
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@finedata.ai}
+      - FROM_NAME=${FROM_NAME:-FineData}
       # OpenAI (for ontology generation)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # Moonshot AI (alternative LLM provider)
@@ -183,13 +183,13 @@ services:
       - HF_ORG_NAME=${HF_ORG_NAME:-}
       # Email (optional for development)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
-      # SMTP (alternative to SendGrid)
-      - SMTP_SERVER=${SMTP_SERVER:-}
-      - SMTP_PORT=587
+      # SMTP (alternative to SendGrid) - Gmail defaults for development
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USERNAME=${SMTP_USERNAME:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - FROM_EMAIL=finedata.ai
-      - FROM_NAME=FineData
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@finedata.ai}
+      - FROM_NAME=${FROM_NAME:-FineData}
       # OpenAI (for ontology generation)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # Moonshot AI (alternative LLM provider)
