@@ -71,12 +71,12 @@ services:
       - HF_ORG_NAME=${HF_ORG_NAME:-}
       # Email (optional for development)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
-      # SMTP (alternative to SendGrid) - Gmail defaults for development
-      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      # SMTP (alternative to SendGrid) - Feishu defaults for development
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.feishu.cn}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - FROM_EMAIL=${FROM_EMAIL:-noreply@finedata.ai}
+      - SMTP_USERNAME=${SMTP_USERNAME:-contacts@agenticeconomics.org}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-ZHlpHYH3GorXyywN}
+      - FROM_EMAIL=${FROM_EMAIL:-contacts@agenticeconomics.org}
       - FROM_NAME=${FROM_NAME:-FineData}
       # OpenAI (for ontology generation)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -183,12 +183,12 @@ services:
       - HF_ORG_NAME=${HF_ORG_NAME:-}
       # Email (optional for development)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
-      # SMTP (alternative to SendGrid) - Gmail defaults for development
-      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      # SMTP (alternative to SendGrid) - Feishu defaults for development
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.feishu.cn}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - FROM_EMAIL=${FROM_EMAIL:-noreply@finedata.ai}
+      - SMTP_USERNAME=${SMTP_USERNAME:-contacts@agenticeconomics.org}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-ZHlpHYH3GorXyywN}
+      - FROM_EMAIL=${FROM_EMAIL:-contacts@agenticeconomics.org}
       - FROM_NAME=${FROM_NAME:-FineData}
       # OpenAI (for ontology generation)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
