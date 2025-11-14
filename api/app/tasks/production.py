@@ -61,7 +61,8 @@ def production_task(self, order_id: str):
             slurm_service = SlurmProductionService(order_service)
 
             # Start production job - this creates cluster and submits job
-            slurm_job_id = asyncio.run(slurm_service.start_production_job(
+            slurm_job_id = slurm_service.start_production_job_sync(
+                db,
                 order_id=order_id,
                 benchmark_job_id=benchmark_job.id,
                 domain=benchmark_job.domain,
@@ -70,7 +71,7 @@ def production_task(self, order_id: str):
                 time_range_start=benchmark_job.time_range_start,
                 time_range_end=benchmark_job.time_range_end,
                 quality_tier=benchmark_job.quality_tier,
-            ))
+            )
 
             # Start monitoring task
             production_monitor_task.delay(order_id, slurm_job_id)
@@ -142,7 +143,7 @@ def production_monitor_task(self, order_id: str, slurm_job_id: str):
 
             # Check SLURM job status
             slurm_service = SlurmProductionService(None)  # We don't need order service for monitoring
-            job_status = asyncio.run(slurm_service.check_job_status(slurm_job_id))
+            job_status = slurm_service.check_job_status_sync(slurm_job_id)
 
             current_status = job_status.get('status', 'UNKNOWN')
             logger.info("SLURM job status check", order_id=order_id, slurm_job_id=slurm_job_id, status=current_status)
@@ -170,7 +171,7 @@ def production_monitor_task(self, order_id: str, slurm_job_id: str):
                     benchmark_job = order.benchmark_job
                     if benchmark_job:
                         hf_service = FineWebDataService()
-                        hf_url = asyncio.run(hf_service.upload_to_huggingface(order_id, benchmark_job.domain))
+                        hf_url = hf_service.upload_to_huggingface_sync(order_id, benchmark_job.domain)
 
                         # Update order with delivery URLs
                         order.hf_dataset_url = hf_url
@@ -192,7 +193,7 @@ def production_monitor_task(self, order_id: str, slurm_job_id: str):
 
                         # Cleanup SLURM cluster
                         if hasattr(slurm_service, 'cluster_manager') and slurm_service.cluster_manager:
-                            asyncio.run(slurm_service.cluster_manager.delete_cluster())
+                            slurm_service.cluster_manager.delete_cluster_sync()
 
                     else:
                         raise Exception("Benchmark job not found for delivery")
@@ -236,7 +237,7 @@ def production_monitor_task(self, order_id: str, slurm_job_id: str):
 
                 # Cleanup cluster on failure
                 if hasattr(slurm_service, 'cluster_manager') and slurm_service.cluster_manager:
-                    asyncio.run(slurm_service.cluster_manager.delete_cluster())
+                    slurm_service.cluster_manager.delete_cluster_sync()
 
             else:
                 # Job still running - schedule next check

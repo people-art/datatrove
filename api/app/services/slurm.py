@@ -287,6 +287,11 @@ class SlurmClusterManager:
             logger.error("Cluster creation failed", error=str(e))
             return False
 
+    def delete_cluster_sync(self) -> bool:
+        """Delete SLURM cluster (synchronous version)."""
+        import asyncio
+        return asyncio.run(self.delete_cluster())
+
     async def delete_cluster(self) -> bool:
         """Delete SLURM cluster."""
         if not self.created:
@@ -401,8 +406,9 @@ class SlurmProductionService:
         self.order_service = order_service
         self.cluster_manager = None  # Will be initialized per job
 
-    async def start_production_job(
+    def start_production_job_sync(
         self,
+        db_session,
         order_id: str,
         benchmark_job_id: str,
         domain: str,
@@ -419,7 +425,8 @@ class SlurmProductionService:
 
         try:
             # Update order status to cluster queued
-            await self.order_service.update_order_status(
+            self.order_service.update_order_status_sync(
+                db_session,
                 order_id,
                 OrderStatus.CLUSTER_QUEUED,
                 cluster_name=self.cluster_manager.cluster_name
@@ -427,8 +434,9 @@ class SlurmProductionService:
 
             logger.info("Creating SLURM cluster for production job", order_id=order_id)
 
-            # Create SLURM cluster on demand
-            cluster_created = await self.cluster_manager.create_cluster()
+            # Create SLURM cluster on demand (this is still async, need to run in sync context)
+            import asyncio
+            cluster_created = asyncio.run(self.cluster_manager.create_cluster())
             if not cluster_created:
                 raise Exception("Failed to create SLURM cluster")
 
@@ -452,10 +460,11 @@ class SlurmProductionService:
             }
 
             # Submit Slurm job
-            slurm_job_id = await self._submit_slurm_job(job_params)
+            slurm_job_id = asyncio.run(self._submit_slurm_job(job_params))
 
             # Update order with Slurm job ID
-            await self.order_service.update_order_status(
+            self.order_service.update_order_status_sync(
+                db_session,
                 order_id,
                 OrderStatus.RUNNING,
                 slurm_job_id=slurm_job_id,
@@ -612,6 +621,11 @@ fi
 
         logger.info("Slurm script created", script_path=str(script_path))
         return script_path
+
+    def check_job_status_sync(self, slurm_job_id: str) -> Dict[str, Any]:
+        """Check the status of a Slurm job (synchronous version)."""
+        import asyncio
+        return asyncio.run(self.check_job_status(slurm_job_id))
 
     async def check_job_status(self, slurm_job_id: str) -> Dict[str, Any]:
         """Check the status of a Slurm job."""

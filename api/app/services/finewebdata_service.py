@@ -128,6 +128,11 @@ class FineWebDataService:
             logger.error("Production pipeline failed", order_id=config.order_id, error=str(e))
             raise
 
+    def upload_to_huggingface_sync(self, order_id: str, domain: str) -> str:
+        """Upload to HuggingFace (synchronous version for Celery tasks)."""
+        import asyncio
+        return asyncio.run(self.upload_to_huggingface(order_id, domain))
+
     async def upload_to_huggingface(self, order_id: str, domain: str) -> str:
         """
         Upload production results to HuggingFace using the existing delivery service
