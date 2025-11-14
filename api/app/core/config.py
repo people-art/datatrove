@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "noreply@finedata.example.com"
     EMAIL_FROM_NAME: str = "FineData"
 
+    # SMTP (alternative to SendGrid)
+    SMTP_SERVER: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    FROM_EMAIL: str = "noreply@finedata.ai"
+    FROM_NAME: str = "FineData"
+
     # OpenAI (for ontology generation)
     OPENAI_API_KEY: str = ""
 

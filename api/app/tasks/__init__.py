@@ -1,9 +1,7 @@
 """
 Async tasks for FineData
+
+Note: Individual task functions are not imported here to avoid
+Celery task registration issues during module initialization.
+Import them directly from their respective modules when needed.
 """
-
-from .benchmark import benchmark_task
-from .production import production_task
-from .email import email_task
-
-__all__ = ["benchmark_task", "production_task", "email_task"]

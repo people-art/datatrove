@@ -119,13 +119,15 @@ export interface Translations {
   smtpOK: string;
   disposableBlocked: string;
 
-  // Orders/Payment
-  confirmOrder: string;
-  payNow: string;
-  awaitingPayment: string;
-  processing: string;
-  completed: string;
-  failed: string;
+    // Orders/Payment
+    confirmOrder: string;
+    payNow: string;
+    awaitingPayment: string;
+    processing: string;
+    clusterQueued: string;
+    finalizing: string;
+    completed: string;
+    failed: string;
 
   // Footer legacy
   privacy: string;
@@ -267,6 +269,8 @@ const translations: Record<Language, any> = {
     payNow: 'Pay Now',
     awaitingPayment: 'Awaiting Payment',
     processing: 'Processing',
+    clusterQueued: 'Cluster Queued',
+    finalizing: 'Finalizing',
     completed: 'Completed',
     failed: 'Failed',
 
@@ -423,6 +427,8 @@ const translations: Record<Language, any> = {
     payNow: '立即支付',
     awaitingPayment: '等待支付',
     processing: '处理中',
+    clusterQueued: '集群排队中',
+    finalizing: '正在完成',
     completed: '已完成',
     failed: '失败',
 

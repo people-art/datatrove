@@ -123,7 +123,7 @@ class TestFineWebDataService:
 
         # BenchmarkResult is a dataclass, check attributes
         assert result.docs_read == 1000000
-        assert result.docs_kept == 800000
+        assert result.docs_kept == 800000  # docs_after_deduplication from pipeline_output
         assert result.tokens == 80000000
         assert result.coverage == 0.85
         assert result.quality_pass_rate == 0.92
@@ -139,8 +139,8 @@ class TestFineWebDataService:
         # BenchmarkResult fallback values
         assert result.docs_read == 1000000  # Fallback value
         assert result.docs_kept == 850000   # Fallback value
-        assert result.tokens == 85000000    # Fallback value
-        assert "sample_url" in result.sample_url
+        assert result.tokens == 212500000   # Fallback value: 850000 * 250
+        assert "benchmark-test-job-sample.jsonl.gz" in result.sample_url
         assert hasattr(result, "suggested_params")
 
     def test_generate_suggested_params(self):
