@@ -107,20 +107,19 @@ export default function DashboardPage() {
     index === self.findIndex(t => t.id === task.id)
   );
 
-  // Temporarily always show authenticated content for testing
-  // if (!isAuthenticated) {
-  //   return (
-  //     <div className="text-center py-16">
-  //       <h1 className="text-3xl font-bold mb-4">{t('dashboard.title')}</h1>
-  //       <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-  //         {t('dashboard.signInMessage')}
-  //       </p>
-  //       <Button onClick={login} size="lg">
-  //         {t('dashboard.signInButton')}
-  //       </Button>
-  //     </div>
-  //   );
-  // }
+  if (!isAuthenticated) {
+    return (
+      <div className="text-center py-16">
+        <h1 className="text-3xl font-bold mb-4">{t('dashboard.title')}</h1>
+        <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+          {t('dashboard.signInMessage')}
+        </p>
+        <Button onClick={login} size="lg">
+          {t('dashboard.signInButton')}
+        </Button>
+      </div>
+    );
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
