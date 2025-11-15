@@ -16,6 +16,7 @@ export interface Translations {
   docs: string;
     dashboard: string;
     signin: string;
+    signout: string;
   createDataset: string;
   };
   home: {
@@ -54,15 +55,43 @@ export interface Translations {
       total_tasks: string;
     };
   };
-  footer: {
-    tagline: string;
-    docs: string;
-    pricing: string;
-    status: string;
-    security: string;
-    apiDown: string;
+  features: {
+    title: string;
+    subtitle: string;
+  };
+  pricing: {
+    title: string;
+    subtitle: string;
+  };
+  docs: {
+    title: string;
+    subtitle: string;
+  };
+  dashboard: {
+    title: string;
+    subtitle: string;
+    cards: {
+      active: string;
+      running: string;
+      completed: string;
+      avgTime: string;
+    };
+    table: {
+      jobId: string;
+      type: string;
+      status: string;
+      createdAt: string;
+      progress: string;
+      actions: string;
+    };
   };
   new: {
+    steps: {
+      step1: string;
+      step2: string;
+      step3: string;
+      step4: string;
+    };
     ontology: {
     title: string;
       generating: string;
@@ -89,9 +118,39 @@ export interface Translations {
     quote: {
       uses_ontology_hint: string;
     };
+    errors: {
+      createBenchmarkFailed: string;
+    };
+  };
+  charts: {
+    activity: {
+      desc: string;
+      note: string;
+    };
+  };
+  order: {
+    errors: {
+      viewDetails: string;
+      close: string;
+    };
+  };
+  footer: {
+    tagline: string;
+    docs: string;
+    pricing: string;
+    status: string;
+    security: string;
+    apiDown: string;
+    apiHealthy: string;
+    apiDegraded: string;
   };
   common: {
     retry: string;
+    loading: string;
+    error: string;
+    success: string;
+    cancel: string;
+    confirm: string;
   };
   // Additional keys can be added as needed
 }
@@ -104,6 +163,7 @@ const translations: Record<Language, Translations> = {
     docs: 'Docs',
       dashboard: 'Dashboard',
       signin: 'Sign in',
+      signout: 'Sign out',
     createDataset: 'Create Dataset',
     },
     home: {
@@ -142,14 +202,44 @@ const translations: Record<Language, Translations> = {
         total_tasks: 'Total Tasks',
       },
     },
-    footer: {
-      tagline: 'Enterprise-grade dataset generation for AI teams',
-      docs: 'Docs',
-      pricing: 'Pricing',
-      status: 'Status',
-      security: 'Security',
-      apiDown: 'API Down',
+    features: {
+      title: 'Features',
+      subtitle: 'Powerful features for creating high-quality datasets',
     },
+    pricing: {
+      title: 'Pricing',
+      subtitle: 'Choose the plan that fits your needs',
+    },
+    docs: {
+      title: 'Documentation',
+      subtitle: 'Learn how to use FineData effectively',
+    },
+    dashboard: {
+      title: 'Dashboard',
+      subtitle: 'Monitor your jobs and orders',
+      cards: {
+        active: 'Active Tasks',
+        running: 'Running',
+        completed: 'Completed',
+        avgTime: 'Avg Time',
+      },
+      table: {
+        jobId: 'Job ID',
+        type: 'Type',
+        status: 'Status',
+        createdAt: 'Created',
+        progress: 'Progress',
+        actions: 'Actions',
+      },
+    },
+    new: {
+      steps: {
+        step1: 'Define Your Domain',
+        step2: 'Generate Ontology',
+        step3: 'Run Benchmark',
+        step4: 'Create Production Dataset',
+      },
+      ontology: {
     new: {
       ontology: {
         title: 'Data Ontology',
