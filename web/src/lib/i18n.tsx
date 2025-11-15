@@ -354,7 +354,6 @@ const translations: Record<Language, Translations> = {
     features: '功能特性',
     pricing: '价格方案',
     docs: '文档',
-      dashboard: '控制台',
       signin: '登录',
       signout: '登出',
       signedInAs: '已登录为',
