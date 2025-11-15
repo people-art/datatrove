@@ -104,7 +104,7 @@ def benchmark_task(self, job_id: str):
         }
 
         # Update job status in database
-        asyncio.run(update_job_status_with_result(job_id, result_dict))
+        asyncio.run(update_job_status_with_result(job_id, result))
 
         # Upload benchmark sample to S3 if not already uploaded by pipeline
         if not result.sample_url or "storage.example.com" in result.sample_url:
