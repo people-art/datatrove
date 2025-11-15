@@ -295,9 +295,21 @@ export const useSystemStats = () => {
     enabled: jobIds.length > 0,
     queryFn: async () => {
       const results = await Promise.all(
-        jobIds.map((id: string) =>
-          api.get(`/benchmark/jobs/${id}`).then(r => r.data).catch(() => null)
-        )
+        jobIds.map(async (id: string) => {
+          try {
+            const response = await api.get(`/benchmark/jobs/${id}`);
+            return response.data;
+          } catch (error: any) {
+            // Remove invalid job ID from localStorage
+            if (error.response?.status === 404) {
+              console.log(`Removing invalid job ID from tracking: ${id}`);
+              const currentJobs = JSON.parse(localStorage.getItem('tracked_jobs') || '[]');
+              const filteredJobs = currentJobs.filter((jobId: string) => jobId !== id);
+              localStorage.setItem('tracked_jobs', JSON.stringify(filteredJobs));
+            }
+            return null;
+          }
+        })
       );
       return results.filter(Boolean);
     },
@@ -307,10 +319,24 @@ export const useSystemStats = () => {
     queryKey: ["stats", "orders", orderIds],
     enabled: orderIds.length > 0,
     queryFn: async () => {
+      const validOrderIds: string[] = [];
       const results = await Promise.all(
-        orderIds.map((id: string) =>
-          api.get(`/orders/${id}`).then(r => r.data).catch(() => null)
-        )
+        orderIds.map(async (id: string) => {
+          try {
+            const response = await api.get(`/orders/${id}`);
+            validOrderIds.push(id); // Only keep valid IDs
+            return response.data;
+          } catch (error: any) {
+            // Remove invalid order ID from localStorage
+            if (error.response?.status === 404) {
+              console.log(`Removing invalid order ID from tracking: ${id}`);
+              const currentOrders = JSON.parse(localStorage.getItem('tracked_orders') || '[]');
+              const filteredOrders = currentOrders.filter((orderId: string) => orderId !== id);
+              localStorage.setItem('tracked_orders', JSON.stringify(filteredOrders));
+            }
+            return null;
+          }
+        })
       );
       return results.filter(Boolean);
     },
