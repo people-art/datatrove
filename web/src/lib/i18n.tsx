@@ -232,15 +232,65 @@ const translations: Record<Language, Translations> = {
         actions: 'Actions',
       },
     },
+    features: {
+      title: '功能特性',
+      subtitle: '强大的功能，帮助您创建高质量的数据集',
+    },
+    pricing: {
+      title: '价格方案',
+      subtitle: '选择适合您需求的价格方案',
+    },
+    docs: {
+      title: '文档',
+      subtitle: '了解如何有效使用FineData',
+    },
+    dashboard: {
+      title: '控制台',
+      subtitle: '监控您的任务和订单',
+      cards: {
+        active: '活跃任务',
+        running: '运行中',
+        completed: '已完成',
+        avgTime: '平均时间',
+      },
+      table: {
+        jobId: '任务ID',
+        type: '类型',
+        status: '状态',
+        createdAt: '创建时间',
+        progress: '进度',
+        actions: '操作',
+      },
+    },
+    charts: {
+      activity: {
+        desc: '最近7天的活动',
+        note: '显示基准测试和生产任务完成情况',
+      },
+    },
+    order: {
+      errors: {
+        viewDetails: '查看错误详情',
+        close: '关闭',
+      },
+    },
+    footer: {
+      tagline: '为 AI 团队提供企业级数据集生成服务',
+      docs: '文档',
+      pricing: '定价',
+      status: '状态',
+      security: '安全',
+      apiDown: 'API 离线',
+      apiHealthy: 'API 正常',
+      apiDegraded: 'API 降级',
+    },
     new: {
       steps: {
-        step1: 'Define Your Domain',
-        step2: 'Generate Ontology',
-        step3: 'Run Benchmark',
-        step4: 'Create Production Dataset',
+        step1: '定义您的领域',
+        step2: '生成本体',
+        step3: '运行基准测试',
+        step4: '创建生产数据集',
       },
-      ontology: {
-    new: {
       ontology: {
         title: 'Data Ontology',
         generating: 'Generating…',
@@ -265,11 +315,19 @@ const translations: Record<Language, Translations> = {
         reset: 'Reset to auto',
       },
       quote: {
-        uses_ontology_hint: 'An ontology has been generated for this domain and will be used for pricing and preview.',
+        uses_ontology_hint: '已根据当前领域自动生成数据本体，将用于后续定价与预览。',
+      },
+      errors: {
+        createBenchmarkFailed: '创建基准测试任务失败，请重试。',
       },
     },
     common: {
-      retry: 'Retry',
+      retry: '重试',
+      loading: '加载中...',
+      error: '错误',
+      success: '成功',
+      cancel: '取消',
+      confirm: '确认',
     },
   },
 
@@ -318,6 +376,48 @@ const translations: Record<Language, Translations> = {
         total_tasks: '总任务数',
       },
     },
+    features: {
+      title: '功能特性',
+      subtitle: '强大的功能，帮助您创建高质量的数据集',
+    },
+    pricing: {
+      title: '价格方案',
+      subtitle: '选择适合您需求的价格方案',
+    },
+    docs: {
+      title: '文档',
+      subtitle: '了解如何有效使用FineData',
+    },
+    dashboard: {
+      title: '控制台',
+      subtitle: '监控您的任务和订单',
+      cards: {
+        active: '活跃任务',
+        running: '运行中',
+        completed: '已完成',
+        avgTime: '平均时间',
+      },
+      table: {
+        jobId: '任务ID',
+        type: '类型',
+        status: '状态',
+        createdAt: '创建时间',
+        progress: '进度',
+        actions: '操作',
+      },
+    },
+    charts: {
+      activity: {
+        desc: '最近7天的活动',
+        note: '显示基准测试和生产任务完成情况',
+      },
+    },
+    order: {
+      errors: {
+        viewDetails: '查看错误详情',
+        close: '关闭',
+      },
+    },
     footer: {
       tagline: '为 AI 团队提供企业级数据集生成服务',
       docs: '文档',
@@ -325,6 +425,8 @@ const translations: Record<Language, Translations> = {
       status: '状态',
       security: '安全',
       apiDown: 'API 离线',
+      apiHealthy: 'API 正常',
+      apiDegraded: 'API 降级',
     },
     new: {
       ontology: {
@@ -353,9 +455,23 @@ const translations: Record<Language, Translations> = {
       quote: {
         uses_ontology_hint: '已根据当前领域自动生成数据本体，将用于后续定价与预览。',
       },
+      steps: {
+        step1: '定义您的领域',
+        step2: '生成本体',
+        step3: '运行基准测试',
+        step4: '创建生产数据集',
+      },
+      errors: {
+        createBenchmarkFailed: '创建基准测试任务失败，请重试。',
+      },
     },
     common: {
       retry: '重试',
+      loading: '加载中...',
+      error: '错误',
+      success: '成功',
+      cancel: '取消',
+      confirm: '确认',
     },
   }
 };
