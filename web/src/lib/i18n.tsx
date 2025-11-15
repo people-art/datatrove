@@ -168,7 +168,6 @@ const translations: Record<Language, Translations> = {
     features: 'Features',
     pricing: 'Pricing',
     docs: 'Docs',
-      dashboard: 'Dashboard',
       signin: 'Sign in',
       signout: 'Sign out',
       signedInAs: 'Signed in as',
@@ -261,7 +260,6 @@ const translations: Record<Language, Translations> = {
       subtitle: '了解如何有效使用FineData',
     },
     dashboard: {
-      title: '控制台',
       subtitle: '监控您的任务和订单',
       cards: {
         active: '活跃任务',
