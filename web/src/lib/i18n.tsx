@@ -516,20 +516,24 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
-    // Load language from localStorage
-    const saved = localStorage.getItem('fd.lang') as Language;
-    if (saved && (saved === 'en' || saved === 'zh')) {
-      setLanguageState(saved);
-    } else {
-      // Default to browser language
-      const browserLang = navigator.language.startsWith('zh') ? 'zh' : 'en';
-      setLanguageState(browserLang);
+    // Load language from localStorage (only on client side)
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fd.lang') as Language;
+      if (saved && (saved === 'en' || saved === 'zh')) {
+        setLanguageState(saved);
+      } else {
+        // Default to browser language
+        const browserLang = navigator.language.startsWith('zh') ? 'zh' : 'en';
+        setLanguageState(browserLang);
+      }
     }
   }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('fd.lang', lang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fd.lang', lang);
+    }
   };
 
   const t = (key: string): string => {
