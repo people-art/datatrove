@@ -428,6 +428,17 @@ const translations: Record<Language, Translations> = {
         progress: '进度',
         actions: '操作',
       },
+      signInMessage: '请登录后查看您的任务和订单。',
+      signInButton: '登录',
+      recentTasks: '最近任务',
+      taskDomain: '领域',
+      loadingTasks: '正在加载任务...',
+      noTasksFound: '未找到任务。',
+      createFirstTask: '创建您的第一个数据集开始使用。',
+      activityChart: '活动图表',
+    },
+    charts: {
+      activity: {
         desc: '最近7天的活动',
         note: '显示基准测试和生产任务完成情况',
       },
