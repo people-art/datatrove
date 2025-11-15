@@ -28,3 +28,8 @@ black==23.11.0
 isort==5.12.0
 flake8==6.1.0
 aws-parallelcluster==3.8.0
+# Additional dependencies for FineWebData pipeline
+loguru==0.7.3
+humanize==4.14.0
+regex==2025.11.3
+tokenizers==0.22.1
