@@ -75,7 +75,8 @@ class FineWebDataService:
     """Service for managing finewebdata pipeline operations"""
 
     def __init__(self):
-        self.project_root = Path("/home/ubuntu/datatrove")
+        # Use relative path from the container working directory
+        self.project_root = Path("/app")
         self.finewebdata_script = self.project_root / "finewebdata" / "finewebdata.py"
 
     async def run_benchmark_pipeline(self, config: BenchmarkConfig) -> BenchmarkResult:
@@ -437,11 +438,17 @@ class FineWebDataService:
         """Run shell command asynchronously"""
         cmd_str = ' '.join(str(arg) for arg in cmd)
 
+        # Set PYTHONPATH when cwd is provided to ensure datatrove module is found
+        env = os.environ.copy()
+        if cwd:
+            env['PYTHONPATH'] = str(cwd / 'src')
+
         process = await asyncio.create_subprocess_shell(
             cmd_str,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=str(cwd) if cwd else None
+            cwd=str(cwd) if cwd else None,
+            env=env
         )
 
         stdout, stderr = await process.communicate()

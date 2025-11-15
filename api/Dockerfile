@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     curl \
     unzip \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -28,6 +29,9 @@ WORKDIR /app
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install datatrove library (for finewebdata pipeline) - core only
+RUN pip install datatrove==0.6.0
 
 # Copy application code
 COPY . .

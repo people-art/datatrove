@@ -43,26 +43,6 @@ def production_task(self, order_id: str):
 
             benchmark_job = order.benchmark_job
 
-            # Check if mock production mode is enabled
-            if settings.FINEDATA_MOCK_PRODUCTION:
-                logger.info("Mock production mode enabled, simulating production process", order_id=order_id)
-
-                # Simulate production by updating order status to running, then completed
-                from app.services.order import OrderService
-                order_service = OrderService(db)
-
-                # Update to running status
-                order_service.update_order_status_sync(db, order_id, OrderStatus.RUNNING, "Mock production running")
-
-                # Simulate processing time
-                import time
-                time.sleep(5)  # Simulate 5 seconds of processing
-
-                # Update to completed status with mock data
-                mock_hf_url = f"https://huggingface.co/datasets/finedata/{order_id}"
-                mock_dataset_card = f"https://huggingface.co/datasets/finedata/{order_id}/README.md"
-
-                # Update order status to delivered
             # Create production config
             production_config = ProductionConfig(
                 order_id=order_id,

@@ -209,6 +209,10 @@ services:
         condition: service_healthy
     volumes:
       - ./api:/app
+      - ./finewebdata:/app/finewebdata
+      - ./tools:/app/tools
+      - ./logs:/app/logs
+      - ./src:/app/src
     networks:
       - finedata-network
     restart: unless-stopped

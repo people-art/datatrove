@@ -61,6 +61,12 @@ export interface Translations {
   docs: string;
   createDataset: string;
   dashboard: string;
+
+  // Page titles and subtitles
+  features_title: string;
+  features_subtitle: string;
+  pricing_title: string;
+  pricing_subtitle: string;
   recentTasks: string;
   dashboardSubtitle: string;
   signInMessage: string;
