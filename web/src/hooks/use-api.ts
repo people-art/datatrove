@@ -288,8 +288,13 @@ export const useSystemStats = () => {
     }
   };
 
-  const [localData, setLocalData] = useState(() => loadLocalJobsAndOrders());
+  const [localData, setLocalData] = useState({ jobIds: [], orderIds: [] });
   const { jobIds, orderIds } = localData;
+
+  // Load data on client side only
+  useEffect(() => {
+    setLocalData(loadLocalJobsAndOrders());
+  }, []);
 
   const jobsQuery = useQuery({
     queryKey: ["stats", "jobs", jobIds],
