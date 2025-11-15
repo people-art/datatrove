@@ -11,18 +11,18 @@ export default function FeaturesPage() {
   const features = [
     {
       icon: Database,
-      title: 'AI 驱动过滤',
-      description: '基于本体的关键词扩展、LLM 相关性打分、多阶段质量过滤，精准匹配你的细分领域和使用场景。'
+      title: t('home.why.ai_filtering_title'),
+      description: t('home.why.ai_filtering_desc')
     },
     {
       icon: Zap,
-      title: '万亿级网页覆盖',
-      description: '基于 Common Crawl 与工程化流水线，稳定处理数十亿网页，配置可追踪、结果可复现。'
+      title: t('home.why.scale_title'),
+      description: t('home.why.scale_desc')
     },
     {
       icon: Shield,
-      title: '企业级隐私与合规',
-      description: '内置 PII 检测、医疗场景 HIPAA 规则、脱敏与审计日志，确保数据安全合规。'
+      title: t('home.why.privacy_title'),
+      description: t('home.why.privacy_desc')
     },
     {
       icon: Globe,
@@ -52,10 +52,10 @@ export default function FeaturesPage() {
     <div className="space-y-16">
       <header className="mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          {t('features_title')}
+          {t('features.title')}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-          {t('features_subtitle')}
+          {t('features.subtitle')}
         </p>
       </header>
 

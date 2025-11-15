@@ -51,10 +51,10 @@ export default function DocsPage() {
       {/* Header */}
       <header className="text-center">
         <h1 className="text-2xl md:text-3xl font-semibold tracking-tight mb-4">
-          快速开始
+          {t('docs.title')}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-          了解 FineData 的工作原理，从需求提交到私有数据集交付仅需四个可预测步骤。
+          {t('docs.subtitle')}
         </p>
       </header>
 

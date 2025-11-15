@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,14 @@ export function MainNav() {
   const { t, language, setLanguage } = useI18n();
   const { isAuthenticated, login, logout, user } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLanguageChange = (nextLocale: 'en' | 'zh') => {
+    document.cookie = `NEXT_LOCALE=${nextLocale}; path=/`;
+    setLanguage(nextLocale);
+    router.refresh();
+  };
 
   const links = [
     { href: "/features", labelKey: "nav.features" },
@@ -60,7 +67,7 @@ export function MainNav() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+            onClick={() => handleLanguageChange(language === 'en' ? 'zh' : 'en')}
             className="flex items-center gap-1.5 text-sm"
           >
             <span className="hidden sm:inline">{language === 'en' ? '中文' : 'EN'}</span>
@@ -76,7 +83,7 @@ export function MainNav() {
                 onClick={logout}
                 className="h-8 px-3 text-xs rounded-full border border-neutral-300 hover:bg-neutral-50"
               >
-                Sign out
+                {t("nav.signout")}
               </button>
             </div>
           ) : (

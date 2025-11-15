@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProgressBar } from '@/components/progress-bar';
 import { MetricCard } from '@/components/metric-card';
 import { ArrowLeft, ExternalLink, Download, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useI18n } from '@/lib/i18n';
 import { orderApi, formatNumber } from '@/lib/api';
 import { getStatusColor, getStatusLabel } from '@/lib/utils';
 import { useProduction } from '@/hooks/use-api';
@@ -35,6 +37,8 @@ const STATUS_CONFIG = {
 
 export default function OrderPage({ params }: OrderPageProps) {
   const router = useRouter();
+  const { t } = useI18n();
+  const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
 
   // In Next.js 15, params is a Promise in dynamic routes, unwrap with React.use()
   const resolvedParams = React.use(params);
@@ -365,6 +369,47 @@ export default function OrderPage({ params }: OrderPageProps) {
                   <p className="text-red-800">{order.error}</p>
                 </div>
                 <div className="mt-4 flex gap-3">
+                  <Sheet open={errorDetailsOpen} onOpenChange={setErrorDetailsOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="outline">
+                        {t('order.errors.viewDetails')}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="sm:max-w-[600px]">
+                      <SheetHeader>
+                        <SheetTitle>Error Details</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-6 space-y-4">
+                        <div>
+                          <h4 className="font-medium mb-2">Error Message</h4>
+                          <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
+                            {order.error}
+                          </p>
+                        </div>
+                        {order.error_code && (
+                          <div>
+                            <h4 className="font-medium mb-2">Error Code</h4>
+                            <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
+                              {order.error_code}
+                            </p>
+                          </div>
+                        )}
+                        {order.last_logs && (
+                          <div>
+                            <h4 className="font-medium mb-2">Recent Logs</h4>
+                            <pre className="text-xs text-muted-foreground bg-muted p-3 rounded overflow-x-auto max-h-40">
+                              {order.last_logs}
+                            </pre>
+                          </div>
+                        )}
+                        <div className="flex justify-end">
+                          <Button onClick={() => setErrorDetailsOpen(false)}>
+                            {t('order.errors.close')}
+                          </Button>
+                        </div>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                   <Button onClick={() => router.push('/new')}>
                     Create New Order
                   </Button>

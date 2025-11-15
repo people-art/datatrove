@@ -162,9 +162,9 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">{t('dashboard')}</h1>
+            <h1 className="text-3xl font-bold mb-2">{t('dashboard.title')}</h1>
         <p className="text-foreground/70">
-          {t('dashboardSubtitle')}
+          {t('dashboard.subtitle')}
         </p>
       </div>
 

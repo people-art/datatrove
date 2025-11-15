@@ -1,11 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Github, Mail, ExternalLink } from "lucide-react";
+import { Github, Mail, ExternalLink, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useHealthCheck } from "@/hooks/use-api";
 
 export function Footer() {
   const { t } = useI18n();
+  const { data: healthStatus, isLoading: healthLoading } = useHealthCheck();
+
+  const getApiStatus = () => {
+    if (healthLoading) return { status: 'loading', text: 'Checking...', icon: AlertTriangle, color: 'text-yellow-500' };
+    if (healthStatus?.status === 'healthy') return { status: 'healthy', text: t('footer.apiHealthy'), icon: CheckCircle, color: 'text-green-500' };
+    return { status: 'down', text: t('footer.apiDown'), icon: XCircle, color: 'text-red-500' };
+  };
+
+  const apiStatus = getApiStatus();
+  const StatusIcon = apiStatus.icon;
 
   const footerLinks = {
     product: [
@@ -147,6 +158,10 @@ export function Footer() {
                 System Status
                 <ExternalLink className="w-3 h-3" />
               </a>
+              <div className="mt-2 flex items-center gap-2">
+                <StatusIcon className={`w-4 h-4 ${apiStatus.color}`} />
+                <span className="text-xs text-foreground/60">{apiStatus.text}</span>
+              </div>
             </div>
           </div>
         </div>

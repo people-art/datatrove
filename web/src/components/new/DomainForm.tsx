@@ -310,7 +310,11 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
         time_range: formData.timeRange,
         quality_tier: formData.qualityTier,
         estimated_scale: formData.estimatedScale ? formData.estimatedScale.toString() : undefined,
-        email: formData.email
+        email: formData.email,
+        ...(ontology && {
+          positive_keywords: ontology.positive_keywords || [],
+          negative_keywords: ontology.negative_keywords || []
+        })
       };
 
       const result = await createJobMutation.mutateAsync(jobData);
@@ -326,11 +330,8 @@ export function DomainForm({ onSubmit, isLoading }: DomainFormProps & { isLoadin
 
       router.push("/dashboard");
     } catch (err: any) {
-      const errorMessage = getErrorMessage(err);
-      const suggestion = getErrorSuggestion(err);
-      const traceId = getTraceId(err);
-
-      setError(`${errorMessage}${suggestion ? ` ${suggestion}` : ''}${traceId ? ` (${t('traceId')}: ${traceId})` : ''}`);
+      const errorMessage = err.detail || err.message || t('new.errors.createBenchmarkFailed');
+      setError(errorMessage);
     }
   };
 

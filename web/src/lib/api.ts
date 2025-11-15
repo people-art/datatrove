@@ -67,11 +67,34 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for error handling
+// Response interceptor for unified error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error);
+    // Handle 4xx/5xx errors uniformly
+    if (error.response) {
+      const { status, data } = error.response;
+      const errorMessage = data?.detail || data?.message || 'An error occurred';
+
+      // Return structured error for component handling
+      return Promise.reject({
+        ok: false,
+        detail: errorMessage,
+        status,
+        originalError: error
+      });
+    }
+
+    // Handle network errors
+    if (error.code === 'NETWORK_ERROR' || !error.response) {
+      return Promise.reject({
+        ok: false,
+        detail: 'Network error. Please check your connection and try again.',
+        status: 0,
+        originalError: error
+      });
+    }
+
     return Promise.reject(error);
   }
 );

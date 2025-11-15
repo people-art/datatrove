@@ -60,10 +60,10 @@ export default function PricingPage() {
     <div className="space-y-16">
       <header className="text-center mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          {t('pricing_title')}
+          {t('pricing.title')}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl mx-auto">
-          {t('pricing_subtitle')}
+          {t('pricing.subtitle')}
         </p>
       </header>
 
