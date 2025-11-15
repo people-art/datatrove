@@ -14,7 +14,6 @@ export interface Translations {
   features: string;
   pricing: string;
   docs: string;
-    dashboard: string;
     signin: string;
     signout: string;
     signedInAs: string;
