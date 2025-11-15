@@ -82,10 +82,10 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # Moonshot AI (alternative LLM provider)
       - MOONSHOT_API_KEY=${MOONSHOT_API_KEY:-}
-      # FineWebData Integration
-      - FINEDATA_SLURM_CONFIG_PATH=/home/ubuntu/datatrove/finewebdata/config.yaml
-      - FINEDATA_SLURM_SETUP_SCRIPT=/home/ubuntu/datatrove/finewebdata/setup_slurm_cluster.sh
-      - FINEDATA_HF_UPLOAD_SCRIPT=/home/ubuntu/datatrove/finewebdata/publish_to_hf.sh
+      # FineWebData Integration (worker service - use container paths)
+      - FINEDATA_SLURM_CONFIG_PATH=/app/finewebdata/config.yaml
+      - FINEDATA_SLURM_SETUP_SCRIPT=/app/finewebdata/setup_slurm_cluster.sh
+      - FINEDATA_HF_UPLOAD_SCRIPT=/app/finewebdata/publish_to_hf.sh
       - FINEDATA_BENCHMARK_SAMPLE_SIZE=1000000
       - FINEDATA_PRODUCTION_TIMEOUT_HOURS=48
       # Hugging Face username (for dataset uploads)
@@ -194,10 +194,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # Moonshot AI (alternative LLM provider)
       - MOONSHOT_API_KEY=${MOONSHOT_API_KEY:-}
-      # FineWebData Integration
-      - FINEDATA_SLURM_CONFIG_PATH=/home/ubuntu/datatrove/finewebdata/config.yaml
-      - FINEDATA_SLURM_SETUP_SCRIPT=/home/ubuntu/datatrove/finewebdata/setup_slurm_cluster.sh
-      - FINEDATA_HF_UPLOAD_SCRIPT=/home/ubuntu/datatrove/finewebdata/publish_to_hf.sh
+      # FineWebData Integration (web service doesn't need these)
       - FINEDATA_BENCHMARK_SAMPLE_SIZE=1000000
       - FINEDATA_PRODUCTION_TIMEOUT_HOURS=48
       # Frontend API URL (for Next.js)
