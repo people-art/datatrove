@@ -288,7 +288,8 @@ export const useSystemStats = () => {
     }
   };
 
-  const { jobIds, orderIds } = loadLocalJobsAndOrders();
+  const [localData, setLocalData] = useState(() => loadLocalJobsAndOrders());
+  const { jobIds, orderIds } = localData;
 
   const jobsQuery = useQuery({
     queryKey: ["stats", "jobs", jobIds],
