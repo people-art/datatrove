@@ -85,7 +85,7 @@ def benchmark_task(self, job_id: str):
 
         # Run benchmark pipeline using FineWebData service
         finewebdata_service = FineWebDataService()
-        result = await finewebdata_service.run_benchmark_pipeline(benchmark_config)
+        result = asyncio.run(finewebdata_service.run_benchmark_pipeline(benchmark_config))
 
         # Convert BenchmarkResult to dict for database operations
         result_dict = {
@@ -104,13 +104,13 @@ def benchmark_task(self, job_id: str):
         }
 
         # Update job status in database
-        await update_job_status_with_result(job_id, result_dict)
+        asyncio.run(update_job_status_with_result(job_id, result_dict))
 
         # Upload benchmark sample to S3 if not already uploaded by pipeline
         if not result.sample_url or "storage.example.com" in result.sample_url:
-            sample_url = await upload_benchmark_sample_to_s3(job_id, result_dict)
+            sample_url = asyncio.run(upload_benchmark_sample_to_s3(job_id, result_dict))
             if sample_url:
-                await update_sample_url(job_id, sample_url)
+                asyncio.run(update_sample_url(job_id, sample_url))
 
         logger.info("Benchmark task completed successfully", job_id=job_id)
 
@@ -139,7 +139,7 @@ def benchmark_task(self, job_id: str):
 
         # Update job status to failed
         try:
-            await update_job_status_failed(job_id, str(e))
+            asyncio.run(update_job_status_failed(job_id, str(e)))
         except Exception as db_error:
             logger.error("Failed to update job status to failed", job_id=job_id, error=str(db_error))
 
