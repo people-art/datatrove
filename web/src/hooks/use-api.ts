@@ -302,7 +302,7 @@ export const useSystemStats = () => {
             return response.data;
           } catch (error: any) {
             // Remove invalid job ID from localStorage
-            if (error.response?.status === 404) {
+            if (error.response?.status === 404 && typeof window !== 'undefined') {
               console.log(`Removing invalid job ID from tracking: ${id}`);
               const currentJobs = JSON.parse(localStorage.getItem('tracked_jobs') || '[]');
               const filteredJobs = currentJobs.filter((jobId: string) => jobId !== id);
@@ -329,7 +329,7 @@ export const useSystemStats = () => {
             return response.data;
           } catch (error: any) {
             // Remove invalid order ID from localStorage
-            if (error.response?.status === 404) {
+            if (error.response?.status === 404 && typeof window !== 'undefined') {
               console.log(`Removing invalid order ID from tracking: ${id}`);
               const currentOrders = JSON.parse(localStorage.getItem('tracked_orders') || '[]');
               const filteredOrders = currentOrders.filter((orderId: string) => orderId !== id);
