@@ -110,12 +110,12 @@ export default function DashboardPage() {
   if (!isAuthenticated) {
     return (
       <div className="text-center py-16">
-        <h1 className="text-3xl font-bold mb-4">{t('dashboard')}</h1>
+        <h1 className="text-3xl font-bold mb-4">{t('dashboard.title')}</h1>
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-          {t('signInMessage')}
+          {t('dashboard.signInMessage')}
         </p>
         <Button onClick={login} size="lg">
-          {t('signInButton')}
+          {t('dashboard.signInButton')}
         </Button>
       </div>
     );
@@ -175,7 +175,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-primary">{systemDisplayStats.activeTasks}</p>
-                <p className="text-sm text-foreground/70">{t('activeTasks')}</p>
+                <p className="text-sm text-foreground/70">{t('dashboard.cards.active')}</p>
               </div>
               <Database className="h-8 w-8 text-primary/70" />
             </div>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-blue-600">{systemDisplayStats.runningTasks}</p>
-                <p className="text-sm text-foreground/70">{t('running')}</p>
+                <p className="text-sm text-foreground/70">{t('dashboard.cards.running')}</p>
               </div>
               <Activity className="h-8 w-8 text-blue-600/70" />
             </div>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-green-600">{systemDisplayStats.completedTasks}</p>
-                <p className="text-sm text-foreground/70">{t('completed')}</p>
+                <p className="text-sm text-foreground/70">{t('dashboard.cards.completed')}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600/70" />
             </div>
@@ -211,7 +211,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-amber-600">{systemDisplayStats.avgCompletionTime}</p>
-                <p className="text-sm text-foreground/70">{t('avgCompletion')}</p>
+                <p className="text-sm text-foreground/70">{t('dashboard.cards.avgTime')}</p>
               </div>
               <Clock className="h-8 w-8 text-amber-600/70" />
             </div>
@@ -221,25 +221,25 @@ export default function DashboardPage() {
 
       {/* Tasks Table */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">{t('recentTasks')}</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('dashboard.recentTasks')}</h2>
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskId')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskType')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskStatus')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskProgress')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskDomain')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskCreated')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskActions')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.jobId')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.type')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.status')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.progress')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.taskDomain')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.createdAt')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {jobsLoading || systemStats?.loading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-{t('loadingTasks')}
+{t('dashboard.loadingTasks')}
                   </td>
                 </tr>
               ) : allTasks && allTasks.length > 0 ? (
@@ -286,7 +286,7 @@ export default function DashboardPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    {t('noTasksFound')} {t('createFirstTask')}
+                    {t('dashboard.noTasksFound')} {t('dashboard.createFirstTask')}
                   </td>
                 </tr>
               )}
@@ -297,13 +297,13 @@ export default function DashboardPage() {
 
       {/* Activity Chart Placeholder */}
       <div>
-        <h2 className="text-xl font-semibold mb-6">{t('activityChart')}</h2>
+        <h2 className="text-xl font-semibold mb-6">{t('dashboard.activityChart')}</h2>
         <GradientCard>
           <div className="p-8 text-center">
             <TrendingUp className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-500">{t('activityChartDesc')}</p>
+            <p className="text-slate-500">{t('charts.activity.desc')}</p>
             <p className="text-sm text-slate-400 mt-1">
-              {t('activityChartNote')}
+              {t('charts.activity.note')}
             </p>
           </div>
         </GradientCard>

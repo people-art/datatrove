@@ -85,6 +85,14 @@ export interface Translations {
       progress: string;
       actions: string;
     };
+    signInMessage: string;
+    signInButton: string;
+    recentTasks: string;
+    taskDomain: string;
+    loadingTasks: string;
+    noTasksFound: string;
+    createFirstTask: string;
+    activityChart: string;
   };
   new: {
     steps: {
@@ -233,6 +241,14 @@ const translations: Record<Language, Translations> = {
         progress: 'Progress',
         actions: 'Actions',
       },
+      signInMessage: 'Please sign in to view your tasks and orders.',
+      signInButton: 'Sign In',
+      recentTasks: 'Recent Tasks',
+      taskDomain: 'Domain',
+      loadingTasks: 'Loading tasks...',
+      noTasksFound: 'No tasks found.',
+      createFirstTask: 'Create your first dataset to get started.',
+      activityChart: 'Activity Chart',
     },
     features: {
       title: '功能特性',
@@ -409,6 +425,14 @@ const translations: Record<Language, Translations> = {
         progress: '进度',
         actions: '操作',
       },
+      signInMessage: '请登录后查看您的任务和订单。',
+      signInButton: '登录',
+      recentTasks: '最近任务',
+      taskDomain: '领域',
+      loadingTasks: '正在加载任务...',
+      noTasksFound: '未找到任务。',
+      createFirstTask: '创建您的第一个数据集开始使用。',
+      activityChart: '活动图表',
     },
     charts: {
       activity: {
