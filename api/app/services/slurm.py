@@ -490,10 +490,11 @@ class SlurmProductionService:
 
             # Cleanup cluster if it was created
             if self.cluster_manager and self.cluster_manager.created:
-                await self.cluster_manager.delete_cluster()
+                self.cluster_manager.delete_cluster_sync()
 
             # Update order status to failed
-            await self.order_service.update_order_status(
+            self.order_service.update_order_status_sync(
+                db_session,
                 order_id,
                 OrderStatus.FAILED,
                 error_message=f"Failed to start production job: {str(e)}"
