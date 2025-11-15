@@ -191,39 +191,33 @@ class FineWebDataService:
 
     async def _build_benchmark_command(self, config: BenchmarkConfig) -> list:
         """Build command for benchmark pipeline"""
+        # Extract year from time range for Common Crawl dump selection
+        year = config.time_range_start[:4] if config.time_range_start else "2024"
+
         cmd = [
             "python", str(self.finewebdata_script),
             "--domain", config.domain,
             "--mode", "local",
-            "--keywords", ",".join(config.keywords),
-            "--languages", ",".join(config.languages),
-            "--start-date", config.time_range_start,
-            "--end-date", config.time_range_end,
-            "--quality-tier", config.quality_tier,
+            "--year", year,
             "--benchmark",
             "--non-interactive",
-            "--limit", str(settings.FINEDATA_BENCHMARK_SAMPLE_SIZE),
+            "--skip-dedup",  # Skip deduplication for faster benchmark
         ]
-
-        if config.estimated_scale:
-            cmd.extend(["--estimated-scale", config.estimated_scale])
 
         return cmd
 
     async def _build_production_command(self, config: ProductionConfig) -> list:
         """Build command for production pipeline"""
+        # Extract year from time range for Common Crawl dump selection
+        year = config.time_range_start[:4] if config.time_range_start else "2024"
+
         cmd = [
             "python", str(self.finewebdata_script),
             "--domain", config.domain,
             "--mode", "slurm",
-            "--keywords", ",".join(config.keywords),
-            "--languages", ",".join(config.languages),
-            "--start-date", config.time_range_start,
-            "--end-date", config.time_range_end,
-            "--quality-tier", config.quality_tier,
+            "--year", year,
+            "--cluster-name", f"production-{config.order_id[:8]}",
             "--output-bucket", f"finedata-production-{config.order_id}",
-            "--use-llm-scoring",
-            "--gpu",
             "--non-interactive",
         ]
 
@@ -277,19 +271,33 @@ class FineWebDataService:
                 "returncode": -1
             }
 
-    async def _parse_benchmark_results(self, output: dict, job_id: str) -> BenchmarkResult:
+    async def _parse_benchmark_results(self, output: str, job_id: str) -> BenchmarkResult:
         """Parse benchmark pipeline output"""
         # Extract metrics from finewebdata output
         # This handles the actual finewebdata output format
 
         try:
-            logger.info("Parsing benchmark results", job_id=job_id)
+            logger.info("Parsing benchmark results", job_id=job_id, output_sample=output[:200])
 
-            # Extract metrics from pipeline output
-            # This handles the actual finewebdata output format
+            # Parse JSON output from finewebdata script
+            try:
+                parsed_output = json.loads(output.strip())
+                stats = parsed_output.get("stats", {})
+                quality_metrics = parsed_output.get("quality_metrics", {})
+            except json.JSONDecodeError:
+                # Fallback: try to parse the last line as JSON (finewebdata may output multiple lines)
+                lines = output.strip().split('\n')
+                parsed_output = {}
+                for line in reversed(lines):
+                    if line.strip():
+                        try:
+                            parsed_output = json.loads(line.strip())
+                            break
+                        except json.JSONDecodeError:
+                            continue
 
-            stats = output.get("stats", {})
-            quality_metrics = output.get("quality_metrics", {})
+                stats = parsed_output.get("stats", {})
+                quality_metrics = parsed_output.get("quality_metrics", {})
 
             # Parse document statistics
             docs_read = stats.get("total_docs_processed", settings.FINEDATA_BENCHMARK_SAMPLE_SIZE)
@@ -315,7 +323,7 @@ class FineWebDataService:
                 {"technology": 340000, "science": 212500, "general": 170000, "business": 85000, "other": 42500})
 
             # Generate sample URL
-            sample_url = output.get("sample_s3_url", "")
+            sample_url = parsed_output.get("sample_s3_url", "")
             if not sample_url:
                 sample_url = f"https://s3.amazonaws.com/{settings.S3_BUCKET_SAMPLES}/benchmark-{job_id}-sample.jsonl.gz"
 
