@@ -88,7 +88,6 @@ export interface Translations {
     signInMessage: string;
     signInButton: string;
     recentTasks: string;
-    taskDomain: string;
     loadingTasks: string;
     noTasksFound: string;
     createFirstTask: string;

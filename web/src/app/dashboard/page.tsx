@@ -230,7 +230,7 @@ export default function DashboardPage() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.type')}</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.status')}</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.progress')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.taskDomain')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('taskDomain')}</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.createdAt')}</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('dashboard.table.actions')}</th>
               </tr>
