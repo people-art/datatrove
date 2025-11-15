@@ -93,6 +93,7 @@ export interface Order {
     invoice_url?: string;
   };
   error?: string;
+  last_logs?: string;
 }
 
 // Component Props Types

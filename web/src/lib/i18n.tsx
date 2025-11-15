@@ -17,6 +17,7 @@ export interface Translations {
     dashboard: string;
     signin: string;
     signout: string;
+    signedInAs: string;
   createDataset: string;
   };
   home: {
@@ -164,6 +165,7 @@ const translations: Record<Language, Translations> = {
       dashboard: 'Dashboard',
       signin: 'Sign in',
       signout: 'Sign out',
+      signedInAs: 'Signed in as',
     createDataset: 'Create Dataset',
     },
     home: {
@@ -338,6 +340,8 @@ const translations: Record<Language, Translations> = {
     docs: '文档',
       dashboard: '控制台',
       signin: '登录',
+      signout: '登出',
+      signedInAs: '已登录为',
     createDataset: '创建数据集',
     },
     home: {

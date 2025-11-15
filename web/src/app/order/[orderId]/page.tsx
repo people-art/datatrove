@@ -386,14 +386,6 @@ export default function OrderPage({ params }: OrderPageProps) {
                             {order.error}
                           </p>
                         </div>
-                        {order.error_code && (
-                          <div>
-                            <h4 className="font-medium mb-2">Error Code</h4>
-                            <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
-                              {order.error_code}
-                            </p>
-                          </div>
-                        )}
                         {order.last_logs && (
                           <div>
                             <h4 className="font-medium mb-2">Recent Logs</h4>

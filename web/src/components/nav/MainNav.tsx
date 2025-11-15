@@ -135,7 +135,7 @@ export function MainNav() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+                    onClick={() => handleLanguageChange(language === 'en' ? 'zh' : 'en')}
                     className="flex items-center gap-1.5 justify-start"
                   >
                     <span>{language === 'en' ? '中文' : 'EN'}</span>
@@ -150,7 +150,7 @@ export function MainNav() {
                     {isAuthenticated ? (
                       <div className="space-y-2">
                         <div className="text-sm text-neutral-600 text-center py-2">
-                          Signed in as {user?.name || 'User'}
+                          {t('nav.signedInAs')} {user?.name || 'User'}
                         </div>
                         <Button
                           onClick={() => {
@@ -160,7 +160,7 @@ export function MainNav() {
                           variant="outline"
                           className="w-full"
                         >
-                          Sign out
+                          {t('nav.signout')}
                         </Button>
                       </div>
                     ) : (
