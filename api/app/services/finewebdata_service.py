@@ -58,6 +58,7 @@ class BenchmarkResult:
     domain_dist: Dict[str, int]
     sample_url: str
     suggested_params: Dict[str, Any]
+    sample_documents: List[Dict[str, Any]] = None
 
 
 @dataclass
@@ -355,6 +356,7 @@ class FineWebDataService:
                 domain_dist=domain_dist,
                 sample_url=sample_url,
                 suggested_params=suggested_params,
+                sample_documents=sample_documents,
             )
 
             logger.info("Benchmark results parsed successfully", job_id=job_id)
