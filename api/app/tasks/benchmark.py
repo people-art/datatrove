@@ -42,7 +42,7 @@ async def _update_job_status(job_id: str, mock_progress: dict, mock_metrics: dic
                     toxicity_rate=mock_metrics["toxicity_rate"],
                     lang_dist=mock_metrics["lang_dist"],
                     domain_dist=mock_metrics["domain_dist"],
-                    sample_url=f"https://s3.amazonaws.com/finedata-dev-samples/benchmark-{job_id}-sample.jsonl.gz",
+                    sample_url=f"https://s3.amazonaws.com/{settings.S3_BUCKET_SAMPLES}/benchmark-{job_id}-sample.jsonl.gz",
                     suggested_params={
                         "thresholds": {"domain": 3, "quality": 2},
                         "filters": {"min_words": 100, "max_pii_score": 0.1}
