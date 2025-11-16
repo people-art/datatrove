@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_DEFAULT_REGION: str = "us-east-1"
     S3_BUCKET_DATASETS: str = "finedata-datasets"
-    S3_BUCKET_SAMPLES: str = "finedata-samples"
+    S3_BUCKET_SAMPLES: str = "fineweb-data"
 
     # Hugging Face
     HF_TOKEN: str = ""

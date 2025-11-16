@@ -65,7 +65,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
       - S3_BUCKET_DATASETS=finedata-dev-datasets
-      - S3_BUCKET_SAMPLES=finedata-dev-samples
+      - S3_BUCKET_SAMPLES=fineweb-data
       # Hugging Face (optional for development)
       - HF_TOKEN=${HF_TOKEN:-}
       - HF_ORG_NAME=${HF_ORG_NAME:-}
@@ -176,7 +176,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
       - S3_BUCKET_DATASETS=finedata-dev-datasets
-      - S3_BUCKET_SAMPLES=finedata-dev-samples
+      - S3_BUCKET_SAMPLES=fineweb-data
       # Hugging Face (optional for development)
       - HF_TOKEN=${HF_TOKEN:-}
       - HF_USERNAME=${HF_USERNAME:-}
