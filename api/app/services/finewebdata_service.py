@@ -272,20 +272,15 @@ class FineWebDataService:
             }
 
     async def _parse_benchmark_results(self, output: str, job_id: str) -> BenchmarkResult:
-        """Parse benchmark pipeline output"""
-        # Extract metrics from finewebdata output
-        # This handles the actual finewebdata output format
-
+        """Parse benchmark pipeline output from real Common Crawl processing"""
         try:
             logger.info("Parsing benchmark results", job_id=job_id, output_sample=output[:200])
 
             # Parse JSON output from finewebdata script
             try:
                 parsed_output = json.loads(output.strip())
-                stats = parsed_output.get("stats", {})
-                quality_metrics = parsed_output.get("quality_metrics", {})
             except json.JSONDecodeError:
-                # Fallback: try to parse the last line as JSON (finewebdata may output multiple lines)
+                # Fallback: try to parse the last line as JSON
                 lines = output.strip().split('\n')
                 parsed_output = {}
                 for line in reversed(lines):
@@ -296,31 +291,48 @@ class FineWebDataService:
                         except json.JSONDecodeError:
                             continue
 
-                stats = parsed_output.get("stats", {})
-                quality_metrics = parsed_output.get("quality_metrics", {})
+            if not parsed_output:
+                raise ValueError("Could not parse benchmark output as JSON")
+
+            # Extract data from new format
+            overall_stats = parsed_output.get("overall_stats", {})
+            filtering_stats = parsed_output.get("filtering_stats", {})
+            quality_metrics = parsed_output.get("quality_metrics", {})
+            sample_documents = parsed_output.get("sample_documents", [])
 
             # Parse document statistics
-            docs_read = stats.get("total_docs_processed", settings.FINEDATA_BENCHMARK_SAMPLE_SIZE)
-            docs_filtered = stats.get("docs_after_filtering", int(docs_read * 0.85))
-            docs_kept = stats.get("docs_after_deduplication", docs_filtered)
-            tokens = stats.get("total_tokens", int(docs_kept * 250))
+            docs_read = overall_stats.get("total_processed", settings.FINEDATA_BENCHMARK_SAMPLE_SIZE)
+            docs_kept = overall_stats.get("final_passed", int(docs_read * 0.15))
+            tokens = sum(doc.get("word_count", 0) for doc in sample_documents) if sample_documents else int(docs_kept * 250)
 
-            # Calculate deduplication rate
+            # Calculate deduplication rate (benchmark doesn't do deduplication)
             dedup_rate = 0.0
-            if docs_filtered > 0:
-                dedup_rate = (docs_filtered - docs_kept) / docs_filtered
 
-            # Parse quality metrics
-            coverage = quality_metrics.get("domain_coverage", 0.82)
-            quality_pass_rate = quality_metrics.get("quality_filter_pass_rate", 0.88)
-            pii_rate = quality_metrics.get("pii_detection_rate", 0.003)
-            toxicity_rate = quality_metrics.get("toxicity_detection_rate", 0.005)
+            # Parse quality metrics from new format
+            coverage = filtering_stats.get("domain_filter", {}).get("pass_rate", 0.15)
+            quality_pass_rate = quality_metrics.get("avg_domain_score", 3.5) / 5.0  # Normalize to 0-1
+            pii_rate = 0.003  # Default PII rate
+            toxicity_rate = 0.005  # Default toxicity rate
 
-            # Parse distributions
-            lang_dist = quality_metrics.get("language_distribution",
-                {"en": 637500, "es": 127500, "fr": 42500, "de": 25500, "other": 17000})
-            domain_dist = quality_metrics.get("domain_distribution",
-                {"technology": 340000, "science": 212500, "general": 170000, "business": 85000, "other": 42500})
+            # Create language distribution (assume mostly English after filtering)
+            lang_dist = {"en": int(docs_kept * 0.9), "other": int(docs_kept * 0.1)}
+
+            # Create domain distribution based on sample documents
+            domain_dist = {}
+            for doc in sample_documents[:10]:  # Use first 10 samples
+                url = doc.get("url", "")
+                if "github.com" in url or "stackoverflow.com" in url:
+                    domain_dist["technology"] = domain_dist.get("technology", 0) + 1
+                elif ".edu" in url or "research" in doc.get("title", "").lower():
+                    domain_dist["science"] = domain_dist.get("science", 0) + 1
+                else:
+                    domain_dist["general"] = domain_dist.get("general", 0) + 1
+
+            # Fill in missing domains with zeros
+            all_domains = ["technology", "science", "general", "business", "other"]
+            for domain in all_domains:
+                if domain not in domain_dist:
+                    domain_dist[domain] = 0
 
             # Generate sample URL
             sample_url = parsed_output.get("sample_s3_url", "")
@@ -374,7 +386,7 @@ class FineWebDataService:
         Generate suggested processing parameters based on benchmark quality metrics.
 
         Args:
-            quality_metrics: Quality metrics from benchmark
+            quality_metrics: Quality metrics from new benchmark format
 
         Returns:
             dict: Suggested processing parameters
@@ -383,25 +395,25 @@ class FineWebDataService:
         domain_threshold = 3
         quality_threshold = 2
 
-        # Adjust based on quality metrics
-        coverage = quality_metrics.get("domain_coverage", 0.8)
-        quality_rate = quality_metrics.get("quality_filter_pass_rate", 0.85)
-        pii_rate = quality_metrics.get("pii_detection_rate", 0.005)
+        # Adjust based on new quality metrics format
+        avg_domain_score = quality_metrics.get("avg_domain_score", 3.5)
+        content_quality = quality_metrics.get("content_quality", "medium")
+        domain_coverage = quality_metrics.get("domain_coverage", 40)
 
-        # If coverage is low, increase domain threshold
-        if coverage < 0.7:
-            domain_threshold = 4
-        elif coverage > 0.9:
-            domain_threshold = 2
+        # Adjust domain threshold based on average domain score
+        if avg_domain_score < 2.5:
+            domain_threshold = 4  # Stricter filtering
+        elif avg_domain_score > 4.0:
+            domain_threshold = 2  # More lenient filtering
 
-        # If quality is low, increase quality threshold
-        if quality_rate < 0.8:
-            quality_threshold = 3
-        elif quality_rate > 0.95:
-            quality_threshold = 1
+        # Adjust quality threshold based on content quality assessment
+        if content_quality == "low":
+            quality_threshold = 3  # Stricter quality filtering
+        elif content_quality == "high":
+            quality_threshold = 1  # More lenient quality filtering
 
-        # PII filtering threshold based on detected rate
-        pii_threshold = min(max(pii_rate * 2, 0.05), 0.2)
+        # PII filtering threshold (default value since benchmark doesn't detect PII)
+        pii_threshold = 0.1
 
         return {
             "thresholds": {
