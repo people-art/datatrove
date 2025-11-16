@@ -7,7 +7,7 @@ import json
 import subprocess
 import asyncio
 import tempfile
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 from dataclasses import dataclass
 import structlog
