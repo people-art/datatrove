@@ -359,6 +359,13 @@ class FineWebDataService:
                 sample_documents=sample_documents,
             )
 
+            # DEBUG: Log sample_documents info
+            print(f"DEBUG: BenchmarkResult created with sample_documents: {len(sample_documents) if sample_documents else 0} items")
+            if sample_documents:
+                print(f"DEBUG: First sample: {sample_documents[0] if sample_documents else None}")
+            else:
+                print("DEBUG: sample_documents is empty or None")
+
             logger.info("Benchmark results parsed successfully", job_id=job_id)
             return parsed_results
 
