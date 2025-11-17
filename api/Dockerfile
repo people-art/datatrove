@@ -30,8 +30,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install datatrove library (for finewebdata pipeline) - core only
-RUN pip install datatrove==0.6.0
 
 # Copy application code
 COPY . .
