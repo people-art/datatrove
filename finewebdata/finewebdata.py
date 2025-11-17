@@ -30,11 +30,16 @@ for env_path in ['.env', '../.env', './.env']:
 if not env_loaded:
     print("⚠️  No .env file found in current directory or parent directory")
 
-# Configure anonymous access for Common Crawl (public bucket)
-# Clear credentials for anonymous access to Common Crawl
-os.environ['AWS_ACCESS_KEY_ID'] = ''  # Clear credentials for anonymous access
-os.environ['AWS_SECRET_ACCESS_KEY'] = ''  # Clear credentials for anonymous access
-os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+# Configure AWS access for Common Crawl
+# Common Crawl requires authenticated access to S3, not anonymous
+# AWS credentials should be available in environment or ~/.aws/credentials
+if 'AWS_DEFAULT_REGION' not in os.environ:
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+
+# Ensure AWS credentials are available for DataTrove S3 access
+if not os.environ.get('AWS_ACCESS_KEY_ID') or not os.environ.get('AWS_SECRET_ACCESS_KEY'):
+    print("⚠️  AWS credentials not found in environment variables")
+    print("   DataTrove will attempt to use credentials from ~/.aws/credentials or IAM roles")
 
 from datatrove.executor.local import LocalPipelineExecutor
 from datatrove.executor.slurm import SlurmPipelineExecutor
@@ -120,35 +125,39 @@ class DomainOntology:
 
 
 @contextmanager
-def cc_anonymous_read():
-    """Context manager for Common Crawl S3 access using AWS credentials"""
+def cc_s3_read():
+    """Context manager for Common Crawl S3 access using AWS credentials
+
+    DataTrove integrates with s3fs/fsspec for S3 access. This function provides
+    a properly configured S3 filesystem for Common Crawl data access.
+    """
     import s3fs
-    # Use the AWS credentials that are already configured in the environment
 
     try:
-        # Explicitly pass credentials from environment to ensure they are used
+        # Get AWS credentials from environment or boto3 session
         aws_key = os.environ.get('AWS_ACCESS_KEY_ID')
         aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY')
         aws_token = os.environ.get('AWS_SESSION_TOKEN')
         aws_region = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
 
-        if not aws_key or not aws_secret:
-            raise ValueError("AWS credentials not found in environment")
+        # Create S3 filesystem - DataTrove will handle credential resolution automatically
+        # if credentials are not explicitly provided, s3fs will use boto3 credential chain
+        fs_kwargs = {'client_kwargs': {'region_name': aws_region}}
 
-        # Create S3 filesystem with explicit credentials
-        fs = s3fs.S3FileSystem(
-            key=aws_key,
-            secret=aws_secret,
-            token=aws_token,
-            client_kwargs={'region_name': aws_region}
-        )
+        if aws_key and aws_secret:
+            fs_kwargs.update({
+                'key': aws_key,
+                'secret': aws_secret,
+                'token': aws_token,
+            })
+
+        fs = s3fs.S3FileSystem(**fs_kwargs)
         yield fs
+
     except Exception as e:
-        print(f"⚠️  Failed to create authenticated S3 filesystem: {e}")
-        print("   Falling back to anonymous access...")
-        # Fallback to anonymous access if credentials fail
-        fs = s3fs.S3FileSystem(anon=True)
-        yield fs
+        print(f"❌ Failed to create S3 filesystem for Common Crawl access: {e}")
+        print("   Please ensure AWS credentials are properly configured")
+        raise
 
 
 DUMP_TO_PROCESS = "CC-MAIN-2023-50"  # example dump
@@ -759,14 +768,22 @@ def run_domain_benchmarks(args):
 
     print(f"\n🔄 Setting up benchmark filtering pipeline...")
 
-    # Create benchmark pipeline with real Common Crawl data
-    # Use S3 access with AWS credentials
-    with cc_anonymous_read() as fs:
-        from datatrove.io import DataFolder
-        data_folder = DataFolder(
-            path=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
-            fs=fs  # Use authenticated S3 filesystem
-        )
+    # Create benchmark pipeline with real Common Crawl data using DataTrove best practices
+    # DataTrove integrates seamlessly with fsspec/s3fs for S3 access
+    from datatrove.io import DataFolder
+
+    print(f"🔗 Accessing Common Crawl data at: s3://commoncrawl/crawl-data/{dump_to_process}/segments/")
+    print("   DataTrove will use AWS credentials from environment, ~/.aws/credentials, or IAM roles"
+
+    data_folder = DataFolder(
+        path=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
+        # DataTrove automatically handles S3 authentication via fsspec
+        # AWS credentials are resolved in this order:
+        # 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        # 2. ~/.aws/credentials file
+        # 3. IAM roles (for EC2/ECS/EKS)
+        # 4. Other boto3 credential providers
+    )
 
     warc_reader = WarcReader(
         data_folder=data_folder,
@@ -1137,13 +1154,17 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
     ontology = DOMAIN_ONTOLOGIES[domain]
     print(f"📚 Using domain ontology with {len(ontology.keywords)} keywords, {len(ontology.technical_terms)} technical terms")
 
-    # Create WarcReader with anonymous Common Crawl access
-    with cc_anonymous_read() as fs:
-        from datatrove.io import DataFolder
-        data_folder = DataFolder(
-            path=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
-            fs=fs  # Use anonymous filesystem
-        )
+    # Create WarcReader with authenticated Common Crawl S3 access using DataTrove best practices
+    from datatrove.io import DataFolder
+
+    print(f"🔗 Accessing Common Crawl data at: s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/")
+    print("   DataTrove will use AWS credentials from environment, ~/.aws/credentials, or IAM roles"
+
+    data_folder = DataFolder(
+        path=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
+        # DataTrove automatically handles S3 authentication via fsspec
+        # AWS credentials are resolved automatically by boto3 credential chain
+    )
         warc_reader = WarcReader(
             data_folder=data_folder,
             glob_pattern="*/warc/*",  # we want the warc files
