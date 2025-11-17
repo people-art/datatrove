@@ -754,12 +754,16 @@ def run_domain_benchmarks(args):
     # Create benchmark pipeline with real Common Crawl data
     # Similar to fineweb-med.py implementation
     with cc_anonymous_read() as fs:
+        from datatrove.io import DataFolder
+        data_folder = DataFolder(
+            path=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
+            fs=fs  # Use anonymous filesystem
+        )
         warc_reader = WarcReader(
-            data_folder=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
+            data_folder=data_folder,
             glob_pattern="*/warc/CC-MAIN-*.warc.gz",
             default_metadata={"dump": dump_to_process, "dataset": f"benchmark-{domain_slug}"},
             limit=sample_size + 1000,  # Limit to sample_size + buffer
-            fs=fs  # Use anonymous filesystem
         )
 
     # Create benchmark sampler to collect sample documents
@@ -1126,11 +1130,15 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
 
     # Create WarcReader with anonymous Common Crawl access
     with cc_anonymous_read() as fs:
+        from datatrove.io import DataFolder
+        data_folder = DataFolder(
+            path=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
+            fs=fs  # Use anonymous filesystem
+        )
         warc_reader = WarcReader(
-            data_folder=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
+            data_folder=data_folder,
             glob_pattern="*/warc/*",  # we want the warc files
             default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain_slug}"},
-            fs=fs  # Use anonymous filesystem
         )
 
     pipeline = [warc_reader,
