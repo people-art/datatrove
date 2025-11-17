@@ -121,22 +121,22 @@ class DomainOntology:
 
 @contextmanager
 def cc_anonymous_read():
-    """Context manager for anonymous Common Crawl S3 access"""
+    """Context manager for Common Crawl S3 access using AWS credentials"""
     import s3fs
-    backup = {k: os.environ.get(k) for k in ("AWS_ACCESS_KEY_ID","AWS_SECRET_ACCESS_KEY","AWS_SESSION_TOKEN")}
-    # Clear credentials for anonymous access
-    os.environ["AWS_ACCESS_KEY_ID"] = ""
-    os.environ["AWS_SECRET_ACCESS_KEY"] = ""
-    os.environ.pop("AWS_SESSION_TOKEN", None)
+    # Use the AWS credentials that are already configured in the environment
+    # No need to modify environment variables - they should already be set by docker-compose
 
     try:
-        # Create anonymous S3 filesystem for Common Crawl access
+        # Create S3 filesystem using the configured AWS credentials
+        # Common Crawl allows authenticated access to their public data
+        fs = s3fs.S3FileSystem()
+        yield fs
+    except Exception as e:
+        print(f"⚠️  Failed to create authenticated S3 filesystem: {e}")
+        print("   Falling back to anonymous access...")
+        # Fallback to anonymous access if credentials fail
         fs = s3fs.S3FileSystem(anon=True)
         yield fs
-    finally:
-        for k,v in backup.items():
-            if v is None: os.environ.pop(k, None)
-            else: os.environ[k] = v
 
 
 DUMP_TO_PROCESS = "CC-MAIN-2023-50"  # example dump
@@ -759,17 +759,13 @@ def run_domain_benchmarks(args):
     print(f"\n🔄 Setting up benchmark filtering pipeline...")
 
     # Create benchmark pipeline with real Common Crawl data
-    # Use HTTP access instead of S3 since anonymous S3 access is blocked
-    from datatrove.io import DataFolder
-    import fsspec
-
-    # Use HTTP filesystem for Common Crawl access
-    # Common Crawl provides HTTP access to their data
-    http_fs = fsspec.filesystem('http')
-    data_folder = DataFolder(
-        path=f"https://data.commoncrawl.org/crawl-data/{dump_to_process}/segments/",
-        fs=http_fs
-    )
+    # Use S3 access with AWS credentials
+    with cc_anonymous_read() as fs:
+        from datatrove.io import DataFolder
+        data_folder = DataFolder(
+            path=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
+            fs=fs  # Use authenticated S3 filesystem
+        )
 
     warc_reader = WarcReader(
         data_folder=data_folder,
