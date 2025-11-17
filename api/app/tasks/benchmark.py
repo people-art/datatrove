@@ -261,11 +261,13 @@ async def upload_benchmark_sample_to_s3(job_id: str, result) -> str:
         # Handle both BenchmarkResult object and dict formats
         if hasattr(result, 'sample_documents'):
             sample_documents = result.sample_documents
+            logger.info("Found sample_documents in result object", job_id=job_id, count=len(sample_documents) if sample_documents else 0)
         elif isinstance(result, dict) and 'sample_documents' in result:
             sample_documents = result['sample_documents']
+            logger.info("Found sample_documents in result dict", job_id=job_id, count=len(sample_documents) if sample_documents else 0)
 
         if not sample_documents:
-            logger.warning("No sample documents found in benchmark result", job_id=job_id)
+            logger.warning("No sample documents found in benchmark result", job_id=job_id, result_type=type(result), has_attr=hasattr(result, 'sample_documents'))
             return None
 
         # Create temporary JSONL file
