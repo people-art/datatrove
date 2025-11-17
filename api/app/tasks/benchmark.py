@@ -102,6 +102,7 @@ def benchmark_task(self, job_id: str):
             "domain_dist": result.domain_dist,
             "sample_url": result.sample_url,
             "suggested_params": result.suggested_params,
+            "sample_documents": result.sample_documents,  # Add sample documents for S3 upload
         }
 
         # Update job status in database
