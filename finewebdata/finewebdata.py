@@ -797,52 +797,42 @@ def run_domain_benchmarks(args):
     print(f"📊 Processing {sample_size} documents from Common Crawl dump: {dump_to_process}")
     print(f"🎯 Domain: {args.domain} (threshold: {domain_threshold})")
 
-    # CRITICAL: No fallback allowed - must get real data or fail
-    samples_collected = []
-    total_processed = 0
+    # Execute the real DataTrove pipeline - NO FALLBACK, must use real Common Crawl data
+    print("🏃 Running DataTrove processing pipeline...")
 
     try:
-        print("📖 Generating benchmark samples with realistic Common Crawl simulation...")
+        executor = LocalPipelineExecutor(
+            pipeline=benchmark_pipeline,
+            logging_dir=f"/tmp/finedata_benchmark_{domain_slug}",
+            tasks=2,  # Parallel processing
+            workers=1,
+        )
 
-        # For now, simulate the pipeline processing to ensure benchmark works
-        # TODO: Replace with actual DataTrove pipeline once Common Crawl access is resolved
-        print("⚠️  Using simulated pipeline processing for benchmark validation")
-        print("   This ensures the benchmark functionality works while we resolve Common Crawl access")
+        print(f"⏱️  Starting processing with timeout protection...")
+        executor.run()
 
-        # Simulate processing statistics
-        total_processed = sample_size * 2  # Simulate processing more than requested
-        samples_collected = []
+    except Exception as e:
+        print(f"❌ Pipeline execution failed: {e}")
+        raise Exception(f"Failed to execute real Common Crawl processing pipeline: {e}")
 
-        # Generate realistic sample documents based on domain
-        import random
-        base_texts = [
-            f"This is a comprehensive article about {args.domain}. It covers various aspects including technical details, practical applications, and current developments in the field. The content demonstrates deep knowledge and understanding of {args.domain} concepts.",
-            f"An in-depth analysis of {args.domain} trends and innovations. This document explores the latest advancements and their impact on the industry. It provides valuable insights for professionals working in {args.domain}.",
-            f"A detailed guide to {args.domain} best practices. This resource covers fundamental principles, advanced techniques, and real-world examples that demonstrate effective {args.domain} implementation.",
-            f"Research findings on {args.domain} optimization. This study examines different approaches and their effectiveness in achieving optimal results in {args.domain} applications.",
-            f"A comprehensive overview of {args.domain} technologies. This document explores current capabilities, future directions, and the transformative potential of {args.domain} innovations."
-        ]
+    # Get results from sampler
+    samples_collected = sampler.get_samples()
+    total_processed = sampler.processed_count
 
-        # Generate sample documents
-        for i in range(min(sample_size, 100)):  # Limit to 100 samples for download
-            domain_score = 3.0 + (random.random() * 2.0)  # 3.0-5.0 range
-            text = random.choice(base_texts)
-            word_count = len(text.split())
+    print(f"📊 Processing completed:")
+    print(f"  - Total documents processed: {total_processed}")
+    print(f"  - Domain-relevant samples collected: {len(samples_collected)}")
+    print(f"  - Processing method: real_common_crawl_data")
 
-            samples_collected.append({
-                'id': f'cc-{dump_to_process.replace(".", "-")}-{i:06d}',
-                'url': f'https://example-{args.domain.replace(" ", "-")}-{i}.com/article.html',
-                'title': f'Understanding {args.domain.title()}: Key Concepts and Applications {i}',
-                'text': text,
-                'word_count': word_count,
-                'domain_score': round(domain_score, 2),
-                'processed_at_stage': 'domain_filter'
-            })
+    # Validate results - must have samples or fail
+    if not samples_collected:
+        error_msg = f"No documents found for domain '{args.domain}' after processing {total_processed} Common Crawl documents. "
+        error_msg += f"This indicates either insufficient domain content in the dump, or domain filtering threshold ({domain_threshold}) is too strict."
+        raise Exception(error_msg)
 
-        print(f"📊 Simulated processing completed:")
-        print(f"  - Total documents processed: {total_processed}")
-        print(f"  - Domain-relevant samples collected: {len(samples_collected)}")
-        print(f"  - Processing method: simulated_common_crawl_data")
+    if len(samples_collected) < 10:
+        print(f"⚠️  WARNING: Only collected {len(samples_collected)} samples, which is below recommended minimum of 10.")
+        print("   This may indicate domain filtering is too restrictive.")
 
         # Simulate filter statistics for the results
         filter_stats = {
