@@ -10,7 +10,7 @@ python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 stripe==7.4.0
-boto3==1.34.0
+boto3==1.28.0
 redis==5.0.1
 celery==5.3.4
 sendgrid==6.11.0
@@ -37,3 +37,4 @@ tokenizers==0.22.1
 faust-cchardet==2.1.18
 python-magic==0.4.27
 warcio==1.7.4
+s3fs==2023.6.0
