@@ -739,7 +739,9 @@ def run_domain_benchmarks(args):
     available_dumps = get_available_dumps(year)
     if not available_dumps:
         print(f"❌ No Common Crawl dumps found for year {year}")
-        return
+        # Fallback to a known working dump
+        available_dumps = ["CC-MAIN-2023-50"]
+        print(f"🔄 Falling back to known dump: {available_dumps[0]}")
 
     dump_to_process = available_dumps[0]  # Use the first (most recent) dump
     print(f"  Using dump: {dump_to_process}")
