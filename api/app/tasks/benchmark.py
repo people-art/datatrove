@@ -84,37 +84,9 @@ def benchmark_task(self, job_id: str):
         )
 
         # Run benchmark pipeline using FineWebData service
+        # CRITICAL: NO FALLBACK ALLOWED - must get real Common Crawl data
         finewebdata_service = FineWebDataService()
-        try:
-            result = asyncio.run(finewebdata_service.run_benchmark_pipeline(benchmark_config))
-        except Exception as pipeline_error:
-            logger.warning("Benchmark pipeline failed, using fallback data", job_id=job_id, error=str(pipeline_error))
-            # Create fallback BenchmarkResult with sample documents
-            result = BenchmarkResult(
-                docs_read=1000,  # Updated to match new sample size
-                docs_kept=150,   # Estimate 15% pass domain filter
-                tokens=37500,    # Estimate tokens based on docs_kept * 250
-                dedup_rate=0.15,
-                coverage=0.82,
-                quality_pass_rate=0.88,
-                pii_rate=0.003,
-                toxicity_rate=0.005,
-                lang_dist={"en": 127, "es": 12, "fr": 6, "de": 3, "other": 2},  # Scaled down
-                domain_dist={"technology": 51, "science": 32, "general": 26, "business": 13, "other": 28},  # Scaled down
-                sample_url=f"https://s3.amazonaws.com/{settings.S3_BUCKET_SAMPLES}/benchmark-{job_id}-sample.jsonl.gz",
-                suggested_params={"thresholds": {"domain": 3, "quality": 2}, "filters": {"min_words": 100, "max_pii_score": 0.1}},
-                sample_documents=[
-                    {
-                        "id": f"cc-fallback-{i}",
-                        "url": f"https://example-{job_config['domain'].replace(' ', '-')}-{i}.com",
-                        "title": f"Sample Document {i} - {job_config['domain'].title()}",
-                        "text": f"This is real web content extracted from Common Crawl about {job_config['domain']}. It contains relevant information and demonstrates the actual filtering process. The content covers various aspects of {job_config['domain']} including technical details, practical applications, and current developments in the field. This document passed all quality filters and domain relevance checks.",
-                        "word_count": 85,  # Realistic word count
-                        "domain_score": 4.2 - (i * 0.1),  # Decreasing scores
-                        "processed_at_stage": "domain_filter"
-                    } for i in range(1, 101)  # Create 100 sample documents
-                ]
-            )
+        result = asyncio.run(finewebdata_service.run_benchmark_pipeline(benchmark_config))
 
         # Convert BenchmarkResult to dict for database operations
         result_dict = {

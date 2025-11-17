@@ -791,220 +791,133 @@ def run_domain_benchmarks(args):
         LambdaFilter(sampler),  # This will collect samples
     ]
 
-    # Execute benchmark using real Common Crawl data
-    print(f"\n🚀 Executing benchmark analysis using real Common Crawl data...")
+    # Execute benchmark using ONLY real Common Crawl data - NO FALLBACK ALLOWED
+    print(f"\n🚀 Executing benchmark analysis using ONLY real Common Crawl data...")
+    print(f"📊 Processing {sample_size} documents from Common Crawl dump: {dump_to_process}")
+    print(f"🎯 Domain: {args.domain} (threshold: {domain_threshold})")
 
-    # Multiple strategies to collect real Common Crawl data
+    # CRITICAL: No fallback allowed - must get real data or fail
     samples_collected = []
     total_processed = 0
 
-    # Strategy 1: Direct manual reading with small sample
-    print("📖 Strategy 1: Direct reading from Common Crawl...")
     try:
         from datatrove.data import Document
         from trafilatura import extract
 
-        # Create reader with very small limit for testing
-        test_reader = WarcReader(
+        print("📖 Reading Common Crawl WARC files...")
+
+        # Use full pipeline approach to ensure we get real data
+        # Set a reasonable limit to avoid infinite processing
+        processing_limit = min(sample_size * 2, 10000)  # Process up to 10k docs or 2x sample_size
+
+        warc_reader = WarcReader(
             data_folder=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
             glob_pattern="*/warc/CC-MAIN-*.warc.gz",
-            limit=500  # Small limit to avoid timeout
+            limit=processing_limit
         )
 
-        raw_documents = []
-        doc_count = 0
+        # Create sampler for collecting domain-relevant samples
+        sampler = BenchmarkDocumentSampler(max_samples=sample_size, domain=args.domain)
 
-        # Collect raw documents
-        for doc in test_reader:
-            if doc_count >= 200:  # Collect 200 raw documents
-                break
-
-            try:
-                # Extract text using trafilatura
-                if doc.text:
-                    text = extract(doc.text, include_comments=False, include_tables=False) or ""
-                    if text and len(text.split()) >= 20:  # Basic quality check
-                        raw_documents.append({
-                            'id': f'cc-{doc_count}',
-                            'url': doc.metadata.get('url', ''),
-                            'title': self._extract_title_from_text(text),
-                            'text': text,
-                            'word_count': len(text.split()),
-                            'raw_html': doc.text[:200] if doc.text else ''
-                        })
-                        doc_count += 1
-            except Exception as doc_error:
-                continue
-
-        if raw_documents:
-            print(f"✅ Collected {len(raw_documents)} raw documents from Common Crawl")
-
-            # Apply language filtering (keep only English)
-            english_docs = []
-            for doc in raw_documents:
-                # Simple English detection - check for common English words
-                text_lower = doc['text'].lower()
-                english_indicators = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for']
-                english_score = sum(1 for word in english_indicators if word in text_lower)
-
-                if english_score >= 3:  # Consider it English if it has several common English words
-                    english_docs.append(doc)
-
-            print(f"✅ After language filtering: {len(english_docs)} English documents")
-
-            # Apply length filtering
-            long_docs = [doc for doc in english_docs if doc['word_count'] >= 50]
-            print(f"✅ After length filtering: {len(long_docs)} documents with >=50 words")
-
-            # Apply domain filtering with different thresholds
-            domain_passed_docs = []
-            lenient_threshold = max(1, domain_threshold // 4)  # Very lenient threshold
-
-            for doc in long_docs:
-                try:
-                    score = domain_relevance_scorer(doc['text'], args.domain)
-                    if score >= lenient_threshold:
-                        doc['domain_score'] = score
-                        doc['processed_at_stage'] = 'domain_filter'
-                        domain_passed_docs.append(doc)
-                except Exception as score_error:
-                    # If scoring fails, include document with default score
-                    doc['domain_score'] = 2.0
-                    doc['processed_at_stage'] = 'domain_filter_fallback'
-                    domain_passed_docs.append(doc)
-
-            if domain_passed_docs:
-                samples_collected = domain_passed_docs[:100]  # Take up to 100 samples
-                total_processed = len(raw_documents)
-                print(f"✅ Final domain-filtered samples: {len(samples_collected)}")
-            else:
-                # If no documents pass domain filtering, take some anyway
-                samples_collected = long_docs[:50] if long_docs else english_docs[:30]
-                for doc in samples_collected:
-                    doc['domain_score'] = 1.5  # Low score but still include
-                    doc['processed_at_stage'] = 'lenient_domain_filter'
-                total_processed = len(raw_documents)
-                print(f"⚠️  Domain filtering too strict, using {len(samples_collected)} samples with relaxed criteria")
-
-    except Exception as e:
-        print(f"⚠️  Strategy 1 failed: {e}")
-
-    # Strategy 2: If Strategy 1 failed or got no samples, try simplified pipeline
-    if not samples_collected:
-        print("📖 Strategy 2: Simplified pipeline approach...")
-        try:
-            # Create much simpler pipeline with smaller limits
-            simple_sampler = BenchmarkDocumentSampler(max_samples=50, domain=args.domain)
-
-            simple_pipeline = [
-                WarcReader(
-                    data_folder=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
-                    glob_pattern="*/warc/CC-MAIN-*.warc.gz",
-                    limit=1000  # Small limit
-                ),
-                Trafilatura(favour_precision=True, timeout=2),
-                LanguageFilter(languages=["en"]),
-                LambdaFilter(lambda doc: len(doc.text.split()) >= 30),  # Lower length threshold
-                LambdaFilter(simple_sampler),  # Collect samples
-            ]
-
-            # Execute with timeout
-            import signal
-            from contextlib import contextmanager
-
-            @contextmanager
-            def timeout_context(seconds):
-                def timeout_handler(signum, frame):
-                    raise TimeoutError(f"Operation timed out after {seconds} seconds")
-
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(seconds)
-                try:
-                    yield
-                finally:
-                    signal.alarm(0)
-
-            try:
-                with timeout_context(120):  # 2 minute timeout
-                    simple_executor = LocalPipelineExecutor(
-                        pipeline=simple_pipeline,
-                        logging_dir=f"/tmp/finedata_benchmark_simple_{domain_slug}",
-                        tasks=1,
-                        workers=1,
-                    )
-                    simple_executor.run()
-
-                simple_samples = simple_sampler.get_samples()
-                if simple_samples:
-                    samples_collected = simple_samples
-                    total_processed = simple_sampler.processed_count
-                    print(f"✅ Strategy 2 succeeded: {len(samples_collected)} samples collected")
-
-            except TimeoutError:
-                print("⚠️  Strategy 2 timed out")
-
-        except Exception as e:
-            print(f"⚠️  Strategy 2 failed: {e}")
-
-    # Final fallback: Create samples based on real Common Crawl structure but with fallback content
-    if not samples_collected:
-        print("🔄 Using fallback with Common Crawl structure...")
-
-        total_processed = sample_size
-        samples_collected = []
-
-        # Create samples that mimic real Common Crawl URLs and structure
-        common_crawl_urls = [
-            "https://www.nytimes.com/2024/01/15/climate/paris-agreement-targets.html",
-            "https://www.bbc.com/news/science-environment-51234567",
-            "https://www.theguardian.com/environment/climate-crisis",
-            "https://www.scientificamerican.com/article/climate-change-is-here1/",
-            "https://www.nationalgeographic.com/environment/climate-change/",
-            "https://www.washingtonpost.com/climate-environment/",
-            "https://www.reuters.com/business/environment/climate-change/",
-            "https://www.nature.com/articles/s41586-024-12345-6",
-            "https://www.sciencedirect.com/science/article/pii/S001282522400123",
-            "https://academic.oup.com/bioscience/article/74/1/1/6554321"
+        # Build complete processing pipeline
+        processing_pipeline = [
+            warc_reader,
+            # Text extraction
+            Trafilatura(favour_precision=True, timeout=5),
+            # Language filtering - keep only English content
+            LanguageFilter(languages=["en"]),
+            # Length filtering - minimum 50 words for quality
+            LambdaFilter(lambda doc: len(doc.text.split()) >= 50),
+            # Quality filters
+            GopherQualityFilter(),
+            FineWebQualityFilter(),
+            # Domain content filtering - this is the critical benchmark test
+            LambdaFilter(
+                lambda doc: is_domain_content(doc.text, args.domain, domain_threshold),
+                name="domain_filter"
+            ),
+            # Collect samples that pass all filters
+            LambdaFilter(sampler, name="sample_collector")
         ]
 
-        import random
-        for i in range(min(100, sample_size)):  # Create up to 100 samples
-            url = random.choice(common_crawl_urls).replace('123', str(i)).replace('456', str(i+10))
+        print(f"🔧 Pipeline configured with {len(processing_pipeline)} stages")
+        print("🏃 Running DataTrove processing pipeline...")
 
-            # Create more realistic content based on the domain
-            if args.domain == "气候变化":
-                content_templates = [
-                    f"气候变化研究显示，过去几十年全球气温显著上升。科学家们通过分析冰芯和气象数据发现，人类活动导致的温室气体排放是主要原因。巴黎协定等国际协议旨在控制全球变暖在1.5摄氏度以内。",
-                    f"极端天气事件频率增加是气候变化的明显迹象。热浪、干旱、洪水和风暴的发生率显著上升，给农业、基础设施和公共卫生带来严峻挑战。",
-                    f"海洋酸化是气候变化的另一个严重后果。吸收过多二氧化碳导致海洋pH值下降，影响珊瑚礁和海洋生物的生存。",
-                    f"气候变化对生态系统的影响是多方面的。物种分布变化、生物多样性丧失、森林退化等问题日益突出。",
-                    f"可再生能源转型是应对气候变化的重要途径。太阳能、风能和水能等清洁能源的发展对于实现碳中和目标至关重要。"
-                ]
-            else:
-                content_templates = [
-                    f"This research paper examines {args.domain} from multiple perspectives. The study analyzes current trends and future implications.",
-                    f"Recent developments in {args.domain} have shown significant progress. Experts predict continued innovation in this field.",
-                    f"The impact of {args.domain} on modern society cannot be underestimated. Various stakeholders are involved in addressing related challenges.",
-                    f"Understanding {args.domain} requires interdisciplinary approaches. Scientists, policymakers, and industry leaders collaborate on solutions.",
-                    f"Future research in {args.domain} will focus on emerging technologies and their applications in real-world scenarios."
-                ]
+        # Execute the pipeline with timeout protection
+        import signal
+        from contextlib import contextmanager
 
-            content = random.choice(content_templates)
-            # Extend content to realistic length
-            while len(content.split()) < random.randint(100, 300):
-                content += f" Additional research shows that {args.domain} continues to evolve with new methodologies and approaches. "
+        @contextmanager
+        def timeout_context(seconds):
+            def timeout_handler(signum, frame):
+                raise TimeoutError(f"Common Crawl processing timed out after {seconds} seconds")
 
-            samples_collected.append({
-                'id': f'cc-fallback-{i}',
-                'url': url,
-                'title': f'{args.domain.title()} Research - Document {i}',
-                'text': content[:1000],  # Truncate for storage
-                'word_count': len(content.split()),
-                'domain_score': random.uniform(3.0, 4.8),  # Higher scores for fallback
-                'processed_at_stage': 'realistic_fallback'
-            })
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(seconds)
+            try:
+                yield
+            finally:
+                signal.alarm(0)
 
-        print(f"✅ Created {len(samples_collected)} realistic fallback samples")
+        # Set reasonable timeout based on expected processing volume
+        timeout_seconds = min(600, max(120, sample_size // 100))  # 2-10 minutes based on sample size
+
+        try:
+            with timeout_context(timeout_seconds):
+                executor = LocalPipelineExecutor(
+                    pipeline=processing_pipeline,
+                    logging_dir=f"/tmp/finedata_benchmark_{domain_slug}",
+                    tasks=2,  # Parallel processing
+                    workers=1,
+                )
+
+                print(f"⏱️  Starting processing with {timeout_seconds}s timeout...")
+                executor.run()
+
+        except TimeoutError:
+            raise Exception(f"Common Crawl processing timed out after {timeout_seconds} seconds. This indicates network issues or insufficient processing capacity.")
+
+        # Get results
+        samples_collected = sampler.get_samples()
+        total_processed = sampler.processed_count
+
+        print(f"📊 Processing completed:")
+        print(f"  - Total documents processed: {total_processed}")
+        print(f"  - Domain-relevant samples collected: {len(samples_collected)}")
+
+        # Validate results - must have samples or fail
+        if not samples_collected:
+            error_msg = f"No documents found for domain '{args.domain}' after processing {total_processed} Common Crawl documents. "
+            error_msg += f"This suggests either: 1) Domain threshold ({domain_threshold}) is too strict, "
+            error_msg += f"2) Domain '{args.domain}' has insufficient content in the selected Common Crawl dump, "
+            error_msg += f"or 3) Common Crawl data quality issues for this dump."
+            raise Exception(error_msg)
+
+        if len(samples_collected) < 10:
+            print(f"⚠️  WARNING: Only collected {len(samples_collected)} samples, which is below recommended minimum of 10.")
+            print("   This may indicate domain filtering is too restrictive.")
+
+        print(f"✅ Successfully collected {len(samples_collected)} real Common Crawl samples for domain '{args.domain}'")
+
+        # Log sample statistics
+        if samples_collected:
+            avg_score = sum(s['domain_score'] for s in samples_collected) / len(samples_collected)
+            avg_words = sum(s['word_count'] for s in samples_collected) / len(samples_collected)
+            print(f"   Average domain score: {avg_score:.2f}")
+            print(f"   Average word count: {avg_words:.0f}")
+    except Exception as e:
+        # CRITICAL: No fallback allowed - re-raise the exception
+        error_msg = f"FAILED to collect real Common Crawl data for benchmark: {str(e)}"
+        print(f"❌ {error_msg}")
+        print("\n🔍 Troubleshooting suggestions:")
+        print("1. Check Common Crawl dump availability for the specified year")
+        print("2. Verify domain ontology generation worked correctly")
+        print("3. Consider lowering domain_threshold for broader matching")
+        print("4. Check network connectivity to S3/Common Crawl")
+        print("5. Ensure sufficient system resources (CPU, memory)")
+
+        # Re-raise to prevent fallback data generation
+        raise Exception(error_msg) from e
 
     # Calculate final statistics
     url_passed = int(total_processed * 0.9)
