@@ -1893,6 +1893,335 @@ cleanup_resources() {
 }
 ```
 
+
+[10 tools called]
+
+## 📋 **支付完成到SLURM大规模执行的完整操作流程**
+
+### 🎯 **总体流程图**
+
+```
+支付完成 → Webhook处理 → 订单状态更新 → Production Task启动 → SLURM集群创建 → 任务提交 → 监控执行 → 结果交付
+```
+
+---
+
+## **📝 阶段1: 支付完成处理**
+
+### **1.1 Stripe Webhook接收**
+```python
+# api/app/api/api_v1/endpoints/payments.py
+@router.post("/webhook")
+async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    payment_service = PaymentService(db)
+    body = await request.body()
+    signature = request.headers.get("stripe-signature")
+    event = await payment_service.process_webhook(body, signature)
+```
+
+### **1.2 支付状态验证**
+```python
+# app/services/payment.py
+async def process_webhook(self, body, signature):
+    # 验证Stripe签名
+    event = stripe.Webhook.construct_event(body, signature, self.webhook_secret)
+    
+    if event.type == "payment_intent.succeeded":
+        await self.handle_payment_success(event.data.object)
+```
+
+### **1.3 订单状态更新**
+```python
+# app/services/payment.py
+async def handle_payment_success(self, payment_intent):
+    order_id = payment_intent.metadata.get("order_id")
+    order = await self.order_repo.get_by_id(order_id)
+    order.status = OrderStatus.PAID  # 状态变为已支付
+    
+    # 触发生产任务
+    from app.tasks.production import production_task
+    production_task.delay(order_id)
+```
+
+---
+
+## **🚀 阶段2: Production Task启动**
+
+### **2.1 Celery任务执行**
+```python
+# api/app/tasks/production.py
+@celery_app.task(bind=True, name="app.tasks.production_task")
+def production_task(self, order_id: str):
+    # 获取订单和benchmark job信息
+    order = db.query(Order).options(selectinload(Order.benchmark_job)).filter(Order.id == order_id).first()
+    benchmark_job = order.benchmark_job
+```
+
+### **2.2 参数准备**
+```python
+# 创建ProductionConfig
+production_config = ProductionConfig(
+    order_id=order_id,
+    benchmark_job_id=benchmark_job.id,
+    domain=benchmark_job.domain,
+    keywords=benchmark_job.keywords,
+    languages=benchmark_job.languages,
+    time_range_start=benchmark_job.time_range_start,
+    time_range_end=benchmark_job.time_range_end,
+    quality_tier=benchmark_job.quality_tier,
+)
+```
+
+---
+
+## **🏗️ 阶段3: SLURM集群创建**
+
+### **3.1 集群管理器初始化**
+```python
+# api/app/services/slurm.py
+class SlurmClusterManager:
+    def __init__(self):
+        self.cluster_name = f"production-{uuid.uuid4().hex[:8]}"
+        self.region = settings.AWS_DEFAULT_REGION or "us-east-1"
+```
+
+### **3.2 AWS资源创建**
+```python
+# 创建VPC、Subnet、Internet Gateway
+vpc_response = self.ec2.create_vpc(CidrBlock=self.vpc_cidr)
+subnet_response = self.ec2.create_subnet(
+    VpcId=vpc_id,
+    CidrBlock=self.subnet_cidr,
+    AvailabilityZone=self.availability_zone
+)
+
+# 创建EFS文件系统用于共享存储
+efs_response = self.efs.create_file_system(
+    PerformanceMode='generalPurpose',
+    ThroughputMode='bursting'
+)
+```
+
+### **3.3 ParallelCluster配置**
+```yaml
+# 生成cluster-config.yaml
+Region: us-east-1
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: m5.large
+  Networking:
+    SubnetId: !Ref Subnet
+Scheduling:
+  SlurmQueues:
+  - Name: compute
+    CapacityType: ONDEMAND
+    Networking:
+      SubnetIds:
+      - !Ref Subnet
+```
+
+### **3.4 集群部署**
+```bash
+# 执行AWS ParallelCluster命令
+pcluster create-cluster --cluster-configuration cluster-config.yaml --cluster-name production-abc12345
+```
+
+---
+
+## **📋 阶段4: 参数传递流程**
+
+### **4.1 SLURM任务参数构建**
+```python
+# api/app/services/slurm.py
+job_params = {
+    'job_name': f"finedata-{domain_slug}-{job_suffix}",
+    'domain': domain,
+    'keywords': keywords,
+    'languages': languages,
+    'time_range_start': time_range_start,
+    'time_range_end': time_range_end,
+    'quality_tier': quality_tier,
+    'order_id': order_id,
+    'benchmark_job_id': benchmark_job_id,
+    'cluster_name': self.cluster_manager.cluster_name,
+}
+```
+
+### **4.2 SLURM作业脚本生成**
+```bash
+# 生成sbatch脚本
+#!/bin/bash
+#SBATCH --job-name=finedata-quantum-computing-abc12345
+#SBATCH --output=logs/finedata-quantum-computing-abc12345_%j.out
+#SBATCH --error=logs/finedata-quantum-computing-abc12345_%j.err
+#SBATCH --nodes=10
+#SBATCH --ntasks-per-node=8
+#SBATCH --time=48:00:00
+#SBATCH --partition=hopper-cpu
+
+# 激活环境
+source /shared/venv/bin/activate
+
+# 执行数据处理
+python finewebdata/finewebdata.py \
+    --domain "quantum computing" \
+    --mode slurm \
+    --year 2024 \
+    --cluster-name production-abc12345 \
+    --output-bucket finedata-production-order123 \
+    --non-interactive
+```
+
+### **4.3 FineWebData命令构建**
+```python
+# api/app/services/finewebdata_service.py
+async def _build_production_command(self, config: ProductionConfig) -> list:
+    year = config.time_range_start[:4] if config.time_range_start else "2024"
+    
+    cmd = [
+        "python", str(self.finewebdata_script),
+        "--domain", config.domain,
+        "--mode", "slurm",
+        "--year", year,
+        "--cluster-name", f"production-{config.order_id[:8]}",
+        "--output-bucket", f"finedata-production-{config.order_id}",
+        "--non-interactive",
+    ]
+    return cmd
+```
+
+---
+
+## **⚙️ 阶段5: SLURM大规模执行**
+
+### **5.1 作业调度**
+```bash
+# 提交到SLURM调度器
+sbatch finewebdata-slurm-job.sh
+# 返回: Submitted batch job 12345
+```
+
+### **5.2 分布式处理**
+```python
+# finewebdata/finewebdata.py - SLURM模式
+if mode == 'slurm':
+    # 配置分布式执行器
+    executor = SlurmPipelineExecutor(
+        job_name=f"fineweb_med_{DUMP_TO_PROCESS}",
+        pipeline=pipeline,
+        tasks=8000,  # 大规模并行任务
+        time="48:00:00",
+        logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
+        partition="hopper-cpu",
+    )
+```
+
+### **5.3 数据处理流水线**
+```
+Common Crawl WARC → Trafilatura提取 → 语言过滤 → 长度过滤 → 领域过滤 → 质量过滤 → 去重 → 输出到S3
+```
+
+---
+
+## **👀 阶段6: 执行监控**
+
+### **6.1 状态检查任务**
+```python
+# api/app/tasks/production.py
+@celery_app.task(bind=True, name="app.tasks.production_monitor")
+def production_monitor_task(self, order_id: str, slurm_job_id: str):
+    # 定期检查SLURM作业状态
+    job_status = slurm_service.check_job_status_sync(slurm_job_id)
+    
+    if current_status in ['COMPLETED', 'DONE']:
+        # 作业完成，触发交付
+        production_delivery_task.delay(order_id)
+    elif current_status in ['FAILED', 'CANCELLED']:
+        # 作业失败，更新状态
+        order.status = OrderStatus.FAILED
+```
+
+### **6.2 进度更新**
+- 每5分钟检查一次作业状态
+- 更新订单时间线事件
+- 实时反馈处理进度
+
+---
+
+## **📦 阶段7: 结果交付**
+
+### **7.1 HuggingFace上传**
+```python
+# 作业完成后自动触发
+hf_service = FineWebDataService()
+hf_url = hf_service.upload_to_huggingface_sync(order_id, benchmark_job.domain)
+
+# 更新订单
+order.hf_dataset_url = hf_url
+order.dataset_card_url = f"{hf_url}#dataset-card"
+order.status = OrderStatus.DELIVERED
+```
+
+### **7.2 邮件通知**
+```python
+# 发送交付通知邮件
+email_service.send_email(
+    recipient=order.email,
+    template="delivery_notification",
+    data={
+        "order_id": order_id,
+        "hf_url": hf_url,
+        "dataset_info": {...}
+    }
+)
+```
+
+---
+
+## **🔧 关键配置参数**
+
+### **SLURM集群配置**
+```python
+SLURM_NUM_NODES = 10          # 计算节点数
+SLURM_NODE_TYPE = "c5.18xlarge"  # 实例类型
+SLURM_TIME_LIMIT = "48:00:00"    # 最大运行时间
+SLURM_PARTITION = "hopper-cpu"   # 队列分区
+```
+
+### **数据处理参数**
+```python
+# 基于benchmark job的参数
+domain = benchmark_job.domain
+keywords = benchmark_job.keywords
+time_range = f"{benchmark_job.time_range_start} to {benchmark_job.time_range_end}"
+quality_tier = benchmark_job.quality_tier
+```
+
+### **输出配置**
+```python
+output_bucket = f"finedata-production-{order_id}"
+cluster_name = f"production-{order_id[:8]}"
+job_name = f"finedata-{domain_slug}-{uuid_suffix}"
+```
+
+---
+
+## **📊 完整参数传递链**
+
+```
+Frontend Form → Benchmark Job → Order → Production Task → SLURM Service → 
+FineWebData Script → SLURM Job Script → Distributed Processing → S3 Output → HF Upload
+```
+
+**关键要点**:
+- ✅ **参数完整传递**: 从前端表单到最终SLURM作业，所有参数都保持一致
+- ✅ **状态跟踪**: 每个阶段都有状态更新和时间线记录
+- ✅ **错误处理**: 多层错误处理和自动重试机制
+- ✅ **资源管理**: 自动创建和清理AWS资源
+- ✅ **可观测性**: 完整的日志记录和监控机制
+
+
 ## 🏗️ 架构设计特点
 
 ### **按需资源管理**
