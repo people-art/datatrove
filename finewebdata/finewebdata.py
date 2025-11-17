@@ -34,7 +34,7 @@ if not env_loaded:
 # Common Crawl requires authenticated access to S3, not anonymous
 # AWS credentials should be available in environment or ~/.aws/credentials
 if 'AWS_DEFAULT_REGION' not in os.environ:
-    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 # Ensure AWS credentials are available for DataTrove S3 access
 if not os.environ.get('AWS_ACCESS_KEY_ID') or not os.environ.get('AWS_SECRET_ACCESS_KEY'):
@@ -773,7 +773,7 @@ def run_domain_benchmarks(args):
     from datatrove.io import DataFolder
 
     print(f"🔗 Accessing Common Crawl data at: s3://commoncrawl/crawl-data/{dump_to_process}/segments/")
-    print("   DataTrove will use AWS credentials from environment, ~/.aws/credentials, or IAM roles"
+    print("   DataTrove will use AWS credentials from environment, ~/.aws/credentials, or IAM roles")
 
     data_folder = DataFolder(
         path=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
@@ -1158,7 +1158,7 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
     from datatrove.io import DataFolder
 
     print(f"🔗 Accessing Common Crawl data at: s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/")
-    print("   DataTrove will use AWS credentials from environment, ~/.aws/credentials, or IAM roles"
+    print("   DataTrove will use AWS credentials from environment, ~/.aws/credentials, or IAM roles")
 
     data_folder = DataFolder(
         path=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
