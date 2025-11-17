@@ -88,6 +88,13 @@ def benchmark_task(self, job_id: str):
         finewebdata_service = FineWebDataService()
         result = asyncio.run(finewebdata_service.run_benchmark_pipeline(benchmark_config))
 
+        # DEBUG: Check if result has sample_documents
+        logger.info("Benchmark result debug", job_id=job_id, has_sample_docs=hasattr(result, 'sample_documents'))
+        if hasattr(result, 'sample_documents'):
+            logger.info("Sample documents info", job_id=job_id, sample_docs_count=len(result.sample_documents) if result.sample_documents else 0)
+        else:
+            logger.warning("BenchmarkResult missing sample_documents attribute", job_id=job_id)
+
         # Convert BenchmarkResult to dict for database operations
         result_dict = {
             "docs_read": result.docs_read,
