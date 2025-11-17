@@ -811,48 +811,19 @@ def run_domain_benchmarks(args):
         print(f"⏱️  Starting processing with timeout protection...")
         executor.run()
 
-    except Exception as e:
-        print(f"❌ Pipeline execution failed: {e}")
-        raise Exception(f"Failed to execute real Common Crawl processing pipeline: {e}")
-
-    # Get results from sampler
-    samples_collected = sampler.get_samples()
-    total_processed = sampler.processed_count
-
-    print(f"📊 Processing completed:")
-    print(f"  - Total documents processed: {total_processed}")
-    print(f"  - Domain-relevant samples collected: {len(samples_collected)}")
-    print(f"  - Processing method: real_common_crawl_data")
-
-    # Validate results - must have samples or fail
-    if not samples_collected:
-        error_msg = f"No documents found for domain '{args.domain}' after processing {total_processed} Common Crawl documents. "
-        error_msg += f"This indicates either insufficient domain content in the dump, or domain filtering threshold ({domain_threshold}) is too strict."
-        raise Exception(error_msg)
-
-    if len(samples_collected) < 10:
-        print(f"⚠️  WARNING: Only collected {len(samples_collected)} samples, which is below recommended minimum of 10.")
-        print("   This may indicate domain filtering is too restrictive.")
-
-        # Simulate filter statistics for the results
-        filter_stats = {
-            'total_processed': total_processed,
-            'url_filtered': int(total_processed * 0.1),  # 10% URL filtered
-            'lang_filtered': int(total_processed * 0.05),  # 5% language filtered
-            'length_filtered': int(total_processed * 0.1),  # 10% length filtered
-            'domain_filtered': total_processed - len(samples_collected)  # Rest filtered by domain
-        }
+        # Get results from sampler
+        samples_collected = sampler.get_samples()
+        total_processed = sampler.processed_count
 
         print(f"📊 Processing completed:")
         print(f"  - Total documents processed: {total_processed}")
         print(f"  - Domain-relevant samples collected: {len(samples_collected)}")
+        print(f"  - Processing method: real_common_crawl_data")
 
         # Validate results - must have samples or fail
         if not samples_collected:
             error_msg = f"No documents found for domain '{args.domain}' after processing {total_processed} Common Crawl documents. "
-            error_msg += f"This suggests either: 1) Domain threshold ({domain_threshold}) is too strict, "
-            error_msg += f"2) Domain '{args.domain}' has insufficient content in the selected Common Crawl dump, "
-            error_msg += f"or 3) Common Crawl data quality issues for this dump."
+            error_msg += f"This indicates either insufficient domain content in the dump, or domain filtering threshold ({domain_threshold}) is too strict."
             raise Exception(error_msg)
 
         if len(samples_collected) < 10:
@@ -867,6 +838,7 @@ def run_domain_benchmarks(args):
             avg_words = sum(s['word_count'] for s in samples_collected) / len(samples_collected)
             print(f"   Average domain score: {avg_score:.2f}")
             print(f"   Average word count: {avg_words:.0f}")
+
     except Exception as e:
         # CRITICAL: No fallback allowed - re-raise the exception
         error_msg = f"FAILED to collect real Common Crawl data for benchmark: {str(e)}"
