@@ -124,12 +124,24 @@ def cc_anonymous_read():
     """Context manager for Common Crawl S3 access using AWS credentials"""
     import s3fs
     # Use the AWS credentials that are already configured in the environment
-    # No need to modify environment variables - they should already be set by docker-compose
 
     try:
-        # Create S3 filesystem using the configured AWS credentials
-        # Common Crawl allows authenticated access to their public data
-        fs = s3fs.S3FileSystem()
+        # Explicitly pass credentials from environment to ensure they are used
+        aws_key = os.environ.get('AWS_ACCESS_KEY_ID')
+        aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY')
+        aws_token = os.environ.get('AWS_SESSION_TOKEN')
+        aws_region = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+
+        if not aws_key or not aws_secret:
+            raise ValueError("AWS credentials not found in environment")
+
+        # Create S3 filesystem with explicit credentials
+        fs = s3fs.S3FileSystem(
+            key=aws_key,
+            secret=aws_secret,
+            token=aws_token,
+            client_kwargs={'region_name': aws_region}
+        )
         yield fs
     except Exception as e:
         print(f"⚠️  Failed to create authenticated S3 filesystem: {e}")
