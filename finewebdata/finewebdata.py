@@ -122,12 +122,17 @@ class DomainOntology:
 @contextmanager
 def cc_anonymous_read():
     """Context manager for anonymous Common Crawl S3 access"""
+    import s3fs
     backup = {k: os.environ.get(k) for k in ("AWS_ACCESS_KEY_ID","AWS_SECRET_ACCESS_KEY","AWS_SESSION_TOKEN")}
+    # Clear credentials for anonymous access
     os.environ["AWS_ACCESS_KEY_ID"] = ""
     os.environ["AWS_SECRET_ACCESS_KEY"] = ""
     os.environ.pop("AWS_SESSION_TOKEN", None)
+
     try:
-        yield
+        # Create anonymous S3 filesystem for Common Crawl access
+        fs = s3fs.S3FileSystem(anon=True)
+        yield fs
     finally:
         for k,v in backup.items():
             if v is None: os.environ.pop(k, None)
@@ -748,12 +753,13 @@ def run_domain_benchmarks(args):
 
     # Create benchmark pipeline with real Common Crawl data
     # Similar to fineweb-med.py implementation
-    with cc_anonymous_read():
+    with cc_anonymous_read() as fs:
         warc_reader = WarcReader(
             data_folder=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
             glob_pattern="*/warc/CC-MAIN-*.warc.gz",
             default_metadata={"dump": dump_to_process, "dataset": f"benchmark-{domain_slug}"},
-            limit=sample_size + 1000  # Limit to sample_size + buffer
+            limit=sample_size + 1000,  # Limit to sample_size + buffer
+            fs=fs  # Use anonymous filesystem
         )
 
     # Create benchmark sampler to collect sample documents
@@ -1119,11 +1125,12 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
     print(f"📚 Using domain ontology with {len(ontology.keywords)} keywords, {len(ontology.technical_terms)} technical terms")
 
     # Create WarcReader with anonymous Common Crawl access
-    with cc_anonymous_read():
+    with cc_anonymous_read() as fs:
         warc_reader = WarcReader(
             data_folder=f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
             glob_pattern="*/warc/*",  # we want the warc files
             default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain_slug}"},
+            fs=fs  # Use anonymous filesystem
         )
 
     pipeline = [warc_reader,
