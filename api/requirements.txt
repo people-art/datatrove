@@ -39,3 +39,6 @@ python-magic==0.4.27
 warcio==1.7.4
 s3fs==2023.6.0
 orjson==3.10.0
+pyahocorasick==2.1.0
+fasteners==0.19
+tldextract==5.1.3
