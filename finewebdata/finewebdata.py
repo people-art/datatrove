@@ -739,14 +739,14 @@ def run_domain_benchmarks(args):
     available_dumps = get_available_dumps(year)
     if not available_dumps:
         print(f"❌ No Common Crawl dumps found for year {year}")
-        # Fallback to a known working dump
-        available_dumps = ["CC-MAIN-2023-50"]
-        print(f"🔄 Falling back to known dump: {available_dumps[0]}")
+        # Fallback to a known working dump - try an older one
+        available_dumps = ["CC-MAIN-2023-40"]
+        print(f"🔄 Falling back to older dump: {available_dumps[0]}")
     else:
-        # Force use CC-MAIN-2023-50 for now since newer dumps may not be accessible
+        # Force use an older dump that should be available
         print(f"📋 Available dumps: {available_dumps[:3]}...")
-        available_dumps = ["CC-MAIN-2023-50"]
-        print(f"🔄 Using verified dump: {available_dumps[0]}")
+        available_dumps = ["CC-MAIN-2023-40"]
+        print(f"🔄 Using older verified dump: {available_dumps[0]}")
 
     dump_to_process = available_dumps[0]  # Use the first (most recent) dump
     print(f"  Using dump: {dump_to_process}")
