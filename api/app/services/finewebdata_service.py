@@ -282,18 +282,19 @@ class FineWebDataService:
                 parsed_output = json.loads(output.strip())
             except json.JSONDecodeError:
                 # Fallback: try to parse the last line as JSON
-                lines = output.strip().split('\n')
-                parsed_output = {}
-                for line in reversed(lines):
-                    if line.strip():
-                        try:
-                            parsed_output = json.loads(line.strip())
-                            break
-                        except json.JSONDecodeError:
-                            continue
+                # Find the JSON part in the output (starts with '{')
+                json_start = output.find('{')
+                if json_start == -1:
+                    raise ValueError("Could not find JSON in benchmark output")
+
+                json_output = output[json_start:]
+                try:
+                    parsed_output = json.loads(json_output)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Could not parse benchmark output as JSON: {e}")
 
             if not parsed_output:
-                raise ValueError("Could not parse benchmark output as JSON")
+                raise ValueError("Parsed output is empty")
 
             # Extract data from new format
             overall_stats = parsed_output.get("overall_stats", {})
