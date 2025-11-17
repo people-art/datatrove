@@ -705,7 +705,7 @@ def run_domain_benchmarks(args):
     # Set up benchmark parameters
     year = args.year or "2024"
     domain_threshold = args.domain_threshold
-    sample_size = 1000  # Sample 1000 documents for benchmark (reduced for faster processing)
+    sample_size = 1000000  # Sample 1,000,000 documents for benchmark validation
 
     print(f"\n📊 Benchmark Configuration:")
     print(f"  Year: {year}")
@@ -723,7 +723,8 @@ def run_domain_benchmarks(args):
 
     # Set up filtering pipeline for benchmark
     domain_slug = slugify(args.domain)
-    benchmark_output_path = f"s3://{settings.S3_BUCKET_SAMPLES}/{domain_slug}/preview"
+    # Use hardcoded bucket name for benchmark (since settings is not available in this context)
+    benchmark_output_path = f"s3://fineweb-data/{domain_slug}/preview"
 
     print(f"\n🔄 Setting up benchmark filtering pipeline...")
 

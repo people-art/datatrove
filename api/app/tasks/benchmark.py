@@ -330,14 +330,21 @@ async def update_sample_url(job_id: str, sample_url: str):
     """
     from app.db.session import async_session_factory
     from app.services.benchmark import BenchmarkService
+    from app.models.benchmark import BenchmarkStatus
 
     try:
         async with async_session_factory() as db:
             benchmark_service = BenchmarkService(db)
-            await benchmark_service.update_job_status(
-                job_id=job_id,
-                sample_url=sample_url,
-            )
-        logger.info("Sample URL updated", job_id=job_id, sample_url=sample_url)
+            # Get current job to preserve its status
+            job = await benchmark_service.get_job(job_id)
+            if job:
+                await benchmark_service.update_job_status(
+                    job_id=job_id,
+                    status=job.status,  # Preserve current status
+                    sample_url=sample_url,
+                )
+                logger.info("Sample URL updated", job_id=job_id, sample_url=sample_url)
+            else:
+                logger.warning("Job not found for sample URL update", job_id=job_id)
     except Exception as e:
         logger.error("Failed to update sample URL", job_id=job_id, error=str(e))
