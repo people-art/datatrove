@@ -759,19 +759,24 @@ def run_domain_benchmarks(args):
     print(f"\n🔄 Setting up benchmark filtering pipeline...")
 
     # Create benchmark pipeline with real Common Crawl data
-    # Similar to fineweb-med.py implementation
-    with cc_anonymous_read() as fs:
-        from datatrove.io import DataFolder
-        data_folder = DataFolder(
-            path=f"s3://commoncrawl/crawl-data/{dump_to_process}/segments/",
-            fs=fs  # Use anonymous filesystem
-        )
-        warc_reader = WarcReader(
-            data_folder=data_folder,
-            glob_pattern="*/warc/CC-MAIN-*.warc.gz",
-            default_metadata={"dump": dump_to_process, "dataset": f"benchmark-{domain_slug}"},
-            limit=sample_size + 1000,  # Limit to sample_size + buffer
-        )
+    # Use HTTP access instead of S3 since anonymous S3 access is blocked
+    from datatrove.io import DataFolder
+    import fsspec
+
+    # Use HTTP filesystem for Common Crawl access
+    # Common Crawl provides HTTP access to their data
+    http_fs = fsspec.filesystem('http')
+    data_folder = DataFolder(
+        path=f"https://data.commoncrawl.org/crawl-data/{dump_to_process}/segments/",
+        fs=http_fs
+    )
+
+    warc_reader = WarcReader(
+        data_folder=data_folder,
+        glob_pattern="*/warc/CC-MAIN-*.warc.gz",
+        default_metadata={"dump": dump_to_process, "dataset": f"benchmark-{domain_slug}"},
+        limit=sample_size + 1000,  # Limit to sample_size + buffer
+    )
 
     # Create benchmark sampler to collect sample documents
     sampler = BenchmarkDocumentSampler(max_samples=sample_size, domain=args.domain)
