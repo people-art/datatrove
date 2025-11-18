@@ -57,6 +57,66 @@ from datatrove.pipeline.filters import (
 )
 from datatrove.pipeline.formatters import PIIFormatter
 from datatrove.pipeline.readers import JsonlReader, WarcReader
+
+# Apply patch to remove magic dependency for Common Crawl processing
+def process_record_patched(record):
+    """Process a WARC record to extract the html and metadata (id, url, date)."""
+    import cchardet
+
+    # record type
+    if record.rec_type != "response" and record.rec_type != "conversion":  # wet files have "conversion" type
+        return
+
+    # content type filtering
+    mime_type = record.rec_headers.get("WARC-Identified-Payload-Type", None)
+    if mime_type is not None and (
+        mime_type != "text/html"
+        and mime_type != "application/xhtml+xml"
+        and (record.rec_type != "conversion" or mime_type != "text/plain")
+    ):
+        return
+
+    content_bytes = record.content_stream().read()
+    if mime_type is None:
+        # fallback for older crawls without payload types
+        # Skip magic detection to avoid libmagic dependency
+        # Assume HTML for response records, text/plain for conversion records
+        if record.rec_type == "conversion":
+            mime_type = "text/plain"
+        else:
+            mime_type = "text/html"
+        # Note: This is a simplified fallback that may include non-HTML content
+        # but ensures processing continues without libmagic dependency
+
+    # Decode the response bytes
+    charset = "UTF-8"
+    try:
+        html = content_bytes.decode(charset)
+    except UnicodeDecodeError:
+        encoding_det = cchardet.detect(content_bytes)["encoding"]
+        if not encoding_det or encoding_det == charset:
+            return
+        charset = encoding_det
+
+        try:
+            html = content_bytes.decode(charset)
+        except (UnicodeDecodeError, LookupError):
+            return
+
+    id_ = record.rec_headers["WARC-Record-ID"]
+    url = record.rec_headers.get("WARC-Target-URI", None)
+    date = record.rec_headers.get("WARC-Date", None)
+    # handle older formats
+    if not url:
+        url = dict(record.rec_headers.headers)["uri"]
+    if not date:
+        date = dict(record.rec_headers.headers)["archive-date"]
+
+    return {"text": html, "id": id_, "url": url, "date": date}
+
+# Apply the patch
+import datatrove.pipeline.readers.warc as warc_module
+warc_module.process_record = process_record_patched
 from datatrove.pipeline.tokens import TokensCounter
 from datatrove.pipeline.writers.jsonl import JsonlWriter
 from datatrove.utils.hashing import HashConfig
