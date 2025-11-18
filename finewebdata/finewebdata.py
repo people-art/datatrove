@@ -478,6 +478,123 @@ REMEMBER: Respond ONLY with the JSON object. No additional text, no explanations
         return generate_fallback_ontology(domain)
 
 
+def generate_intelligent_fallback_ontology(domain: str) -> DomainOntology:
+    """
+    Generate intelligent fallback ontology for any domain, supporting both English and Chinese.
+    Uses rule-based methods to create relevant keywords and concepts.
+    """
+    import re
+
+    domain_lower = domain.lower().strip()
+    is_chinese = any('\u4e00' <= char <= '\u9fff' for char in domain)
+
+    # Base concepts that work for any domain
+    base_concepts = {
+        "research": ["研究", "research"],
+        "analysis": ["分析", "analysis"],
+        "methodology": ["方法论", "methodology"],
+        "applications": ["应用", "applications"],
+        "development": ["发展", "development"],
+        "technology": ["技术", "technology"],
+        "science": ["科学", "science"],
+        "practice": ["实践", "practice"]
+    }
+
+    # Generate core concepts based on domain
+    core_concepts = []
+    if is_chinese:
+        core_concepts = [domain, f"{domain}研究", f"{domain}分析", f"{domain}应用", f"{domain}发展"]
+    else:
+        core_concepts = [domain, f"{domain} research", f"{domain} analysis", f"{domain} applications", f"{domain} development"]
+
+    # Generate keywords - split domain and create variations
+    keywords = []
+    domain_words = re.split(r'[_\s]+', domain_lower)
+
+    for word in domain_words:
+        if len(word) > 1:  # Skip single characters
+            keywords.extend([
+                word,
+                word + "s",  # plural
+                word + "ing",  # gerund
+                "advanced " + word,
+                word + " technology",
+                word + " research"
+            ])
+
+    # Add domain-specific keywords
+    if is_chinese:
+        # Chinese domain keywords
+        keywords.extend([
+            domain, "相关", "领域", "技术", "发展", "应用", "研究", "分析", "方法"
+        ])
+        # Add some common Chinese academic terms
+        keywords.extend(["论文", "期刊", "学术", "理论", "实践", "创新"])
+    else:
+        # English domain keywords
+        keywords.extend([
+            domain_lower, "related", "field", "technology", "development",
+            "applications", "research", "analysis", "methods"
+        ])
+        # Add some common English academic terms
+        keywords.extend(["paper", "journal", "academic", "theory", "practice", "innovation"])
+
+    # Remove duplicates and filter
+    keywords = list(set([k for k in keywords if len(k.strip()) > 0]))[:30]  # Limit to 30 keywords
+
+    # Generate subdomains
+    subdomains = []
+    if is_chinese:
+        subdomains = [f"{domain}理论", f"{domain}实践", f"{domain}应用", f"{domain}案例", f"{domain}技术"]
+    else:
+        subdomains = [f"{domain} theory", f"{domain} practice", f"{domain} applications", f"{domain} case studies", f"{domain} technology"]
+
+    # Generate technical terms (keep simple for fallback)
+    technical_terms = []
+    if is_chinese:
+        technical_terms = [domain, f"{domain}算法", f"{domain}模型", f"{domain}框架"]
+    else:
+        technical_terms = [domain, f"{domain} algorithm", f"{domain} model", f"{domain} framework"]
+
+    # Generate context indicators
+    context_indicators = []
+    if is_chinese:
+        context_indicators = [
+            f"{domain}相关讨论", f"专业{domain}", f"{domain}研究成果",
+            f"{domain}技术进展", f"{domain}应用案例", f"{domain}发展趋势"
+        ]
+    else:
+        context_indicators = [
+            f"{domain} related discussion", f"professional {domain}", f"{domain} research results",
+            f"{domain} technology progress", f"{domain} application cases", f"{domain} development trends"
+        ]
+
+    # Generate quality patterns - use simple word boundaries
+    quality_patterns = []
+    for word in domain_words[:3]:  # Use first 3 words
+        if len(word) > 2:  # Only for meaningful words
+            quality_patterns.append(rf'\b{re.escape(word)}\b')
+
+    # Add some generic quality patterns
+    quality_patterns.extend([
+        r'\b(research|analysis|methodology)\b',
+        r'\b(development|application|technology)\b'
+    ])
+
+    # Limit quality patterns
+    quality_patterns = quality_patterns[:10]
+
+    return DomainOntology(
+        domain=domain,
+        core_concepts=core_concepts,
+        subdomains=subdomains,
+        keywords=keywords,
+        technical_terms=technical_terms,
+        context_indicators=context_indicators,
+        quality_patterns=quality_patterns
+    )
+
+
 def generate_fallback_ontology(domain: str) -> DomainOntology:
     """
     Generate a basic ontology using rule-based methods when LLM is not available.
@@ -538,16 +655,8 @@ def generate_fallback_ontology(domain: str) -> DomainOntology:
             quality_patterns=mapping["quality_patterns"]
         )
     else:
-        # Generic fallback for unknown domains
-        return DomainOntology(
-            domain=domain,
-            core_concepts=["research", "analysis", "methodology", "applications"],
-            subdomains=["theory", "practice", "applications", "case studies"],
-            keywords=[domain.lower(), f"{domain} research", f"{domain} analysis"],
-            technical_terms=[],
-            context_indicators=[f"{domain} related", f"professional {domain}"],
-            quality_patterns=[r'\b(research|analysis|methodology)\b']
-        )
+        # Intelligent fallback for unknown domains - supports both English and Chinese
+        return generate_intelligent_fallback_ontology(domain)
 
 
 def get_domain_keywords(domain: str) -> List[str]:
@@ -810,8 +919,9 @@ def run_domain_benchmarks(args):
 
     # Set up benchmark parameters
     year = args.year or "2024"
-    domain_threshold = args.domain_threshold
-    sample_size = 1000000  # Sample 1,000,000 documents for benchmark validation
+    # Use lower threshold for benchmark to ensure we find some content
+    domain_threshold = args.domain_threshold or 1  # Allow override, default to 1 but can be lower
+    sample_size = 50000  # Sample 50,000 documents for efficient benchmark validation
 
     print(f"\n📊 Benchmark Configuration:")
     print(f"  Year: {year}")

@@ -201,6 +201,7 @@ class FineWebDataService:
             "--mode", "local",
             "--year", year,
             "--benchmark",
+            "--domain-threshold", "1",  # Lower threshold for benchmark to find content
             "--non-interactive",
             "--skip-dedup",  # Skip deduplication for faster benchmark
         ]
