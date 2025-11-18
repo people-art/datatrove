@@ -34,7 +34,7 @@ if not env_loaded:
 # Common Crawl requires authenticated access to S3, not anonymous
 # AWS credentials should be available in environment or ~/.aws/credentials
 if 'AWS_DEFAULT_REGION' not in os.environ:
-os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 # Ensure AWS credentials are available for DataTrove S3 access
 if not os.environ.get('AWS_ACCESS_KEY_ID') or not os.environ.get('AWS_SECRET_ACCESS_KEY'):
@@ -787,7 +787,7 @@ def run_domain_benchmarks(args):
 
     warc_reader = WarcReader(
         data_folder=data_folder,
-        glob_pattern="*/warc/CC-MAIN-*.warc.gz",
+        glob_pattern="**/warc/CC-MAIN-*.warc.gz",  # Use ** to match across subdirectories
         default_metadata={"dump": dump_to_process, "dataset": f"benchmark-{domain_slug}"},
         limit=sample_size + 1000,  # Limit to sample_size + buffer
     )
@@ -1165,7 +1165,7 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
         # DataTrove automatically handles S3 authentication via fsspec
         # AWS credentials are resolved automatically by boto3 credential chain
     )
-        warc_reader = WarcReader(
+    warc_reader = WarcReader(
             data_folder=data_folder,
             glob_pattern="*/warc/*",  # we want the warc files
             default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain_slug}"},
