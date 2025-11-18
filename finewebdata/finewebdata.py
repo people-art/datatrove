@@ -34,7 +34,7 @@ if not env_loaded:
 # Common Crawl requires authenticated access to S3, not anonymous
 # AWS credentials should be available in environment or ~/.aws/credentials
 if 'AWS_DEFAULT_REGION' not in os.environ:
-    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 # Ensure AWS credentials are available for DataTrove S3 access
 if not os.environ.get('AWS_ACCESS_KEY_ID') or not os.environ.get('AWS_SECRET_ACCESS_KEY'):
@@ -56,9 +56,9 @@ from datatrove.pipeline.filters import (
     URLFilter,
 )
 from datatrove.pipeline.formatters import PIIFormatter
-from datatrove.pipeline.readers import JsonlReader, WarcReader
+# Apply patch to remove magic dependency for Common Crawl processing BEFORE importing DataTrove
+import sys
 
-# Apply patch to remove magic dependency for Common Crawl processing
 def process_record_patched(record):
     """Process a WARC record to extract the html and metadata (id, url, date)."""
     import cchardet
@@ -114,9 +114,11 @@ def process_record_patched(record):
 
     return {"text": html, "id": id_, "url": url, "date": date}
 
-# Apply the patch
+# Monkey patch the module before importing
 import datatrove.pipeline.readers.warc as warc_module
 warc_module.process_record = process_record_patched
+
+from datatrove.pipeline.readers import JsonlReader, WarcReader
 from datatrove.pipeline.tokens import TokensCounter
 from datatrove.pipeline.writers.jsonl import JsonlWriter
 from datatrove.utils.hashing import HashConfig
@@ -1225,7 +1227,7 @@ def create_executor(mode, cluster_name, dumps, output_bucket, domain, min_words=
         # DataTrove automatically handles S3 authentication via fsspec
         # AWS credentials are resolved automatically by boto3 credential chain
     )
-    warc_reader = WarcReader(
+        warc_reader = WarcReader(
             data_folder=data_folder,
             glob_pattern="*/warc/*",  # we want the warc files
             default_metadata={"dump": DUMP_TO_PROCESS, "dataset": f"fineweb-{domain_slug}"},
